@@ -49,12 +49,13 @@ export function remplacerPassages(source, sourceId, machineId, pages) {
   ajouterPassages(source, sourceId, machineId, pages)
 }
 
-export function ajouterPassages(source, sourceId, machineId, pages) {
+// « titre » : répété en tête de chaque morceau (pour qu'un morceau de fiche de folio dise toujours de quel folio il vient).
+export function ajouterPassages(source, sourceId, machineId, pages, { titre = '' } = {}) {
   const inserer = db().prepare('INSERT INTO passages (source, source_id, machine_id, page, texte) VALUES (?, ?, ?, ?, ?)')
   let nombre = 0
   for (const { page, texte } of pages) {
     for (const morceau of decouper(texte)) {
-      inserer.run(source, sourceId, machineId ?? null, page ?? null, morceau)
+      inserer.run(source, sourceId, machineId ?? null, page ?? null, titre ? `${titre}\n${morceau}` : morceau)
       nombre++
     }
   }

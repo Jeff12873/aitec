@@ -13,6 +13,8 @@ import { etatPartage, noterModification, listerSauvegardes, quitterAdmin } from 
 import { telecharger } from '../../serveur/socle/telechargement.js'
 import { decompresser } from '../../serveur/socle/zip.js'
 import { relancerIndexeur } from '../recherche/indexeur.js'
+import { etatModeles, utiliserModele } from '../../serveur/socle/modeles.js'
+import { glossaire, GLOSSAIRE_PAR_DEFAUT } from '../../serveur/socle/glossaire.js'
 
 const DEPOT_GITHUB = 'Jeff12873/iassitec'
 const TYPES_ICONE = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
@@ -87,6 +89,23 @@ export function routes(r) {
       sauvegardes: listerSauvegardes().map(({ nom, date, taille }) => ({ nom, date, taille })),
     }
   })
+
+  // ---- glossaire des repères (commun à tous les postes)
+
+  r.get('/api/glossaire', () => ({ texte: glossaire(), parDefaut: GLOSSAIRE_PAR_DEFAUT }))
+
+  r.post('/api/admin/glossaire', async (ctx) => {
+    ctx.exigerAdmin()
+    const { texte } = await ctx.json()
+    modifierReglage('glossaire', String(texte || '').trim() || null)
+    noterModification()
+  })
+
+  // ---- modèle d'IA de ce poste (moyen, lourd…)
+
+  r.get('/api/modeles', () => etatModeles())
+
+  r.post('/api/modeles/:code', (ctx) => utiliserModele(ctx.params.code, arreterIA))
 
   // ---- réglages de ce poste (pas besoin d'être administrateur : ils ne concernent que cet agent)
 

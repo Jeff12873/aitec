@@ -9,6 +9,9 @@
 import { db, reglage } from '../../serveur/socle/base.js'
 import { ouvrirFlux } from '../../serveur/socle/http.js'
 import { discuter, iaInstallee } from '../../serveur/socle/ia.js'
+import { installation } from '../../serveur/socle/installation.js'
+import { glossaire } from '../../serveur/socle/glossaire.js'
+import fs from 'node:fs'
 import { chercher } from '../recherche/recherche.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
 
@@ -20,8 +23,18 @@ Règles :
 - Après chaque information, cite la source avec son numéro entre crochets, par exemple [2].
 - Si les sources ne contiennent pas la réponse, dis-le franchement (« Je ne trouve pas cette information dans la base. »), puis indique quel document ou quelle donnée il faudrait ajouter. N'invente jamais une référence, une valeur, un couple de serrage ou un réglage.
 - Si tu ajoutes des vérifications générales de métier qui ne viennent pas des sources, mets-les à part sous le titre « Pistes générales (hors documentation) », sans numéro de source.
-- Pour une intervention à risque (électricité, hydraulique, pneumatique, pression, levage, organes en mouvement), rappelle de consigner la machine et de suivre les consignes de sécurité du site.
+- Pour une intervention à risque (hydraulique, pneumatique, pression, levage, organes en mouvement), rappelle de consigner la machine et de suivre les consignes de sécurité du site.
+- Pour toute intervention électrique, rappelle toujours, en tête de réponse : intervention réservée au personnel habilité (habilitation électrique adaptée à l'opération), consignation de l'équipement et vérification d'absence de tension (VAT) avant toute intervention sur des parties consignées ; mesures sous tension uniquement par une personne habilitée, avec les EPI adaptés.
 - Aujourd'hui, nous sommes le {date}.
+
+Schémas et plans :
+- Des IMAGES de folios de schémas ou de pages de plans peuvent être jointes à la question : regarde-les pour répondre, et cite la source correspondante.
+- Pour un dépannage électrique, propose une démarche de contrôle dans l'ordre : alimentation et protections (disjoncteurs, fusibles, présence de tension), chaîne de sécurité (arrêt d'urgence, relais de sécurité, portes), commande (bouton, sortie d'automate, bobine du contacteur ou de l'électrovanne), puissance (contacts, thermique, moteur), capteurs et entrées d'automate. Pour chaque étape : le repère du composant, les bornes ou fils où mesurer, la valeur attendue lue sur le schéma (24 V DC, 230 V AC…) et le folio.
+- Pour un circuit pneumatique ou hydraulique : pression d'alimentation, régulateur, distributeur et sa commande, réducteurs de débit, clapets, vérin, capteurs et pressostats.
+- Pour un plan mécanique : appuie-toi sur les cotes, tolérances, repères de nomenclature et notes lus sur le plan.
+- Si tu ne lis pas clairement un repère, une valeur ou une liaison sur l'image, dis-le au lieu de supposer, et invite à vérifier sur le schéma papier.
+- Glossaire des repères de l'atelier :
+{glossaire}
 
 Poser des questions pour affiner :
 - Si la demande est trop vague pour répondre de façon fiable (machine non précisée alors que plusieurs sont possibles, symptôme flou, code défaut ou message d'écran manquant, sources qui donnent des pistes différentes), ne devine pas : pose 1 à 3 questions courtes et précises, comme un collègue qui aide à dépanner.
@@ -69,10 +82,9 @@ function texteDeRecherche(question, historique) {
 }
 
 function construireMessages(question, historique, passages, machineId) {
-  const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier')).replace(
-    '{date}',
-    new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-  )
+  const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier'))
+    .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+    .replace('{glossaire}', glossaire())
 
   let contexte = `CHIFFRES DE LA BASE : ${resumeChiffres()}\n\n`
   if (machineId) {
@@ -86,9 +98,44 @@ function construireMessages(question, historique, passages, machineId) {
   // On garde les 6 derniers messages de la conversation, pour les questions de suite (« et pour l'autre machine ? »).
   const precedents = historique.slice(-6).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.contenu).slice(0, 3000) }))
 
+  // Folios de schémas et pages de plans trouvés par la recherche : on joint leur image (2 au plus),
+  // pour que l'IA regarde le dessin et pas seulement sa fiche.
+  const images = imagesDesFolios(passages)
+  if (images.length) contexte += '\n\nIMAGES JOINTES : ' + images.map((im, i) => `image ${i + 1} = source [${im.numero}]`).join(', ') + '.'
+
+  const texte = `${contexte}\n\nQUESTION : ${question}`
   return [
     { role: 'system', content: consignes },
     ...precedents,
-    { role: 'user', content: `${contexte}\n\nQUESTION : ${question}` },
+    {
+      role: 'user',
+      content: images.length
+        ? [...images.map((im) => ({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${im.image.toString('base64')}` } })), { type: 'text', text: texte }]
+        : texte,
+    },
   ]
+}
+
+const IMAGES_MAX = 2
+
+function imagesDesFolios(passages) {
+  const config = installation()
+  if (!config?.modele?.vision || !fs.existsSync(config.modele.vision)) return [] // modèle sans « vision »
+  const images = []
+  const vues = new Set()
+  passages.forEach((p, i) => {
+    if (images.length >= IMAGES_MAX || p.source !== 'document' || !p.page) return
+    const cle = `${p.sourceId}-${p.page}`
+    if (vues.has(cle)) return
+    vues.add(cle)
+    try {
+      const ligne = db()
+        .prepare("SELECT ip.image FROM images_pages ip JOIN documents d ON d.id = ip.document_id WHERE ip.document_id = ? AND ip.page = ? AND ip.partie = 'page' AND d.genre IN ('schema', 'plan')")
+        .get(p.sourceId, p.page)
+      if (ligne) images.push({ numero: i + 1, image: Buffer.from(ligne.image) })
+    } catch {
+      // fichier d'une ancienne version, sans images de pages
+    }
+  })
+  return images
 }

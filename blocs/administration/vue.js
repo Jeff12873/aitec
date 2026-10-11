@@ -52,8 +52,9 @@ async function afficherReglages(zone) {
       { class: 'grille grille-2' },
       cartePoste(infos.installation),
       carteFichier(infos),
+      carteModele(),
       estAdmin()
-        ? [carteAtelier(), carteIcone(), carteMotDePasse(), carteIndex(infos)]
+        ? [carteGlossaire(), carteAtelier(), carteIcone(), carteMotDePasse(), carteIndex(infos)]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, l’icône, le mot de passe et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
       carteMiseAJour(infos),
     ),
@@ -97,6 +98,75 @@ async function quitter() {
   if (!(await confirmer('Fermer IASSITEC sur ce poste ? Relancez-le ensuite avec son raccourci.'))) return
   await api('/api/quitter', { methode: 'POST' })
   document.body.innerHTML = '<div class="accueil"><div class="accueil-titre"><h1>IASSITEC est fermé</h1><p class="sous-titre">Vous pouvez fermer cet onglet.</p></div></div>'
+}
+
+// ---------------------------------------------------------------- modèle d'IA (propre à ce poste)
+
+function carteModele() {
+  const zone = h('div', {}, h('p', { class: 'discret' }, 'Chargement…'))
+  let minuterie = null
+
+  async function dessiner() {
+    const etat = await api('/api/modeles')
+    if (!zone.isConnected && minuterie) return clearTimeout(minuterie)
+    if (!etat.installe) return vider(zone, h('p', { class: 'discret' }, 'L’IA n’est pas installée sur ce poste : lancez d’abord la préparation.'))
+    const t = etat.telechargement
+    const enCours = t && !t.fini && !t.erreur
+    vider(
+      zone,
+      etat.modeles.map((m) =>
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--bord)' } },
+          h('div', { style: { flex: 1 } },
+            h('b', {}, m.nom), ' ',
+            m.code === etat.actif ? h('span', { class: 'etiquette accent' }, 'utilisé') : null, ' ',
+            m.code === etat.conseille ? h('span', { class: 'etiquette' }, 'conseillé pour ce poste') : null,
+            h('div', { class: 'discret', style: { fontSize: '13px' } }, `${m.tailleGo.toLocaleString('fr-FR')} Go — ${m.pour}`),
+          ),
+          m.code === etat.actif ? null : h('button', { class: 'petit', disabled: enCours, onclick: () => choisir(m) }, m.present ? 'Utiliser' : 'Télécharger et utiliser'),
+        ),
+      ),
+      enCours ? h('div', { style: { marginTop: '12px' } }, h('div', { class: 'texte-2' }, `Téléchargement : ${tailleFr(t.recu)} sur ${tailleFr(t.total)}`), h('div', { class: 'progression', style: { marginTop: '6px' } }, h('div', { style: { width: `${Math.min(100, (t.recu / t.total) * 100)}%` } }))) : null,
+      t?.erreur ? h('div', { class: 'bandeau', style: { marginTop: '12px' } }, ic('alerte'), t.erreur) : null,
+    )
+    clearTimeout(minuterie)
+    if (enCours) minuterie = setTimeout(dessiner, 2000)
+  }
+
+  async function choisir(m) {
+    const message = m.present
+      ? `Utiliser ${m.nom} sur ce poste ? L’IA redémarre à la prochaine question.`
+      : `Télécharger ${m.nom} (${m.tailleGo.toLocaleString('fr-FR')} Go) puis l’utiliser sur ce poste ? Il faut une connexion à Internet ; IASSITEC reste utilisable pendant le téléchargement.`
+    if (!(await confirmer(message))) return
+    const resultat = await essayer(() => api(`/api/modeles/${m.code}`, { methode: 'POST' }))
+    if (resultat?.pret) notifier(`${m.nom} est maintenant utilisé.`)
+    dessiner()
+  }
+
+  dessiner()
+  return carte(
+    'etincelle',
+    'Modèle d’IA de ce poste',
+    h('p', { class: 'texte-2' }, 'Un modèle plus lourd comprend mieux les schémas et les questions difficiles, mais demande plus de mémoire et répond plus lentement. Ce choix ne concerne que ce poste.'),
+    zone,
+  )
+}
+
+// ---------------------------------------------------------------- glossaire des repères (commun)
+
+function carteGlossaire() {
+  const texte = h('textarea', { rows: 12, class: 'mono', style: { fontSize: '13px' } })
+  api('/api/glossaire').then((g) => (texte.value = g.texte))
+  return h(
+    'div',
+    { class: 'carte pleine' },
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('livre', 18), 'Glossaire des repères')),
+    h('p', { class: 'texte-2' }, 'Ce que signifient les repères de vos schémas (une ligne par code). L’IA s’en sert pour lire les folios et pour répondre : adaptez-le aux conventions de votre site. Après une modification, « Tout relire » dans Documents fait relire les schémas avec le nouveau glossaire.'),
+    texte,
+    h('div', { class: 'actions', style: { marginTop: '10px' } },
+      h('button', { class: 'principal', onclick: () => essayer(() => api('/api/admin/glossaire', { methode: 'POST', corps: { texte: texte.value } }), 'Glossaire enregistré') }, 'Enregistrer'),
+      h('button', { class: 'discret', onclick: async () => { if (await confirmer('Revenir au glossaire d’origine ?')) { await essayer(() => api('/api/admin/glossaire', { methode: 'POST', corps: { texte: '' } })); texte.value = (await api('/api/glossaire')).texte } } }, 'Revenir à l’original'),
+    ),
+  )
 }
 
 // ---------------------------------------------------------------- fichier

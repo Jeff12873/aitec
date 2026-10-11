@@ -2,12 +2,21 @@
 <p>Dans <b>Administration › Documents</b> (mode administrateur), déposez tout ce qui aide à dépanner : notices constructeur, procédures, gammes de maintenance, schémas, fiches techniques, photos de plaques signalétiques…</p>
 <h2>Ce que l'IA sait lire</h2>
 <ul>
-<li><b>PDF</b>, y compris les <b>PDF scannés</b> : chaque page sans texte est lue par l'IA comme une image (c'est plus lent : comptez de quelques secondes à une minute par page selon le poste).</li>
+<li><b>PDF</b>, y compris les <b>PDF scannés</b> (chaque page sans texte est lue par l'IA comme une image) et les <b>photos dans les pages</b> (décrites par l'IA en arrière-plan).</li>
 <li><b>Photos</b> (JPEG, PNG, WebP…) : plaques signalétiques, étiquettes, pages photographiées.</li>
 <li><b>Word</b> (.docx et ancien .doc), <b>Excel</b> (.xlsx et ancien .xls), <b>PowerPoint</b> (.pptx et ancien .ppt), <b>LibreOffice</b> (.odt, .ods), <b>CSV</b>, <b>texte</b>, HTML, RTF, programmes CN (.nc, .gcode).</li>
 <li><b>Les photos et captures d'écran contenues dans les documents Word, PowerPoint et LibreOffice (récents et anciens)</b> : après le texte, l'IA les lit une par une, en arrière-plan (état « Lecture des images… »). Comptez de quelques secondes à une minute par image ; restez en mode administrateur pendant ce temps, sinon la lecture reprendra au prochain passage.</li>
 </ul>
 <p>Les autres fichiers (plans CAO, vidéos, archives…) sont <b>rangés en pièces jointes</b> : on les retrouve depuis la liste et la fiche machine, mais l'IA ne les lit pas.</p>
+<h2>Schémas et plans</h2>
+<p>Avant de déposer un PDF de <b>schéma électrique, pneumatique ou hydraulique</b> (EPLAN…) ou de <b>plan mécanique</b> (AutoCAD…), choisissez son type au-dessus de la zone de dépôt. Chaque page est alors :</p>
+<ul>
+<li>enregistrée en image (la page entière et ses deux moitiés agrandies, pour les petits repères) ;</li>
+<li>analysée par l'IA en arrière-plan : elle en tire une fiche (folio, composants et repères, fils, adresses d'automate, renvois ; ou cotes et nomenclature pour un plan) qui permet de la retrouver ;</li>
+<li>regardée par l'IA au moment des questions : l'assistant joint l'image des 2 folios les plus pertinents à sa réflexion.</li>
+</ul>
+<p>Comptez environ une minute par page avec une carte graphique, plusieurs minutes sans (sur le processeur, seule la page entière est analysée). Le <b>glossaire des repères</b> (Administration › Réglages) aide l'IA à reconnaître vos composants : adaptez-le à vos conventions.</p>
+<div class="conseil">L'IA lit bien les repères et les circuits simples, mais peut se tromper sur une liaison dans un folio dense : vérifiez toujours sur le schéma avant d'intervenir.</div>
 <h2>Bien ranger</h2>
 <ul>
 <li>Choisissez la machine dans le filtre <b>avant</b> de déposer : les fichiers lui seront rattachés.</li>

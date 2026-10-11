@@ -30,7 +30,7 @@ const options = lireOptions(process.argv.slice(2))
 const catalogue = JSON.parse(fs.readFileSync(path.join(SOURCE, 'outils', 'catalogue.json'), 'utf8'))
 
 // Ces modules sont importés après coup : ils viennent du dossier d'installation.
-let telecharger, tailleLisible, decompresser
+let telecharger, tailleLisible, decompresser, telechargerDepuisHuggingFace, modeleConseille
 
 main().catch((erreur) => {
   console.error('\n✗ ' + erreur.message)
@@ -48,6 +48,7 @@ async function main() {
   if (!options.ici && path.resolve(dossier) !== SOURCE) copierApplication(SOURCE, dossier)
   ;({ telecharger, tailleLisible } = await import(urlDe(dossier, 'serveur/socle/telechargement.js')))
   ;({ decompresser } = await import(urlDe(dossier, 'serveur/socle/zip.js')))
+  ;({ telechargerDepuisHuggingFace, modeleConseille } = await import(urlDe(dossier, 'serveur/socle/modeles.js')))
 
   // 2. Moteur d'IA ---------------------------------------------------------------
   etape(2, `Moteur d'IA (llama.cpp ${catalogue.llama})`)
@@ -75,7 +76,7 @@ async function main() {
   // 4. Choix du modèle -----------------------------------------------------------------
   etape(4, 'Choix du modèle')
   const vram = carte ? carte.memoireGo : 0
-  const propose = [...catalogue.modeles].reverse().find((m) => ram >= m.ram_min || vram >= m.vram_min) || catalogue.modeles[0]
+  const propose = modeleConseille(catalogue, ram, vram)
   catalogue.modeles.forEach((m, i) => console.log(`  ${i + 1}. ${m.nom.padEnd(28)} ${m.code === propose.code ? '← conseillé' : ''}\n     ${m.pour}`))
   let modele = catalogue.modeles.find((m) => m.code === options.modele) || propose
   if (!options.oui && !options.modele) {
@@ -212,19 +213,10 @@ function choisirCarte(appareils) {
 // ---------------------------------------------------------------- étape 5
 
 async function telechargerModele(depot, fichier, destination) {
-  // Hugging Face donne la taille et l'empreinte de chaque fichier : on vérifie le téléchargement avec.
-  const infos = await fetch(`https://huggingface.co/api/models/${depot}?blobs=true`).then((r) => r.json())
-  const fiche = infos.siblings?.find((s) => s.rfilename === fichier)
-  if (!fiche) throw new Error(`Fichier ${fichier} introuvable sur Hugging Face (${depot})`)
-
   const nom = path.basename(destination)
-  const resultat = await telecharger(`https://huggingface.co/${depot}/resolve/main/${fichier}`, destination, {
-    taille: fiche.size,
-    sha256: fiche.lfs?.sha256,
-    surProgression: progression(nom),
-  })
+  await telechargerDepuisHuggingFace(depot, fichier, destination, progression(nom))
   finProgression()
-  console.log(`  ${nom} : ${resultat} (${tailleLisible(fiche.size)})`)
+  console.log(`  ${nom} : prêt (${tailleLisible(fs.statSync(destination).size)})`)
   return destination
 }
 

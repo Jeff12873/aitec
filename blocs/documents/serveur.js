@@ -27,7 +27,7 @@ export function routes(r) {
     }
     return db()
       .prepare(
-        `SELECT d.id, d.nom, d.type, d.taille, d.machine_id, d.etat, d.message, d.pages, d.ajoute_le, d.ajoute_par,
+        `SELECT d.id, d.nom, d.type, d.taille, d.machine_id, d.etat, d.message, d.pages, d.ajoute_le, d.ajoute_par, d.genre,
                 m.repere, (SELECT count(*) FROM passages p WHERE p.source = 'document' AND p.source_id = d.id) AS passages
          FROM documents d LEFT JOIN machines m ON m.id = d.machine_id
          ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
@@ -42,6 +42,7 @@ export function routes(r) {
     ctx.exigerAdmin()
     const nom = decodeURIComponent(ctx.req.headers['x-nom'] || 'document')
     const machineId = Number(ctx.req.headers['x-machine']) || null
+    const genre = GENRES.includes(ctx.req.headers['x-genre']) ? ctx.req.headers['x-genre'] : 'document'
     const octets = await ctx.octets()
     if (!octets.length) throw new ErreurHttp(400, 'Fichier vide')
     if (octets.length > TAILLE_MAX) throw new ErreurHttp(413, `${nom} est trop gros (900 Mo au plus).`)
@@ -51,8 +52,8 @@ export function routes(r) {
     if (doublon && !ctx.query.forcer) throw new ErreurHttp(409, `Ce fichier est déjà dans la base (« ${doublon.nom} »).`)
 
     const { lastInsertRowid } = db()
-      .prepare('INSERT INTO documents (nom, type, taille, contenu, empreinte, machine_id, etat, ajoute_le, ajoute_par) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(nom, ctx.req.headers['content-type'] || '', octets.length, octets, empreinte, machineId, 'a-lire', new Date().toISOString(), etatPartage().admin?.nom || '')
+      .prepare('INSERT INTO documents (nom, type, taille, contenu, empreinte, machine_id, etat, ajoute_le, ajoute_par, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(nom, ctx.req.headers['content-type'] || '', octets.length, octets, empreinte, machineId, 'a-lire', new Date().toISOString(), etatPartage().admin?.nom || '', genre)
     const id = Number(lastInsertRowid)
     const lecture = lireSurLeServeur(id, nom, octets, machineId)
     noterModification()
@@ -72,9 +73,9 @@ export function routes(r) {
 
   r.put('/api/documents/:id', async (ctx) => {
     ctx.exigerAdmin()
-    const { nom, machine_id } = await ctx.json()
+    const { nom, machine_id, genre } = await ctx.json()
     const machineId = Number(machine_id) || null
-    db().prepare('UPDATE documents SET nom = coalesce(?, nom), machine_id = ? WHERE id = ?').run(nom || null, machineId, ctx.params.id)
+    db().prepare('UPDATE documents SET nom = coalesce(?, nom), machine_id = ?, genre = coalesce(?, genre) WHERE id = ?').run(nom || null, machineId, GENRES.includes(genre) ? genre : null, ctx.params.id)
     changerMachineDesPassages('document', Number(ctx.params.id), machineId)
     noterModification()
   })
@@ -92,6 +93,7 @@ export function routes(r) {
     const d = db().prepare('SELECT id, nom, contenu, machine_id FROM documents WHERE id = ?').get(ctx.params.id)
     if (!d) throw new ErreurHttp(404, 'Document introuvable')
     supprimerPassages('document', d.id)
+    db().prepare('DELETE FROM images_pages WHERE document_id = ?').run(d.id) // le navigateur les refera
     const lecture = lireSurLeServeur(d.id, d.nom, Buffer.from(d.contenu), d.machine_id)
     noterModification()
     return { id: d.id, lecture }
@@ -105,7 +107,11 @@ export function routes(r) {
     for (const { id } of db().prepare('SELECT id FROM documents').all()) {
       const d = db().prepare('SELECT id, nom, contenu, machine_id FROM documents WHERE id = ?').get(id)
       const octets = Buffer.from(d.contenu)
-      if (extraireTexte(d.nom, octets).lecture === 'navigateur') continue
+      if (extraireTexte(d.nom, octets).lecture === 'navigateur') {
+        // PDF : on garde le texte, mais on refait analyser les images de pages (nouveau glossaire, nouveau modèle…).
+        if (relireImagesDesPages(d.id)) relus++
+        continue
+      }
       supprimerPassages('document', d.id)
       lireSurLeServeur(d.id, d.nom, octets, d.machine_id)
       relus++
@@ -124,7 +130,25 @@ export function routes(r) {
     noterModification()
   })
 
-  // … ou l'image d'une page sans texte (scan, photo), que l'IA lit.
+  // … et l'image des pages à analyser plus tard par l'IA : folios de schémas et de plans (page entière
+  // et deux moitiés agrandies), pages de notices qui contiennent des photos.
+  r.post('/api/documents/:id/rendu', async (ctx) => {
+    ctx.exigerAdmin()
+    const page = Number(ctx.query.page)
+    const partie = ['page', 'gauche', 'droite'].includes(ctx.query.partie) ? ctx.query.partie : 'page'
+    const image = await ctx.octets()
+    db().prepare('INSERT OR REPLACE INTO images_pages (document_id, page, partie, image, lu) VALUES (?, ?, ?, ?, 0)').run(Number(ctx.params.id), page, partie, image)
+    noterModification()
+  })
+
+  // Image d'une page (folio d'un schéma, page d'un plan), pour l'afficher.
+  r.get('/api/documents/:id/page/:page', (ctx) => {
+    const ligne = db().prepare("SELECT image FROM images_pages WHERE document_id = ? AND page = ? AND partie = 'page'").get(ctx.params.id, ctx.params.page)
+    if (!ligne) throw new ErreurHttp(404, 'Image de page introuvable')
+    envoyerOctets(ctx.res, Buffer.from(ligne.image), { type: 'image/jpeg' })
+  })
+
+  // … ou l'image d'une page sans texte (scan, photo), que l'IA lit tout de suite.
   r.post('/api/documents/:id/image', async (ctx) => {
     ctx.exigerAdmin()
     const image = await ctx.octets()
@@ -137,10 +161,16 @@ export function routes(r) {
     const { pages, erreur } = await ctx.json()
     const id = Number(ctx.params.id)
     const { nombre } = db().prepare("SELECT count(*) AS nombre FROM passages WHERE source = 'document' AND source_id = ?").get(id)
-    const etat = erreur ? 'erreur' : 'lu'
-    const message = erreur || (nombre ? '' : 'Aucun texte trouvé dans ce document.')
+    const { enAttente } = db().prepare('SELECT count(DISTINCT page) AS enAttente FROM images_pages WHERE document_id = ? AND lu = 0').get(id)
+    let etat = erreur ? 'erreur' : 'lu'
+    let message = erreur || (nombre ? '' : 'Aucun texte trouvé dans ce document.')
+    if (!erreur && enAttente) {
+      etat = 'images'
+      message = `${enAttente} page${enAttente > 1 ? 's' : ''} en attente d’analyse par l’IA`
+    }
     db().prepare('UPDATE documents SET etat = ?, message = ?, pages = ? WHERE id = ?').run(etat, message, pages || null, id)
     noterModification()
+    if (etat === 'images') relancerLecteurImages()
   })
 
   // Traduction en français (n'importe quel agent : rien n'est enregistré).
@@ -156,6 +186,19 @@ export function routes(r) {
     )
     return { texte: traduction }
   })
+}
+
+export const GENRES = ['document', 'schema', 'plan']
+
+// Remet les images de pages d'un PDF en attente d'analyse. Renvoie true s'il y en avait.
+function relireImagesDesPages(id) {
+  const { n } = db().prepare('SELECT count(*) AS n FROM images_pages WHERE document_id = ?').get(id)
+  if (!n) return false
+  db().prepare('UPDATE images_pages SET lu = 0 WHERE document_id = ?').run(id)
+  db().prepare("DELETE FROM passages WHERE source = 'document' AND source_id = ? AND (texte LIKE '[Folio %' OR texte LIKE '[Plan %' OR texte LIKE '[Illustrations %')").run(id)
+  db().prepare("UPDATE documents SET etat = 'images', message = 'Pages en attente d’analyse par l’IA' WHERE id = ?").run(id)
+  relancerLecteurImages()
+  return true
 }
 
 // Lit le document si c'est un format que le serveur sait lire, et met à jour son état.

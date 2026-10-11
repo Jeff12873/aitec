@@ -1,8 +1,6 @@
 {
   "_lisez_moi": "Versions téléchargées par la préparation (outils/preparer.js). Voir docs/MODELES.md pour changer de modèle.",
-
   "llama": "b11556",
-
   "recherche": {
     "nom": "Qwen3-Embedding 0.6B",
     "depot": "Qwen/Qwen3-Embedding-0.6B-GGUF",
@@ -10,7 +8,6 @@
     "local": "recherche-qwen3-embedding-0.6b.gguf",
     "dimensions": 512
   },
-
   "modeles": [
     {
       "code": "mini",
@@ -22,7 +19,8 @@
       "vision": "mmproj-F16.gguf",
       "vision_local": "qwen3.5-2b-vision.gguf",
       "ram_min": 0,
-      "vram_min": 0
+      "vram_min": 0,
+      "taille_go": 2.6
     },
     {
       "code": "petit",
@@ -34,7 +32,8 @@
       "vision": "mmproj-F16.gguf",
       "vision_local": "qwen3.5-4b-vision.gguf",
       "ram_min": 8,
-      "vram_min": 4
+      "vram_min": 4,
+      "taille_go": 3.4
     },
     {
       "code": "moyen",
@@ -46,19 +45,21 @@
       "vision": "mmproj-F16.gguf",
       "vision_local": "qwen3.5-9b-vision.gguf",
       "ram_min": 16,
-      "vram_min": 8
+      "vram_min": 8,
+      "taille_go": 6.6
     },
     {
       "code": "grand",
-      "nom": "Qwen3.5 35B-A3B (grand)",
-      "pour": "postes de 48 Go ou plus, ou avec une carte graphique de 24 Go",
+      "nom": "Qwen3.5 35B-A3B (lourd)",
+      "pour": "postes de 48 Go ou plus, ou avec une carte graphique de 24 Go ; fonctionne aussi avec 32 Go + une carte de 16 Go, plus lentement",
       "depot": "unsloth/Qwen3.5-35B-A3B-GGUF",
       "fichier": "Qwen3.5-35B-A3B-Q4_K_M.gguf",
       "local": "qwen3.5-35b-a3b.gguf",
       "vision": "mmproj-F16.gguf",
       "vision_local": "qwen3.5-35b-a3b-vision.gguf",
       "ram_min": 48,
-      "vram_min": 24
+      "vram_min": 24,
+      "taille_go": 23.5
     }
   ]
 }

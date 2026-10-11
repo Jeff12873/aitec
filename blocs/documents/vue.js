@@ -9,12 +9,14 @@ import { api } from '/socle/api.js'
 import { estAdmin } from '/socle/etat.js'
 import { texteIA } from '/socle/texte-ia.js'
 
+export const GENRES = { document: 'Documents', schema: 'Schémas (électriques, pneumatiques…)', plan: 'Plans mécaniques' }
+
 const ETATS = {
   lu: ['vert', 'Lu par l’IA'],
   'a-lire': ['orange', 'À lire'],
   'piece-jointe': ['', 'Pièce jointe'],
   erreur: ['rouge', 'Erreur'],
-  images: ['violet', 'Lecture des images…'],
+  images: ['violet', 'Analyse des images…'],
 }
 
 export default {
@@ -30,6 +32,7 @@ export default {
     const recherche = h('input', { type: 'search', placeholder: 'Nom du document…' })
     const machine = h('select', {}, h('option', { value: '' }, 'Toutes les machines'), machines.map((m) => h('option', { value: m.id, selected: String(m.id) === query.machine }, `${m.repere} — ${m.designation}`)))
     const zoneSuivi = h('div', { class: 'legende', style: { marginTop: '14px' } })
+    const genre = h('select', { style: { width: 'auto' } }, Object.entries(GENRES).map(([cle, libelle]) => h('option', { value: cle }, libelle)))
 
     let suivi = null
     async function charger() {
@@ -43,7 +46,7 @@ export default {
           lignes: documents,
           vide: 'Aucun document. Déposez les notices, schémas, procédures, fiches techniques…',
           colonnes: [
-            { titre: 'Nom', valeur: (d) => h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank' }, d.nom) },
+            { titre: 'Nom', valeur: (d) => [h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank' }, d.nom), d.genre && d.genre !== 'document' ? [' ', h('span', { class: 'etiquette violet' }, d.genre === 'schema' ? 'Schéma' : 'Plan')] : null] },
             { titre: 'Machine', valeur: (d) => (d.repere ? h('a', { href: `#/parc/${d.machine_id}`, class: 'mono' }, d.repere) : '') },
             { titre: 'État', valeur: (d) => h('span', { class: `etiquette ${ETATS[d.etat]?.[0] || ''}`, title: d.message }, ETATS[d.etat]?.[1] || d.etat) },
             { titre: 'Taille', classe: 'nombre', valeur: (d) => tailleFr(d.taille) },
@@ -53,7 +56,7 @@ export default {
               valeur: (d) =>
                 h('div', { class: 'actions', style: { flexWrap: 'nowrap' } },
                   d.passages ? h('button', { class: 'petit', title: 'Voir le texte lu et le traduire', onclick: () => voirTexte(d) }, ic('oeil', 15)) : null,
-                  estAdmin() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d, machine.value) }, ic('rafraichir', 15), 'Lire') : null,
+                  estAdmin() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d) }, ic('rafraichir', 15), 'Lire') : null,
                   estAdmin() ? h('button', { class: 'petit', title: 'Machine, nom…', onclick: () => modifier(d, machines) }, ic('crayon', 15)) : null,
                   estAdmin() ? h('button', { class: 'petit danger', title: 'Supprimer', onclick: () => supprimer(d) }, ic('poubelle', 15)) : null,
                 ),
@@ -94,7 +97,7 @@ export default {
         const ligne = suiviFichier(zoneSuivi, fichier.name)
         try {
           ligne.etape('Envoi…', 0.05)
-          const entetes = { 'X-Nom': encodeURIComponent(fichier.name), 'X-Machine': machine.value || '' }
+          const entetes = { 'X-Nom': encodeURIComponent(fichier.name), 'X-Machine': machine.value || '', 'X-Genre': genre.value }
           let resultat
           try {
             resultat = await api('/api/documents', { methode: 'POST', fichier, entetes })
@@ -102,7 +105,7 @@ export default {
             if (erreur.statut !== 409 || !(await confirmer(`${erreur.message} L’ajouter quand même ?`))) throw erreur
             resultat = await api('/api/documents?forcer=1', { methode: 'POST', fichier, entetes })
           }
-          if (resultat.lecture === 'navigateur') await lireDansLeNavigateur(resultat.id, fichier, ligne)
+          if (resultat.lecture === 'navigateur') await lireDansLeNavigateur(resultat.id, fichier, ligne, genre.value)
           ligne.fin(resultat.lecture === 'aucune' ? 'Rangé en pièce jointe' : 'Lu par l’IA')
         } catch (erreur) {
           ligne.erreur(erreur.message)
@@ -114,7 +117,12 @@ export default {
     vider(
       zone,
       h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Documents'), h('p', { class: 'sous-titre' }, 'Notices, schémas, procédures : tout ce que l’IA peut lire pour vous répondre'))),
-      estAdmin() ? h('div', { class: 'carte', style: { marginBottom: '16px' } }, h('p', { class: 'texte-2' }, 'Machine à laquelle rattacher les fichiers déposés : choisissez-la dans le filtre ci-dessous (facultatif).'), depot, zoneSuivi) : null,
+      estAdmin()
+        ? h('div', { class: 'carte', style: { marginBottom: '16px' } },
+            h('div', { class: 'actions', style: { marginBottom: '12px' } }, h('span', { class: 'texte-2' }, 'Les fichiers déposés sont des :'), genre),
+            h('p', { class: 'discret', style: { fontSize: '13px' } }, 'Schémas et plans (PDF) : chaque page est analysée par l’IA, qui la regardera aussi pour répondre (compter environ une minute par page). Machine de rattachement : choisissez-la dans le filtre ci-dessous (facultatif).'),
+            depot, zoneSuivi)
+        : null,
       h('div', { class: 'filtres' }, recherche, machine, estAdmin() ? h('button', { title: 'Relire Word, Excel, PowerPoint… avec la dernière version d’IASSITEC (images comprises)', onclick: relireTout }, ic('rafraichir', 16), 'Tout relire') : null),
       liste,
     )
@@ -133,10 +141,10 @@ export default {
 
 // ---------------------------------------------------------------- lecture des PDF et des images
 
-async function lireDansLeNavigateur(id, fichier, ligne) {
+async function lireDansLeNavigateur(id, fichier, ligne, genre = 'document') {
   const nom = fichier.name.toLowerCase()
   try {
-    if (nom.endsWith('.pdf')) await lirePdf(id, fichier, ligne)
+    if (nom.endsWith('.pdf')) await lirePdf(id, fichier, ligne, genre)
     else await lireImage(id, fichier, ligne)
   } catch (erreur) {
     await api(`/api/documents/${id}/fin`, { methode: 'POST', corps: { erreur: erreur.message } })
@@ -144,25 +152,39 @@ async function lireDansLeNavigateur(id, fichier, ligne) {
   }
 }
 
-async function lirePdf(id, fichier, ligne) {
+// Lecture d'un PDF, page par page :
+//   - le texte de la page (s'il y en a) ;
+//   - schéma ou plan : chaque page est dessinée en image (entière + deux moitiés agrandies) et envoyée au
+//     serveur, où l'IA l'analysera en arrière-plan ; l'image entière est gardée pour les questions ;
+//   - document : une page scannée (sans texte) est lue tout de suite par l'IA ; une page avec des photos
+//     est envoyée pour que l'IA décrive les illustrations en arrière-plan.
+async function lirePdf(id, fichier, ligne, genre) {
   const pdfjs = await import('/vendor/pdfjs/pdf.min.mjs')
   pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs'
   const pdf = await pdfjs.getDocument({ data: await fichier.arrayBuffer(), cMapUrl: '/vendor/pdfjs/cmaps/', cMapPacked: true }).promise
+  const envoyerImage = (numero, partie, image) => api(`/api/documents/${id}/rendu?page=${numero}&partie=${partie}`, { methode: 'POST', fichier: image })
 
   let lot = []
   for (let numero = 1; numero <= pdf.numPages; numero++) {
     const page = await pdf.getPage(numero)
     const contenu = await page.getTextContent()
     let texte = contenu.items.map((item) => item.str + (item.hasEOL ? '\n' : ' ')).join('')
+    const avancement = numero / pdf.numPages
 
-    // Page sans texte (scan) : on la fait lire par l'IA, en image.
-    if (texte.replace(/\s/g, '').length < 30) {
-      ligne.etape(`Page ${numero} / ${pdf.numPages} : lecture du scan par l’IA…`, numero / pdf.numPages)
-      const image = await pageEnImage(page)
-      texte = (await api(`/api/documents/${id}/image?page=${numero}`, { methode: 'POST', fichier: image })).texte
+    if (genre === 'schema' || genre === 'plan') {
+      ligne.etape(`Page ${numero} / ${pdf.numPages} : préparation des images`, avancement)
+      const toile = await dessinerPage(page, 3200)
+      await envoyerImage(numero, 'page', await enJpeg(toile, 1800))
+      await envoyerImage(numero, 'gauche', await enJpeg(toile, 1800, 'gauche'))
+      await envoyerImage(numero, 'droite', await enJpeg(toile, 1800, 'droite'))
+    } else if (texte.replace(/\s/g, '').length < 30) {
+      ligne.etape(`Page ${numero} / ${pdf.numPages} : lecture du scan par l’IA…`, avancement)
+      texte = (await api(`/api/documents/${id}/image?page=${numero}`, { methode: 'POST', fichier: await enJpeg(await dessinerPage(page, 1600)) })).texte
     } else {
-      ligne.etape(`Page ${numero} / ${pdf.numPages}`, numero / pdf.numPages)
+      ligne.etape(`Page ${numero} / ${pdf.numPages}`, avancement)
+      if (await contientDesPhotos(page, pdfjs)) await envoyerImage(numero, 'page', await enJpeg(await dessinerPage(page, 1600)))
     }
+
     if (texte.trim()) lot.push({ page: numero, texte })
     // On envoie le texte par paquets de 20 pages.
     if (lot.length >= 20) {
@@ -174,10 +196,20 @@ async function lirePdf(id, fichier, ligne) {
   await api(`/api/documents/${id}/fin`, { methode: 'POST', corps: { pages: pdf.numPages } })
 }
 
-async function pageEnImage(page) {
+// La page contient-elle une vraie image (photo, capture), et pas seulement un logo ?
+async function contientDesPhotos(page, pdfjs) {
+  const operations = await page.getOperatorList()
+  return operations.fnArray.some((fonction, i) => {
+    if (fonction !== pdfjs.OPS.paintImageXObject && fonction !== pdfjs.OPS.paintImageXObjectRepeat) return false
+    const [, largeur, hauteur] = operations.argsArray[i]
+    return largeur * hauteur >= 250 * 250
+  })
+}
+
+// Dessine la page sur une toile d'environ « taille » pixels de côté.
+async function dessinerPage(page, taille) {
   const vue = page.getViewport({ scale: 1 })
-  const echelle = Math.min(2, 1600 / Math.max(vue.width, vue.height)) // environ 1600 pixels de côté
-  const viewport = page.getViewport({ scale: echelle })
+  const viewport = page.getViewport({ scale: Math.min(6, taille / Math.max(vue.width, vue.height)) })
   const toile = document.createElement('canvas')
   toile.width = Math.round(viewport.width)
   toile.height = Math.round(viewport.height)
@@ -185,7 +217,31 @@ async function pageEnImage(page) {
   contexte.fillStyle = '#fff'
   contexte.fillRect(0, 0, toile.width, toile.height)
   await page.render({ canvasContext: contexte, viewport }).promise
-  return new Promise((ok) => toile.toBlob(ok, 'image/jpeg', 0.85))
+  return toile
+}
+
+// Image JPEG de la toile (ou de sa moitié gauche / droite, dans le sens de la longueur), « taille » pixels au plus.
+function enJpeg(toile, taille = 1600, moitie = null) {
+  let x = 0
+  let y = 0
+  let largeur = toile.width
+  let hauteur = toile.height
+  if (moitie) {
+    // On coupe dans le sens de la plus grande dimension, avec un recouvrement de 10 %.
+    if (largeur >= hauteur) {
+      largeur = Math.round(toile.width * 0.55)
+      x = moitie === 'gauche' ? 0 : toile.width - largeur
+    } else {
+      hauteur = Math.round(toile.height * 0.55)
+      y = moitie === 'gauche' ? 0 : toile.height - hauteur
+    }
+  }
+  const echelle = Math.min(1, taille / Math.max(largeur, hauteur))
+  const sortie = document.createElement('canvas')
+  sortie.width = Math.round(largeur * echelle)
+  sortie.height = Math.round(hauteur * echelle)
+  sortie.getContext('2d').drawImage(toile, x, y, largeur, hauteur, 0, 0, sortie.width, sortie.height)
+  return new Promise((ok) => sortie.toBlob(ok, 'image/jpeg', 0.85))
 }
 
 async function lireImage(id, fichier, ligne) {
@@ -236,7 +292,7 @@ async function relire(d) {
     const zone = h('div', { class: 'legende' })
     fenetre({ titre: `Lecture de ${d.nom}`, contenu: zone })
     try {
-      await lireDansLeNavigateur(d.id, fichier, suiviFichier(zone, d.nom))
+      await lireDansLeNavigateur(d.id, fichier, suiviFichier(zone, d.nom), d.genre)
       notifier('Document lu')
     } catch (erreur) {
       notifier(erreur.message, 'erreur')
@@ -248,12 +304,25 @@ async function relire(d) {
 async function modifier(d, machines) {
   const nom = h('input', { value: d.nom })
   const machine = h('select', {}, h('option', { value: '' }, '— aucune —'), machines.map((m) => h('option', { value: m.id, selected: m.id === d.machine_id }, `${m.repere} — ${m.designation}`)))
+  const genre = h('select', {}, Object.entries(GENRES).map(([cle, libelle]) => h('option', { value: cle, selected: cle === d.genre }, libelle)))
   await fenetre({
     titre: 'Modifier le document',
-    contenu: h('div', { class: 'formulaire' }, h('label', { class: 'champ large' }, h('span', {}, 'Nom'), nom), h('label', { class: 'champ large' }, h('span', {}, 'Machine'), machine)),
+    contenu: h('div', { class: 'formulaire' },
+      h('label', { class: 'champ large' }, h('span', {}, 'Nom'), nom),
+      h('label', { class: 'champ large' }, h('span', {}, 'Machine'), machine),
+      h('label', { class: 'champ large' }, h('span', {}, 'Type'), genre, h('small', { class: 'aide' }, 'Pour un PDF, changer le type fait relire le document.')),
+    ),
     boutons: [
       { texte: 'Annuler', classe: 'discret' },
-      { texte: 'Enregistrer', classe: 'principal', action: () => api(`/api/documents/${d.id}`, { methode: 'PUT', corps: { nom: nom.value.trim(), machine_id: machine.value } }).then(() => window.iassitec.recharger()) },
+      {
+        texte: 'Enregistrer',
+        classe: 'principal',
+        action: async () => {
+          await api(`/api/documents/${d.id}`, { methode: 'PUT', corps: { nom: nom.value.trim(), machine_id: machine.value, genre: genre.value } })
+          if (genre.value !== d.genre && d.nom.toLowerCase().endsWith('.pdf')) await relire({ ...d, genre: genre.value })
+          else window.iassitec.recharger()
+        },
+      },
     ],
   })
 }

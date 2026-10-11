@@ -16,7 +16,7 @@ enregistrés dans le fichier partagé doivent être calculés par le même modè
 
 ## Choisir un autre modèle
 
-- Sur un poste : relancer la préparation et choisir dans la liste (ou `--modele grand`).
+- Sur un poste : **Administration › Réglages › Modèle d'IA de ce poste** (téléchargement depuis l'application), ou relancer la préparation et choisir dans la liste (ou `--modele grand`).
 - Ajouter un modèle à la liste : une entrée de plus dans `catalogue.json` (dépôt Hugging Face, nom du
   fichier GGUF, fichier « vision » s'il y en a un, mémoire minimale). Le modèle doit être pris en charge
   par llama.cpp.

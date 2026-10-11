@@ -8,7 +8,7 @@
 
 import { DatabaseSync } from 'node:sqlite'
 
-export const FORMAT = 1 // à augmenter si la structure change (et ajouter la migration dans migrer())
+export const FORMAT = 2 // à augmenter si la structure change (et ajouter la migration dans migrer())
 
 let connexion = null
 
@@ -85,7 +85,12 @@ function migrer(base) {
   if (format > FORMAT) {
     throw new Error('Ce fichier a été créé par une version plus récente d’IASSITEC : mettez IASSITEC à jour.')
   }
-  // Les futures migrations iront ici : if (format < 2) { … }
+  if (format < 2) {
+    // Version 2 : type de document (schéma électrique, plan mécanique) et images des pages de PDF.
+    const colonnes = base.prepare('PRAGMA table_info(documents)').all().map((c) => c.name)
+    if (!colonnes.includes('genre')) base.exec("ALTER TABLE documents ADD COLUMN genre TEXT NOT NULL DEFAULT 'document'")
+  }
+  // Les futures migrations iront ici : if (format < 3) { … }
   base.prepare("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES ('format', ?)").run(String(FORMAT))
 }
 
@@ -160,7 +165,19 @@ CREATE TABLE IF NOT EXISTS documents (
   message     TEXT NOT NULL DEFAULT '',
   pages       INTEGER,
   ajoute_le   TEXT,
-  ajoute_par  TEXT NOT NULL DEFAULT ''
+  ajoute_par  TEXT NOT NULL DEFAULT '',
+  genre       TEXT NOT NULL DEFAULT 'document' -- document | schema (électrique, pneumatique…) | plan (mécanique)
+);
+
+-- Images de pages de PDF, dessinées par le navigateur : folios de schémas et plans (gardés pour que l'IA
+-- les regarde au moment des questions), et pages avec photos. « lu » = déjà analysée par l'IA.
+CREATE TABLE IF NOT EXISTS images_pages (
+  document_id  INTEGER NOT NULL REFERENCES documents (id) ON DELETE CASCADE,
+  page         INTEGER NOT NULL,
+  partie       TEXT NOT NULL,                -- page (page entière) | gauche | droite (moitiés, pour lire les petits repères)
+  image        BLOB NOT NULL,                -- JPEG
+  lu           INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (document_id, page, partie)
 );
 
 -- Tout ce que l'IA peut retrouver : morceaux de documents et fiches (machines, pièces, interventions).

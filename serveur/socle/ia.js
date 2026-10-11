@@ -94,9 +94,14 @@ async function lancer(moteur, config) {
   }
   processus.stdout.on('data', garderLignes)
   processus.stderr.on('data', garderLignes)
-  processus.on('exit', (code) => {
-    journal(`IA ${moteur.nom} : arrêtée (code ${code})`)
-    if (code && moteur.etat !== 'arrêt') journal(moteur.dernieresLignes.slice(-10).join('\n'))
+  processus.on('exit', (code, signal) => {
+    journal(`IA ${moteur.nom} : arrêtée (code ${code ?? signal})`)
+    if (moteur.etat !== 'arrêt') {
+      // Arrêt imprévu : souvent la carte graphique saturée (une image demande plus de mémoire).
+      // Au prochain démarrage, on passe sur le processeur.
+      journal(moteur.dernieresLignes.slice(-10).join('\n'))
+      if (config.appareil !== 'none') moteur.surProcesseur = true
+    }
     moteur.processus = null
     moteur.etat = 'arrêté'
   })
@@ -146,6 +151,12 @@ setInterval(() => {
 }, 60_000).unref()
 
 process.on('exit', arreterIA)
+
+// L'IA tourne-t-elle sur le processeur (poste sans carte graphique, ou carte saturée) ? Elle est alors
+// beaucoup plus lente : certains traitements en font moins (voir lecteur-images.js).
+export function surProcesseur() {
+  return installation()?.appareil === 'none' || moteurs.chat.surProcesseur
+}
 
 // ---------------------------------------------------------------- appels
 
