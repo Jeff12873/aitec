@@ -10,8 +10,8 @@ export default {
   chemin: 'parc',
   titre: 'Parc',
   icone: 'usine',
-  menu: true,
-  aide: 'parc',
+  menu: false,
+  aide: 'assistant',
 
   async afficher(zone, { id, query }) {
     if (id) return afficherFiche(zone, id)
@@ -76,7 +76,7 @@ async function afficherFiche(zone, id) {
     h(
       'div',
       { class: 'entete-page' },
-      h('a', { class: 'bouton discret icone-seule', href: '#/parc', title: 'Retour à la liste' }, ic('retour')),
+      h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
       h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono', style: { fontSize: '22px' } }, m.repere), ' — ', m.designation), h('p', { class: 'sous-titre' }, [m.famille, m.emplacement].filter(Boolean).join(' · '))),
       etiquetteEtat(m.etat),
       h('a', { class: 'bouton principal', href: `#/assistant?machine=${m.id}` }, ic('etincelle', 16), "Demander à l'IA"),
@@ -96,7 +96,7 @@ async function afficherFiche(zone, id) {
       h(
         'div',
         { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Documents'), estAdmin() ? h('a', { class: 'bouton petit', href: `#/documents?machine=${m.id}` }, ic('plus', 14), 'Ajouter') : null),
+        h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Documents'), estAdmin() ? h('a', { class: 'bouton petit', href: `#/administration/documents?machine=${m.id}` }, ic('plus', 14), 'Ajouter') : null),
         m.documents.length
           ? h('div', { class: 'legende' }, m.documents.map((d) => h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank', style: { display: 'flex', gap: '10px', alignItems: 'center', color: 'inherit' } }, ic('document', 16), h('span', { style: { flex: 1 } }, d.nom), h('span', { class: 'discret' }, tailleFr(d.taille)))))
           : h('div', { class: 'vide' }, 'Aucun document pour cette machine. Déposez sa notice dans Documents.'),
@@ -173,5 +173,5 @@ export async function modifierMachine(machine, valeurs) {
 
 async function supprimerMachine(m) {
   if (!(await confirmer(`Supprimer la machine ${m.repere} ? Ses interventions et documents sont gardés, mais ne seront plus rattachés à une machine.`, { texte: 'Supprimer', danger: true }))) return
-  if (await essayer(() => api(`/api/machines/${m.id}`, { methode: 'DELETE' }), 'Machine supprimée')) location.hash = '#/parc'
+  if (await essayer(() => api(`/api/machines/${m.id}`, { methode: 'DELETE' }), 'Machine supprimée')) history.back()
 }

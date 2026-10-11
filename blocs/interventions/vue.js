@@ -8,8 +8,8 @@ export default {
   chemin: 'interventions',
   titre: 'Interventions',
   icone: 'cle',
-  menu: true,
-  aide: 'interventions',
+  menu: false,
+  aide: 'assistant',
 
   async afficher(zone, { id, query }) {
     if (id) return afficherFiche(zone, id)
@@ -69,7 +69,7 @@ async function afficherFiche(zone, id) {
     h(
       'div',
       { class: 'entete-page' },
-      h('a', { class: 'bouton discret icone-seule', href: '#/interventions', title: 'Retour à la liste' }, ic('retour')),
+      h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
       h('div', { style: { flex: 1 } }, h('h1', {}, `Intervention du ${dateFr(i.date)}`), h('p', { class: 'sous-titre' }, i.numero ? `N° ${i.numero}` : '')),
       h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type),
       estAdmin() ? h('button', { onclick: () => modifierIntervention(i, machines, types) }, ic('crayon', 16), 'Modifier') : null,
@@ -128,5 +128,5 @@ async function modifierIntervention(intervention, machines, types, machineParDef
 
 async function supprimerIntervention(i) {
   if (!(await confirmer('Supprimer cette intervention ?', { texte: 'Supprimer', danger: true }))) return
-  if (await essayer(() => api(`/api/interventions/${i.id}`, { methode: 'DELETE' }), 'Intervention supprimée')) location.hash = '#/interventions'
+  if (await essayer(() => api(`/api/interventions/${i.id}`, { methode: 'DELETE' }), 'Intervention supprimée')) history.back()
 }

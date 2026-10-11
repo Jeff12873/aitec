@@ -8,8 +8,8 @@ export default {
   chemin: 'pieces',
   titre: 'Pièces',
   icone: 'boite',
-  menu: true,
-  aide: 'pieces',
+  menu: false,
+  aide: 'assistant',
 
   async afficher(zone, { id, query }) {
     if (id) return afficherFiche(zone, id)
@@ -73,7 +73,7 @@ async function afficherFiche(zone, id) {
     h(
       'div',
       { class: 'entete-page' },
-      h('a', { class: 'bouton discret icone-seule', href: '#/pieces', title: 'Retour à la liste' }, ic('retour')),
+      h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
       h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono', style: { fontSize: '22px' } }, p.reference), ' — ', p.designation)),
       etiquetteStock(p),
       estAdmin() ? h('button', { onclick: () => modifierPiece(p) }, ic('crayon', 16), 'Modifier') : null,
@@ -148,5 +148,5 @@ async function modifierPiece(piece) {
 
 async function supprimerPiece(p) {
   if (!(await confirmer(`Supprimer la pièce ${p.reference} ?`, { texte: 'Supprimer', danger: true }))) return
-  if (await essayer(() => api(`/api/pieces/${p.id}`, { methode: 'DELETE' }), 'Pièce supprimée')) location.hash = '#/pieces'
+  if (await essayer(() => api(`/api/pieces/${p.id}`, { methode: 'DELETE' }), 'Pièce supprimée')) history.back()
 }

@@ -223,7 +223,7 @@ setInterval(() => {
   const verrou = lireVerrou()
   if (verrou?.jeton !== etat.admin.jeton) {
     journal('Verrou repris par un autre poste')
-    etat.avertissement = `${verrou?.nom || 'Un autre poste'} a repris la main : vous repassez en consultation.`
+    avertirUnMoment(`${verrou?.nom || 'Un autre poste'} a repris la main : vous repassez en consultation.`)
     etat.admin = null
     etat.aPublier = false
     etat.signature = null
@@ -232,7 +232,7 @@ setInterval(() => {
   }
   if (Date.now() - etat.admin.derniereAction > ADMIN_INACTIF) {
     quitterAdmin()
-    etat.avertissement = 'Mode administrateur fermé après 30 minutes sans modification.'
+    avertirUnMoment('Mode administrateur fermé après 30 minutes sans modification.')
     return
   }
   ecrireVerrou({ ...verrou, vu: Date.now() })
@@ -350,6 +350,14 @@ export function etatPartage() {
     publication: etat.publication,
     avertissement: etat.avertissement,
   }
+}
+
+// Avertissement affiché 2 minutes seulement (les problèmes de réseau, eux, restent affichés).
+function avertirUnMoment(message) {
+  etat.avertissement = message
+  setTimeout(() => {
+    if (etat.avertissement === message) etat.avertissement = null
+  }, 120_000).unref()
 }
 
 // Pour signaler un changement fait sans passer par noterModification (ex. index de recherche).

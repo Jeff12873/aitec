@@ -32,10 +32,10 @@ export default {
       h(
         'div',
         { class: 'grille grille-4', style: { marginBottom: '16px' } },
-        tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, '#/parc'),
-        tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, '#/interventions'),
-        tuile('alerte', t.piecesACommander ? 'rouge' : '', 'Pièces à commander', nombreFr(t.piecesACommander), h('small', {}, `sur ${nombreFr(t.pieces)}`), '#/pieces?acommander=1'),
-        tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/documents'),
+        tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, null),
+        tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, null),
+        tuile('alerte', t.piecesACommander ? 'rouge' : '', 'Pièces à commander', nombreFr(t.piecesACommander), h('small', {}, `sur ${nombreFr(t.pieces)}`), null),
+        tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
       ),
 
       h(
@@ -54,7 +54,7 @@ export default {
 
 function tuile(icone, couleur, libelle, valeur, detail, lien) {
   return h(
-    'a',
+    lien ? 'a' : 'div',
     { class: 'tuile', href: lien, style: { color: 'inherit', textDecoration: 'none' } },
     h('div', { class: 'libelle' }, h('span', { class: `pastille ${couleur}` }, ic(icone, 16)), libelle),
     h('div', { class: 'valeur' }, valeur, detail),
@@ -70,7 +70,7 @@ function bandeauDemarrage() {
     'div',
     { class: 'bandeau info' },
     ic('etincelle'),
-    h('div', {}, h('strong', {}, 'La base est vide. '), 'Commencez par importer les exports de votre GMAO (machines, pièces, historique), puis déposez les notices des machines. ', h('a', { href: '#/aide/premiers-pas' }, 'Voir les premiers pas')),
+    h('div', {}, h('strong', {}, 'La base est vide. '), 'Dans Administration, importez les exports de votre GMAO (machines, pièces, historique) et déposez les notices des machines. ', h('a', { href: '#/aide/premiers-pas' }, 'Voir les premiers pas')),
   )
 }
 

@@ -7,9 +7,6 @@ const PAGES = [
   ['premiers-pas', 'Premiers pas'],
   ['assistant', 'Poser une question à l’IA'],
   ['tableau-de-bord', 'Tableau de bord'],
-  ['parc', 'Parc'],
-  ['pieces', 'Pièces de rechange'],
-  ['interventions', 'Interventions'],
   ['documents', 'Documents et formats lus'],
   ['import-gmao', 'Importer un export GMAO'],
   ['administration', 'Mode administrateur'],
@@ -24,7 +21,7 @@ export default {
   chemin: 'aide',
   titre: 'Aide',
   icone: 'aide',
-  menu: true,
+  menu: false,
   aide: 'premiers-pas',
 
   async afficher(zone, { id }) {

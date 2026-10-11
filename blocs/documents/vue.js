@@ -20,7 +20,7 @@ export default {
   chemin: 'documents',
   titre: 'Documents',
   icone: 'document',
-  menu: true,
+  menu: false,
   aide: 'documents',
 
   async afficher(zone, { query }) {

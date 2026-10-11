@@ -1,9 +1,18 @@
-// Administration : réglages de ce poste, fichier de l'atelier, icône, mot de passe, mises à jour.
+// Administration : documents donnés à l'IA, import GMAO, et réglages (poste, fichier, icône, mot de passe, mises à jour).
 
 import { h, vider, ic, fenetre, formulaire, essayer, notifier, confirmer, dateHeureFr, tailleFr, nombreFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { etat, estAdmin, actualiserEtat } from '/socle/etat.js'
 import { choisirFichier, ouvrirModeAdmin } from '/blocs/fichier/vue.js'
+import documents from '/blocs/documents/vue.js'
+import importGmao from '/blocs/import-gmao/vue.js'
+
+// Les trois onglets de l'administration. Documents et Import GMAO réutilisent les écrans de leurs blocs.
+const ONGLETS = [
+  ['documents', 'Documents', 'document'],
+  ['import', 'Import GMAO', 'tableur'],
+  ['reglages', 'Réglages', 'reglages'],
+]
 
 export default {
   chemin: 'administration',
@@ -12,25 +21,43 @@ export default {
   menu: true,
   aide: 'administration',
 
-  async afficher(zone) {
-    const infos = await api('/api/admin/infos')
-    const config = infos.installation
-
+  async afficher(zone, { id, query }) {
+    const onglet = ONGLETS.some(([cle]) => cle === id) ? id : estAdmin() ? 'documents' : 'reglages'
+    const contenu = h('div', { class: 'onglet-contenu' })
     vider(
       zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Administration'), h('p', { class: 'sous-titre' }, 'Réglages de ce poste et de la base partagée'))),
-      h(
-        'div',
-        { class: 'grille grille-2' },
-        cartePoste(config),
-        carteFichier(infos),
-        estAdmin()
-          ? [carteAtelier(), carteIcone(), carteMotDePasse(), carteIndex(infos)]
-          : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, l’icône, le mot de passe et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
-        carteMiseAJour(infos),
+      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Administration'), h('p', { class: 'sous-titre' }, 'Ce que l’IA connaît (documents, exports GMAO) et les réglages'))),
+      h('div', { class: 'segments', style: { marginBottom: '20px' } },
+        ONGLETS.map(([cle, titre, icone]) => h('button', { class: cle === onglet ? 'choisi' : '', onclick: () => (location.hash = `#/administration/${cle}`) }, ic(icone, 16), titre)),
       ),
+      contenu,
     )
+
+    if (onglet === 'reglages') return afficherReglages(contenu)
+    if (!estAdmin()) {
+      vider(contenu, h('div', { class: 'carte' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Ajouter des documents ou importer un export GMAO demande le mode administrateur.'), h('button', { class: 'principal', onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))))
+      return
+    }
+    if (onglet === 'documents') return documents.afficher(contenu, { query })
+    return importGmao.afficher(contenu, { query })
   },
+}
+
+async function afficherReglages(zone) {
+  const infos = await api('/api/admin/infos')
+  vider(
+    zone,
+    h(
+      'div',
+      { class: 'grille grille-2' },
+      cartePoste(infos.installation),
+      carteFichier(infos),
+      estAdmin()
+        ? [carteAtelier(), carteIcone(), carteMotDePasse(), carteIndex(infos)]
+        : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, l’icône, le mot de passe et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
+      carteMiseAJour(infos),
+    ),
+  )
 }
 
 function carte(icone, titre, ...contenu) {

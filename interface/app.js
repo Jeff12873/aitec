@@ -19,7 +19,9 @@ import aide from '/blocs/aide/vue.js'
 import recherche from '/blocs/recherche/vue.js'
 import { afficherAccueil, ouvrirModeAdmin, quitterModeAdmin } from '/blocs/fichier/vue.js'
 
-const BLOCS = [tableauDeBord, assistant, parc, pieces, interventions, documents, importGmao, administration, aide, recherche]
+// L'ordre est celui du menu. Seuls l'assistant, le tableau de bord et l'administration y figurent (menu: true) ;
+// les autres écrans s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
+const BLOCS = [assistant, tableauDeBord, administration, parc, pieces, interventions, documents, importGmao, aide, recherche]
 
 const racine = document.getElementById('appli')
 let zone = null // l'endroit où s'affiche le bloc
@@ -69,7 +71,7 @@ function dessiner() {
 function routeActuelle() {
   const [chemin = '', ...reste] = location.hash.replace(/^#\/?/, '').split('?')[0].split('/')
   const query = Object.fromEntries(new URLSearchParams(location.hash.split('?')[1] || ''))
-  const bloc = BLOCS.find((b) => b.chemin === chemin) || tableauDeBord
+  const bloc = BLOCS.find((b) => b.chemin === chemin) || assistant
   return { bloc, id: reste.join('/') || null, query }
 }
 
