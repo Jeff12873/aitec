@@ -68,7 +68,7 @@ export default {
         )
         return
       }
-      for (const message of conversation) messages.append(dessinerMessage(message))
+      conversation.forEach((message, i) => messages.append(dessinerMessage({ ...message, dernier: i === conversation.length - 1 }, envoyer)))
     }
 
     async function envoyer(texte) {
@@ -85,7 +85,7 @@ export default {
       let element = messages.lastElementChild
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
       const remplacer = () => {
-        const nouveau = dessinerMessage(reponse)
+        const nouveau = dessinerMessage(reponse, envoyer)
         element.replaceWith(nouveau)
         element = nouveau
       }
@@ -165,10 +165,20 @@ export default {
   },
 }
 
-function dessinerMessage(message) {
+// L'assistant peut finir par « CHOIX : réponse 1 | réponse 2 » : on affiche ces réponses en boutons.
+function separerChoix(contenu) {
+  const lignes = contenu.split('\n')
+  const index = lignes.findIndex((l) => /^\s*\**CHOIX\**\s*:/i.test(l))
+  if (index < 0) return { texte: contenu, choix: [] }
+  const choix = lignes[index].replace(/^\s*\**CHOIX\**\s*:\s*/i, '').split('|').map((c) => c.trim()).filter(Boolean)
+  return { texte: lignes.slice(0, index).join('\n'), choix }
+}
+
+function dessinerMessage(message, envoyer) {
   if (message.role === 'agent') return h('div', { class: 'message agent' }, message.contenu)
 
-  const texte = h('div', { class: `texte-ia ${message.enCours ? 'curseur' : ''}`, html: message.contenu ? texteIA(message.contenu) : '' })
+  const { texte: contenu, choix } = separerChoix(message.contenu)
+  const texte = h('div', { class: `texte-ia ${message.enCours ? 'curseur' : ''}`, html: contenu ? texteIA(contenu) : '' })
   if (!message.contenu && message.enCours) texte.innerHTML = '<p class="discret">Recherche dans la base…</p>'
   texte.addEventListener('click', (e) => {
     const numero = e.target.dataset?.source
@@ -184,11 +194,14 @@ function dessinerMessage(message) {
       'div',
       { class: 'corps' },
       texte,
+      !message.enCours && choix.length && message.dernier
+        ? h('div', { class: 'suggestions', style: { marginTop: '10px' } }, choix.map((c) => h('button', { onclick: () => envoyer(c) }, c)))
+        : null,
       message.sources?.length
         ? h('div', { class: 'sources' }, message.sources.map((s) => h('button', { class: 'source', title: s.extrait, onclick: () => ouvrirSource(s) }, h('b', {}, s.numero), ic(icone(s.source), 14), h('span', {}, s.titre))))
         : null,
       !message.enCours && message.contenu
-        ? h('div', { class: 'actions', style: { marginTop: '8px' } }, h('button', { class: 'discret petit', onclick: () => navigator.clipboard.writeText(message.contenu).then(() => notifier('Réponse copiée')) }, 'Copier'))
+        ? h('div', { class: 'actions', style: { marginTop: '8px' } }, h('button', { class: 'discret petit', onclick: () => navigator.clipboard.writeText(contenu).then(() => notifier('Réponse copiée')) }, 'Copier'))
         : null,
     ),
   )

@@ -19,8 +19,14 @@ Règles :
 - Appuie-toi uniquement sur les SOURCES et les CHIFFRES fournis. Les sources peuvent être dans une autre langue : traduis ce que tu en utilises.
 - Après chaque information, cite la source avec son numéro entre crochets, par exemple [2].
 - Si les sources ne contiennent pas la réponse, dis-le franchement (« Je ne trouve pas cette information dans la base. »), puis indique quel document ou quelle donnée il faudrait ajouter. N'invente jamais une référence, une valeur, un couple de serrage ou un réglage.
+- Si tu ajoutes des vérifications générales de métier qui ne viennent pas des sources, mets-les à part sous le titre « Pistes générales (hors documentation) », sans numéro de source.
 - Pour une intervention à risque (électricité, hydraulique, pneumatique, pression, levage, organes en mouvement), rappelle de consigner la machine et de suivre les consignes de sécurité du site.
-- Aujourd'hui, nous sommes le {date}.`
+- Aujourd'hui, nous sommes le {date}.
+
+Poser des questions pour affiner :
+- Si la demande est trop vague pour répondre de façon fiable (machine non précisée alors que plusieurs sont possibles, symptôme flou, code défaut ou message d'écran manquant, sources qui donnent des pistes différentes), ne devine pas : pose 1 à 3 questions courtes et précises, comme un collègue qui aide à dépanner.
+- Dans ce cas, termine ta réponse par une ligne qui commence exactement par « CHOIX : », suivie de 2 à 5 réponses possibles séparées par « | », tirées des sources (repères de machines, symptômes, codes défaut). Exemple : CHOIX : PRS-01 presse 200 t | PRS-02 presse 100 t | Une autre machine
+- Si les sources permettent déjà de répondre, réponds directement, sans question et sans ligne CHOIX. Tu peux alors finir par une seule question pour aller plus loin si c'est utile (par exemple : « Le défaut revient-il à chaque cycle ? »).`
 
 export function routes(r) {
   // POST /api/assistant { question, historique: [{ role, contenu }], machineId }
@@ -32,7 +38,7 @@ export function routes(r) {
     ctx.res.on('close', () => arret.abort()) // l'agent a fermé la page ou cliqué « Arrêter »
 
     try {
-      const passages = await chercher(question, { machineId, limite: 8 })
+      const passages = await chercher(texteDeRecherche(question, historique), { machineId, limite: 8 })
       flux.envoyer('sources', passages.map((p, i) => ({ numero: i + 1, titre: p.titre, lien: p.lien, source: p.source, extrait: p.texte.slice(0, 400) })))
 
       if (!iaInstallee()) {
@@ -53,6 +59,13 @@ export function routes(r) {
       flux.fermer()
     }
   })
+}
+
+// Quand l'agent répond à une question de l'assistant (« la PRS-01 », « défaut thermique »), sa réponse seule
+// ne suffit pas pour chercher : on y ajoute ses deux messages précédents.
+function texteDeRecherche(question, historique) {
+  const precedents = historique.filter((m) => m.role === 'agent').slice(-2).map((m) => m.contenu)
+  return [question, ...precedents.reverse()].join('\n')
 }
 
 function construireMessages(question, historique, passages, machineId) {

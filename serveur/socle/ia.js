@@ -18,7 +18,7 @@ const moteurs = {
 }
 
 function nouveauMoteur(nom) {
-  return { nom, processus: null, port: 0, etat: 'arrêté', demarrage: null, derniereUtilisation: 0, enCours: 0, dernieresLignes: [] }
+  return { nom, processus: null, port: 0, etat: 'arrêté', demarrage: null, derniereUtilisation: 0, enCours: 0, dernieresLignes: [], surProcesseur: false }
 }
 
 // ---------------------------------------------------------------- état
@@ -41,9 +41,9 @@ export function etatIA() {
 
 // ---------------------------------------------------------------- démarrage et arrêt
 
-function argumentsDuMoteur(nom, config, port) {
+function argumentsDuMoteur(nom, config, port, surProcesseur) {
   const communs = ['--host', '127.0.0.1', '--port', String(port), '--no-webui']
-  if (config.appareil && config.appareil !== 'none') communs.push('--device', config.appareil)
+  if (config.appareil && config.appareil !== 'none' && !surProcesseur) communs.push('--device', config.appareil)
   else communs.push('--device', 'none', '-ngl', '0')
 
   if (nom === 'chat') {
@@ -61,50 +61,13 @@ async function demarrer(moteur) {
   const config = installation()
   if (!iaInstallee()) throw new Error("L'IA n'est pas installée sur ce poste : lancez la préparation (voir l'aide).")
 
-  moteur.demarrage = (async () => {
-    moteur.port = await portLibre()
-    moteur.etat = 'démarrage'
-    moteur.dernieresLignes = []
-    journal(`IA ${moteur.nom} : démarrage sur le port ${moteur.port}`)
-
-    const processus = spawn(config.llama, argumentsDuMoteur(moteur.nom, config, moteur.port), {
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    moteur.processus = processus
-    const garderLignes = (morceau) => {
-      moteur.dernieresLignes.push(...morceau.toString().split('\n').filter(Boolean))
-      moteur.dernieresLignes = moteur.dernieresLignes.slice(-40)
-    }
-    processus.stdout.on('data', garderLignes)
-    processus.stderr.on('data', garderLignes)
-    processus.on('exit', (code) => {
-      journal(`IA ${moteur.nom} : arrêtée (code ${code})`)
-      if (code && moteur.etat !== 'arrêt') journal(moteur.dernieresLignes.slice(-10).join('\n'))
-      moteur.processus = null
-      moteur.etat = 'arrêté'
-    })
-
-    // On attend que le modèle soit chargé (jusqu'à 5 minutes pour un gros modèle sur un disque lent).
-    const limite = Date.now() + 5 * 60_000
-    while (Date.now() < limite) {
-      if (!moteur.processus) throw new Error(`Le moteur d'IA n'a pas pu démarrer :\n${moteur.dernieresLignes.slice(-5).join('\n')}`)
-      try {
-        const reponse = await fetch(`http://127.0.0.1:${moteur.port}/health`)
-        if (reponse.ok) {
-          moteur.etat = 'prêt'
-          moteur.derniereUtilisation = Date.now()
-          journal(`IA ${moteur.nom} : prête`)
-          return
-        }
-      } catch {
-        // pas encore à l'écoute
-      }
-      await pause(500)
-    }
-    arreter(moteur)
-    throw new Error("Le moteur d'IA met trop de temps à démarrer.")
-  })()
+  moteur.demarrage = lancer(moteur, config).catch((erreur) => {
+    // Carte graphique pleine (autre logiciel, autre agent du poste…) : on se rabat sur le processeur.
+    if (config.appareil === 'none' || moteur.surProcesseur) throw erreur
+    journal(`IA ${moteur.nom} : démarrage impossible sur la carte graphique, essai sur le processeur`)
+    moteur.surProcesseur = true
+    return lancer(moteur, config)
+  })
 
   try {
     await moteur.demarrage
@@ -113,7 +76,54 @@ async function demarrer(moteur) {
   }
 }
 
+// Lance un serveur llama.cpp et attend que le modèle soit chargé.
+async function lancer(moteur, config) {
+  moteur.port = await portLibre()
+  moteur.etat = 'démarrage'
+  moteur.dernieresLignes = []
+  journal(`IA ${moteur.nom} : démarrage sur le port ${moteur.port}`)
+
+  const processus = spawn(config.llama, argumentsDuMoteur(moteur.nom, config, moteur.port, moteur.surProcesseur), {
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  moteur.processus = processus
+  const garderLignes = (morceau) => {
+    moteur.dernieresLignes.push(...morceau.toString().split('\n').filter(Boolean))
+    moteur.dernieresLignes = moteur.dernieresLignes.slice(-40)
+  }
+  processus.stdout.on('data', garderLignes)
+  processus.stderr.on('data', garderLignes)
+  processus.on('exit', (code) => {
+    journal(`IA ${moteur.nom} : arrêtée (code ${code})`)
+    if (code && moteur.etat !== 'arrêt') journal(moteur.dernieresLignes.slice(-10).join('\n'))
+    moteur.processus = null
+    moteur.etat = 'arrêté'
+  })
+
+  // On attend que le modèle soit chargé (jusqu'à 5 minutes pour un gros modèle sur un disque lent).
+  const limite = Date.now() + 5 * 60_000
+  while (Date.now() < limite) {
+    if (!moteur.processus) throw new Error(`Le moteur d'IA n'a pas pu démarrer :\n${moteur.dernieresLignes.slice(-5).join('\n')}`)
+    try {
+      const reponse = await fetch(`http://127.0.0.1:${moteur.port}/health`)
+      if (reponse.ok) {
+        moteur.etat = 'prêt'
+        moteur.derniereUtilisation = Date.now()
+        journal(`IA ${moteur.nom} : prête`)
+        return
+      }
+    } catch {
+      // pas encore à l'écoute
+    }
+    await pause(500)
+  }
+  arreter(moteur)
+  throw new Error("Le moteur d'IA met trop de temps à démarrer.")
+}
+
 function arreter(moteur) {
+  moteur.surProcesseur = false // au prochain démarrage, on réessaie la carte graphique
   if (!moteur.processus) return
   moteur.etat = 'arrêt'
   moteur.processus.kill()
