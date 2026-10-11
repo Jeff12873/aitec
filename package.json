@@ -1,0 +1,10 @@
+{
+  "name": "iassitec",
+  "private": true,
+  "type": "module",
+  "description": "Assistant IA local pour les agents de maintenance. Aucune dépendance : seulement Node.",
+  "scripts": {
+    "demarrer": "node serveur/demarrer.js",
+    "preparer": "node outils/preparer.js --ici"
+  }
+}

@@ -1,0 +1,16 @@
+﻿Code équipement;Libellé équipement;Famille;Constructeur;Type constructeur;N° de série;Localisation;Date MES;Statut
+PRS-01;Presse hydraulique 200 t;Presses;Pinette;PEI 200;PN-88213;Atelier A - Emboutissage;12/03/2011;En service
+PRS-02;Presse hydraulique 100 t;Presses;Pinette;PEI 100;PN-90417;Atelier A - Emboutissage;04/09/2014;En service
+CMP-01;Compresseur à vis 37 kW;Air comprimé;Atlas Copco;GA 37;AII-551023;Local compresseurs;20/01/2016;En service
+CMP-02;Compresseur à vis 22 kW (secours);Air comprimé;Atlas Copco;GA 22;AII-498812;Local compresseurs;15/06/2012;En réserve
+TOUR-03;Tour CN;Usinage;Mazak;QTN 250;MZ-250-7731;Atelier B - Usinage;02/02/2018;En service
+FRA-01;Centre d'usinage vertical;Usinage;DMG Mori;DMC 850 V;DMG-850-2210;Atelier B - Usinage;11/10/2019;En service
+CONV-01;Convoyeur à bande ligne 1;Manutention;Interroll;BM 8400;IR-1120;Ligne 1;01/04/2015;En service
+CONV-02;Convoyeur à rouleaux ligne 2;Manutention;Interroll;RM 8000;IR-1187;Ligne 2;01/04/2015;En service
+ROB-01;Robot de palettisation;Robotique;Fanuc;M-410iC/185;F-18823;Fin de ligne;23/05/2020;En service
+CHAR-01;Chariot élévateur électrique;Manutention;Linde;E20;LD-E20-5521;Logistique;09/09/2017;En service
+PONT-01;Pont roulant 5 t;Levage;Verlinde;Eurobloc VT5;VL-5T-0912;Atelier A - Emboutissage;14/02/2010;En service
+CLIM-01;Centrale de traitement d'air;CVC;Carrier;39HQ;CR-39-7712;Toiture;30/06/2013;En service
+SOUD-01;Poste de soudage robotisé;Soudage;Lincoln Electric;Power Wave R450;LE-450-3321;Atelier C - Soudage;18/11/2021;En service
+POMPE-01;Pompe de relevage eaux pluviales;Fluides;Grundfos;SEG 40;GF-SEG-1102;Extérieur;05/05/2009;En service
+TRANSFO-01;Transformateur 1000 kVA;Électricité;Schneider Electric;Trihal;SE-TRH-8812;Poste HT;12/12/2008;En service

@@ -1,0 +1,128 @@
+﻿N° OT;Date début;Code équipement;Nature;Travaux effectués;Cause panne;Intervenant;Temps passé (h);Statut
+OT-00088;18/08/2025;CMP-01;CUR;Pression réseau faible;Fuite sur le réseau atelier B;L. Bernard;1;Clôturé
+OT-00043;22/08/2025;ROB-01;PREV;Graissage axes et sauvegarde programme;;S. Martin;3;Clôturé
+OT-00031;25/08/2025;CONV-01;PREV;Contrôle tension et alignement bande;;L. Bernard;1;Clôturé
+OT-00087;25/08/2025;CMP-01;CUR;Présence d'huile dans l'air comprimé;Séparateur air/huile saturé;L. Bernard;4;Clôturé
+OT-00106;25/08/2025;ROB-01;CUR;Défaut SRVO-050;Collision avec palette mal positionnée;K. Petit;4;Clôturé
+OT-00022;26/08/2025;TOUR-03;PREV;Graissage et contrôle des glissières;;A. Moreau;0,5;Clôturé
+OT-00053;26/08/2025;PONT-01;PREV;Vérification générale périodique (VGP);;A. Moreau;0,5;Clôturé
+OT-00081;30/08/2025;PRS-01;CUR;Arrêt d'urgence intempestif;Fin de course XC desserré;L. Bernard;2;Clôturé
+OT-00001;03/09/2025;PRS-01;PREV;Vidange et contrôle hydraulique;;N. Robert;1;Clôturé
+OT-00007;05/09/2025;PRS-02;PREV;Contrôle hydraulique trimestriel;;N. Robert;3;Clôturé
+OT-00062;07/09/2025;SOUD-01;PREV;Nettoyage torche et contrôle gaz;;S. Martin;0,5;Clôturé
+OT-00119;07/09/2025;CLIM-01;CUR;Débit d'air faible;Filtres G4 colmatés;S. Martin;1;Clôturé
+OT-00037;14/09/2025;CONV-02;PREV;Graissage rouleaux;;A. Moreau;2;Clôturé
+OT-00091;14/09/2025;CMP-01;CUR;Pression réseau faible;Fuite sur le réseau atelier B;L. Bernard;2;Clôturé
+OT-00067;15/09/2025;POMPE-01;PREV;Essai de fonctionnement;;L. Bernard;1,5;Clôturé
+OT-00093;17/09/2025;CONV-01;CUR;Moteur tambour en défaut thermique;Surcharge;K. Petit;4;Clôturé
+OT-00058;19/09/2025;CLIM-01;PREV;Changement filtres G4;;A. Moreau;3;Clôturé
+OT-00027;20/09/2025;FRA-01;PREV;Contrôle géométrie et graissage;;K. Petit;1;Clôturé
+OT-00017;22/09/2025;CMP-02;PREV;Démarrage d'essai mensuel;;N. Robert;0,5;Clôturé
+OT-00114;22/09/2025;CHAR-01;CUR;Fuite hydraulique mât;Flexible percé;S. Martin;6;Clôturé
+OT-00012;23/09/2025;CMP-01;PREV;Entretien 2000 h : filtres air et huile;;S. Martin;0,5;Clôturé
+OT-00048;23/09/2025;CHAR-01;PREV;Contrôle VGP et batterie;;K. Petit;2;Clôturé
+OT-00072;25/09/2025;TRANSFO-01;PREV;Thermographie et contrôle des connexions;;K. Petit;0,5;Clôturé
+OT-00115;30/09/2025;CHAR-01;CUR;Fuite hydraulique mât;Flexible percé;S. Martin;4;Clôturé
+OT-00108;12/10/2025;TOUR-03;CUR;Alarme lubrification centralisée;Réservoir vide;S. Martin;0,5;Clôturé
+OT-00032;24/10/2025;CONV-01;PREV;Contrôle tension et alignement bande;;N. Robert;3;Clôturé
+OT-00080;26/10/2025;PRS-01;CUR;Bruit anormal pompe hydraulique;Niveau d'huile bas, prise d'air;L. Bernard;1;Clôturé
+OT-00002;02/11/2025;PRS-01;PREV;Vidange et contrôle hydraulique;;A. Moreau;1,5;Clôturé
+OT-00099;03/11/2025;CONV-01;CUR;Bande déchirée;Corps étranger coincé;L. Bernard;2;Clôturé
+OT-00123;15/11/2025;SOUD-01;CUR;Défaut dévidage fil;Tube contact usé;K. Petit;0,5;Clôturé
+OT-00044;20/11/2025;ROB-01;PREV;Graissage axes et sauvegarde programme;;A. Moreau;0,5;Clôturé
+OT-00018;21/11/2025;CMP-02;PREV;Démarrage d'essai mensuel;;K. Petit;2;Clôturé
+OT-00049;22/11/2025;CHAR-01;PREV;Contrôle VGP et batterie;;S. Martin;2;Clôturé
+OT-00054;24/11/2025;PONT-01;PREV;Vérification générale périodique (VGP);;A. Moreau;1,5;Clôturé
+OT-00096;27/11/2025;CONV-01;CUR;Moteur tambour en défaut thermique;Surcharge;L. Bernard;3;Clôturé
+OT-00063;06/12/2025;SOUD-01;PREV;Nettoyage torche et contrôle gaz;;N. Robert;1,5;Clôturé
+OT-00116;07/12/2025;PONT-01;CUR;Pont ne monte plus;Fin de course haut défectueux;K. Petit;0,5;Clôturé
+OT-00068;14/12/2025;POMPE-01;PREV;Essai de fonctionnement;;N. Robert;3;Clôturé
+OT-00059;18/12/2025;CLIM-01;PREV;Changement filtres G4;;L. Bernard;3;Clôturé
+OT-00126;19/12/2025;POMPE-01;CUR;Fuite à la garniture;Garniture mécanique usée;S. Martin;6;Clôturé
+OT-00124;22/12/2025;SOUD-01;CUR;Projections et soudure poreuse;Buse encrassée, gaz insuffisant;S. Martin;0,5;Clôturé
+OT-00023;24/12/2025;TOUR-03;PREV;Graissage et contrôle des glissières;;S. Martin;1;Clôturé
+OT-00083;26/12/2025;PRS-02;CUR;Fuite raccord HP;Raccord desserré;L. Bernard;0,5;Clôturé
+OT-00111;26/12/2025;FRA-01;CUR;Défaut changeur d'outils;Capteur de position encrassé;L. Bernard;4;Clôturé
+OT-00120;28/12/2025;CLIM-01;CUR;Débit d'air faible;Filtres G4 colmatés;L. Bernard;1;Clôturé
+OT-00109;29/12/2025;TOUR-03;CUR;Cote hors tolérance;Usure plaquette;S. Martin;1;Clôturé
+OT-00110;01/01/2026;FRA-01;CUR;Défaut changeur d'outils;Capteur de position encrassé;N. Robert;6;Clôturé
+OT-00008;03/01/2026;PRS-02;PREV;Contrôle hydraulique trimestriel;;K. Petit;1,5;Clôturé
+OT-00113;05/01/2026;CHAR-01;CUR;Autonomie batterie faible;Batterie en fin de vie;L. Bernard;3;Clôturé
+OT-00122;11/01/2026;SOUD-01;CUR;Défaut dévidage fil;Tube contact usé;A. Moreau;6;Clôturé
+OT-00038;12/01/2026;CONV-02;PREV;Graissage rouleaux;;N. Robert;2;Clôturé
+OT-00028;18/01/2026;FRA-01;PREV;Contrôle géométrie et graissage;;A. Moreau;1,5;Clôturé
+OT-00019;20/01/2026;CMP-02;PREV;Démarrage d'essai mensuel;;S. Martin;1,5;Clôturé
+OT-00013;21/01/2026;CMP-01;PREV;Entretien 2000 h : filtres air et huile;;L. Bernard;1,5;Clôturé
+OT-00033;22/01/2026;CONV-01;PREV;Contrôle tension et alignement bande;;K. Petit;1,5;Clôturé
+OT-00121;22/01/2026;CLIM-01;CUR;Courroie qui patine;Courroie SPA détendue;A. Moreau;1;Clôturé
+OT-00073;23/01/2026;TRANSFO-01;PREV;Thermographie et contrôle des connexions;;N. Robert;2;Clôturé
+OT-00104;26/01/2026;ROB-01;CUR;Perte de pièce au palettiseur;Ventouse fendue;K. Petit;0,5;Clôturé
+OT-00090;29/01/2026;CMP-01;CUR;Présence d'huile dans l'air comprimé;Séparateur air/huile saturé;S. Martin;4;Clôturé
+OT-00003;31/01/2026;PRS-01;PREV;Vidange et contrôle hydraulique;;S. Martin;3;Clôturé
+OT-00103;05/02/2026;CONV-02;CUR;Rouleaux bloqués;Roulements 6205 grippés;L. Bernard;2;Clôturé
+OT-00105;05/02/2026;ROB-01;CUR;Défaut SRVO-050;Collision avec palette mal positionnée;N. Robert;6;Clôturé
+OT-00069;12/02/2026;POMPE-01;PREV;Essai de fonctionnement;;N. Robert;1,5;Clôturé
+OT-00045;18/02/2026;ROB-01;PREV;Graissage axes et sauvegarde programme;;A. Moreau;0,5;Clôturé
+OT-00055;22/02/2026;PONT-01;PREV;Vérification générale périodique (VGP);;A. Moreau;0,5;Clôturé
+OT-00064;06/03/2026;SOUD-01;PREV;Nettoyage torche et contrôle gaz;;A. Moreau;1,5;Clôturé
+OT-00039;13/03/2026;CONV-02;PREV;Graissage rouleaux;;N. Robert;2;Clôturé
+OT-00118;17/03/2026;PONT-01;CUR;Pont ne monte plus;Fin de course haut défectueux;A. Moreau;1;Clôturé
+OT-00060;18/03/2026;CLIM-01;PREV;Changement filtres G4;;L. Bernard;2;Clôturé
+OT-00050;22/03/2026;CHAR-01;PREV;Contrôle VGP et batterie;;N. Robert;2;Clôturé
+OT-00034;23/03/2026;CONV-01;PREV;Contrôle tension et alignement bande;;L. Bernard;2;Clôturé
+OT-00024;24/03/2026;TOUR-03;PREV;Graissage et contrôle des glissières;;L. Bernard;1;Clôturé
+OT-00074;24/03/2026;TRANSFO-01;PREV;Thermographie et contrôle des connexions;;L. Bernard;1;Clôturé
+OT-00009;03/04/2026;PRS-02;PREV;Contrôle hydraulique trimestriel;;L. Bernard;1;Clôturé
+OT-00117;05/04/2026;PONT-01;CUR;Pont ne monte plus;Fin de course haut défectueux;K. Petit;4;Clôturé
+OT-00100;12/04/2026;CONV-01;CUR;Bruit de roulement;Roulement 6308 usé;S. Martin;3;Clôturé
+OT-00070;13/04/2026;POMPE-01;PREV;Essai de fonctionnement;;S. Martin;2;Clôturé
+OT-00077;15/04/2026;PRS-01;CUR;Arrêt d'urgence intempestif;Fin de course XC desserré;L. Bernard;4;Clôturé
+OT-00089;15/04/2026;CMP-01;CUR;Alarme température élément de compression;Niveau d'huile bas / refroidisseur encrassé;A. Moreau;0,5;Clôturé
+OT-00046;19/04/2026;ROB-01;PREV;Graissage axes et sauvegarde programme;;L. Bernard;3;Clôturé
+OT-00014;21/04/2026;CMP-01;PREV;Entretien 2000 h : filtres air et huile;;N. Robert;2;Clôturé
+OT-00101;22/04/2026;CONV-02;CUR;Rouleaux bloqués;Roulements 6205 grippés;L. Bernard;1;Clôturé
+OT-00082;29/04/2026;PRS-02;CUR;Défaut température huile;Échangeur encrassé;A. Moreau;2;Clôturé
+OT-00004;01/05/2026;PRS-01;PREV;Vidange et contrôle hydraulique;;K. Petit;0,5;Clôturé
+OT-00112;06/05/2026;FRA-01;CUR;Défaut changeur d'outils;Capteur de position encrassé;K. Petit;0,5;Clôturé
+OT-00040;12/05/2026;CONV-02;PREV;Graissage rouleaux;;L. Bernard;0,5;Clôturé
+OT-00086;15/05/2026;CMP-01;CUR;Pression réseau faible;Fuite sur le réseau atelier B;A. Moreau;4;Clôturé
+OT-00029;18/05/2026;FRA-01;PREV;Contrôle géométrie et graissage;;K. Petit;2;Clôturé
+OT-00020;20/05/2026;CMP-02;PREV;Démarrage d'essai mensuel;;K. Petit;2;Clôturé
+OT-00056;23/05/2026;PONT-01;PREV;Vérification générale périodique (VGP);;S. Martin;1,5;Clôturé
+OT-00078;23/05/2026;PRS-01;CUR;Pression insuffisante, la presse ne descend pas en pression;Filtre retour colmaté;S. Martin;0,5;Clôturé
+OT-00010;02/06/2026;PRS-02;PREV;Contrôle hydraulique trimestriel;;A. Moreau;1,5;Clôturé
+OT-00085;10/06/2026;CMP-01;CUR;Présence d'huile dans l'air comprimé;Séparateur air/huile saturé;A. Moreau;1;Clôturé
+OT-00061;16/06/2026;CLIM-01;PREV;Changement filtres G4;;L. Bernard;3;Clôturé
+OT-00015;20/06/2026;CMP-01;PREV;Entretien 2000 h : filtres air et huile;;S. Martin;3;Clôturé
+OT-00051;20/06/2026;CHAR-01;PREV;Contrôle VGP et batterie;;S. Martin;1;Clôturé
+OT-00035;21/06/2026;CONV-01;PREV;Contrôle tension et alignement bande;;A. Moreau;3;Clôturé
+OT-00075;22/06/2026;TRANSFO-01;PREV;Thermographie et contrôle des connexions;;S. Martin;1;Clôturé
+OT-00094;22/06/2026;CONV-01;CUR;Bruit de roulement;Roulement 6308 usé;K. Petit;3;Clôturé
+OT-00005;30/06/2026;PRS-01;PREV;Vidange et contrôle hydraulique;;A. Moreau;0,5;Clôturé
+OT-00107;01/07/2026;TOUR-03;CUR;Cote hors tolérance;Usure plaquette;A. Moreau;0,5;Clôturé
+OT-00065;04/07/2026;SOUD-01;PREV;Nettoyage torche et contrôle gaz;;K. Petit;1,5;Clôturé
+OT-00071;12/07/2026;POMPE-01;PREV;Essai de fonctionnement;;N. Robert;1;Clôturé
+OT-00127;14/07/2026;POMPE-01;CUR;Fuite à la garniture;Garniture mécanique usée;N. Robert;4;Clôturé
+OT-00076;17/07/2026;PRS-01;CUR;Pression insuffisante, la presse ne descend pas en pression;Filtre retour colmaté;A. Moreau;4;Clôturé
+OT-00025;22/07/2026;TOUR-03;PREV;Graissage et contrôle des glissières;;N. Robert;2;Clôturé
+OT-00095;09/08/2026;CONV-01;CUR;Bruit de roulement;Roulement 6308 usé;A. Moreau;2;Clôturé
+OT-00041;10/08/2026;CONV-02;PREV;Graissage rouleaux;;N. Robert;1;Clôturé
+OT-00102;12/08/2026;CONV-02;CUR;Rouleaux bloqués;Roulements 6205 grippés;A. Moreau;3;Clôturé
+OT-00097;14/08/2026;CONV-01;CUR;Bande déchirée;Corps étranger coincé;S. Martin;6;Clôturé
+OT-00030;16/08/2026;FRA-01;PREV;Contrôle géométrie et graissage;;L. Bernard;0,5;Clôturé
+OT-00047;17/08/2026;ROB-01;PREV;Graissage axes et sauvegarde programme;;L. Bernard;1,5;Clôturé
+OT-00021;18/08/2026;CMP-02;PREV;Démarrage d'essai mensuel;;S. Martin;2;Clôturé
+OT-00052;19/08/2026;CHAR-01;PREV;Contrôle VGP et batterie;;K. Petit;1,5;Clôturé
+OT-00057;21/08/2026;PONT-01;PREV;Vérification générale périodique (VGP);;L. Bernard;1,5;Clôturé
+OT-00125;26/08/2026;POMPE-01;CUR;Pompe ne démarre pas;Flotteur bloqué;A. Moreau;3;Clôturé
+OT-00084;29/08/2026;PRS-02;CUR;Fuite raccord HP;Raccord desserré;N. Robert;6;Clôturé
+OT-00066;02/09/2026;SOUD-01;PREV;Nettoyage torche et contrôle gaz;;L. Bernard;0,5;Clôturé
+OT-00016;18/09/2026;CMP-01;PREV;Entretien 2000 h : filtres air et huile;;K. Petit;1,5;Clôturé
+OT-00036;19/09/2026;CONV-01;PREV;Contrôle tension et alignement bande;;L. Bernard;3;Clôturé
+OT-00026;20/09/2026;TOUR-03;PREV;Graissage et contrôle des glissières;;L. Bernard;2;Clôturé
+OT-00092;27/09/2026;CONV-01;CUR;Moteur tambour en défaut thermique;Surcharge;A. Moreau;0,5;Clôturé
+OT-00006;28/09/2026;PRS-01;PREV;Vidange et contrôle hydraulique;;N. Robert;3;Clôturé
+OT-00079;29/09/2026;PRS-01;CUR;Fuite d'huile au vérin principal;Joints de tige usés;A. Moreau;6;Clôturé
+OT-00011;30/09/2026;PRS-02;PREV;Contrôle hydraulique trimestriel;;K. Petit;2;Clôturé
+OT-00098;30/09/2026;CONV-01;CUR;Bruit de roulement;Roulement 6308 usé;K. Petit;0,5;Clôturé
+OT-00042;09/10/2026;CONV-02;PREV;Graissage rouleaux;;K. Petit;3;Clôturé

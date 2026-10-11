@@ -1,0 +1,12 @@
+# Programmes et modèles téléchargés par la préparation (jamais dans Git)
+moteur/
+modeles/
+# Fichiers propres à chaque poste
+installation.json
+reglages-poste.json
+cache/
+journal.txt
+# Données : le fichier de l'atelier ne va jamais sur GitHub
+*.datassitec
+*.verrou
+IASSITEC-sauvegardes/
