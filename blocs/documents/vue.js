@@ -85,7 +85,7 @@ export default {
       },
       ic('envoyer', 30),
       h('div', {}, h('strong', {}, 'Déposez vos fichiers ici'), ' ou cliquez pour les choisir'),
-      h('div', { class: 'discret', style: { fontSize: '13px', marginTop: '4px' } }, 'PDF (même scannés), Word (.docx et .doc, photos comprises), Excel, LibreOffice, PowerPoint, CSV, texte, photos… Les autres fichiers sont rangés en pièces jointes.'),
+      h('div', { class: 'discret', style: { fontSize: '13px', marginTop: '4px' } }, 'PDF (même scannés), Word, Excel, PowerPoint (récents et anciens, photos comprises), LibreOffice, CSV, texte, photos… Les autres fichiers sont rangés en pièces jointes.'),
       choixFichiers,
     )
 

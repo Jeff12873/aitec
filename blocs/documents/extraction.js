@@ -1,7 +1,7 @@
 // Lecture du texte des documents déposés.
 //
 // Trois cas, selon le type de fichier :
-//   - lu ici, par le serveur : Word (.docx et ancien .doc), Excel, LibreOffice, PowerPoint, CSV, texte, HTML… ;
+//   - lu ici, par le serveur : Word, Excel et PowerPoint (récents et anciens formats), LibreOffice, CSV, texte, HTML… ;
 //                              les images contenues dans ces documents sont lues ensuite par l'IA (lecteur-images.js) ;
 //   - lu par le navigateur   : PDF et images. Le navigateur sait afficher une page de PDF en image,
 //                              ce qui permet de faire lire les pages scannées par l'IA (voir vue.js) ;
@@ -9,7 +9,9 @@
 
 import { lireZip, lireTexteDansZip } from '../../serveur/socle/zip.js'
 import { lireTableur, decoderTexte, decoderEntites } from '../../serveur/socle/tableurs.js'
-import { lireWord97, lireFichierCompose } from '../../serveur/socle/word97.js'
+import { lireWord97 } from '../../serveur/socle/word97.js'
+import { lirePpt } from '../../serveur/socle/powerpoint97.js'
+import { lireFichierCompose } from '../../serveur/socle/fichier-compose.js'
 
 const LUS_PAR_LE_NAVIGATEUR = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']
 const TEXTES = ['txt', 'md', 'log', 'json', 'xml', 'ini', 'cfg', 'conf', 'yaml', 'yml', 'nc', 'gcode', 'tap', 'sql', 'eml']
@@ -27,7 +29,8 @@ export function extraireTexte(nom, octets) {
   if (ext === 'doc') return serveur(lireWord97(octets))
   if (ext === 'odt') return serveur(lireOdt(octets))
   if (ext === 'pptx') return { lecture: 'serveur', pages: lirePowerPoint(octets) }
-  if (['xlsx', 'xlsm', 'ods', 'csv', 'tsv'].includes(ext)) return { lecture: 'serveur', pages: lireTableaux(nom, octets) }
+  if (ext === 'ppt' || ext === 'pps') return { lecture: 'serveur', pages: lirePpt(octets) }
+  if (['xls', 'xlsx', 'xlsm', 'ods', 'csv', 'tsv'].includes(ext)) return { lecture: 'serveur', pages: lireTableaux(nom, octets) }
   if (ext === 'html' || ext === 'htm') return serveur(texteDuHtml(decoderTexte(octets)))
   if (ext === 'rtf') return serveur(texteDuRtf(decoderTexte(octets)))
   if (TEXTES.includes(ext)) return serveur(decoderTexte(octets))
@@ -46,6 +49,8 @@ function formatReel(nom, octets) {
     if (estCompose) return 'doc'
     if (octets.subarray(0, 5).toString() === '{\\rtf') return 'rtf'
   }
+  if (['ppt', 'pps', 'pptx'].includes(ext)) return estZip ? 'pptx' : estCompose ? 'ppt' : ext
+  if (['xls', 'xlsx'].includes(ext)) return estZip ? 'xlsx' : estCompose ? 'xls' : ext
   return ext
 }
 
@@ -146,8 +151,9 @@ export function imagesDuDocument(nom, octets) {
       images = lireZip(octets)
         .filter((f) => DOSSIERS_IMAGES.test(f.nom) && /\.(png|jpe?g|gif|bmp)$/i.test(f.nom))
         .map((f) => ({ nom: f.nom.split('/').pop(), octets: f.lire() }))
-    } else if (ext === 'doc') {
-      const donnees = lireFichierCompose(octets).get('Data')
+    } else if (ext === 'doc' || ext === 'ppt') {
+      // Ancien Word : images dans le flux « Data » ; ancien PowerPoint : dans le flux « Pictures ».
+      const donnees = lireFichierCompose(octets).get(ext === 'doc' ? 'Data' : 'Pictures')
       if (donnees) images = chercherImages(donnees)
     }
   } catch {
@@ -165,7 +171,7 @@ export function imagesDuDocument(nom, octets) {
     .slice(0, IMAGES_MAX)
 }
 
-// Dans un ancien .doc, les images sont rangées les unes après les autres dans le flux « Data » :
+// Dans un ancien .doc ou .ppt, les images sont rangées les unes après les autres dans un flux :
 // on repère les débuts et fins de fichiers PNG et JPEG.
 function chercherImages(donnees) {
   const images = []

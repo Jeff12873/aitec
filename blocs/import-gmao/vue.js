@@ -18,7 +18,7 @@ export default {
     }
     const cibles = await api('/api/import/cibles')
     const etape = h('div')
-    const choix = h('input', { type: 'file', accept: '.csv,.tsv,.txt,.xlsx,.xlsm,.ods', style: { display: 'none' }, onchange: (e) => e.target.files[0] && lire(e.target.files[0]) })
+    const choix = h('input', { type: 'file', accept: '.csv,.tsv,.txt,.xls,.xlsx,.xlsm,.ods', style: { display: 'none' }, onchange: (e) => e.target.files[0] && lire(e.target.files[0]) })
 
     vider(
       zone,
@@ -26,7 +26,7 @@ export default {
       h(
         'div',
         { class: 'carte', style: { marginBottom: '16px' } },
-        h('div', { class: 'depot', onclick: () => choix.click() }, ic('tableur', 30), h('div', {}, h('strong', {}, 'Choisir un export de la GMAO')), h('div', { class: 'discret', style: { fontSize: '13px' } }, 'CSV, XLSX ou ODS. La première ligne doit contenir les noms des colonnes.'), choix),
+        h('div', { class: 'depot', onclick: () => choix.click() }, ic('tableur', 30), h('div', {}, h('strong', {}, 'Choisir un export de la GMAO')), h('div', { class: 'discret', style: { fontSize: '13px' } }, 'CSV, XLS, XLSX ou ODS. La première ligne doit contenir les noms des colonnes.'), choix),
       ),
       etape,
     )

@@ -1,17 +1,21 @@
-// Lecture des tableaux : CSV, Excel (.xlsx) et LibreOffice (.ods), sans bibliothèque.
+// Lecture des tableaux : CSV, Excel (.xlsx et ancien .xls) et LibreOffice (.ods), sans bibliothèque.
 //
 // lireTableur(nom, octets) → [{ feuille: 'Feuil1', lignes: [['A1', 'B1'], ['A2', 'B2'], …] }]
 // Toutes les valeurs sont rendues en texte (les nombres Excel restent des nombres écrits en texte).
 // Utilisé par l'import GMAO et par la lecture des documents.
 
 import { lireZip, lireTexteDansZip } from './zip.js'
+import { lireXls } from './excel97.js'
 
 export function lireTableur(nom, octets) {
   const extension = nom.toLowerCase().split('.').pop()
-  if (extension === 'xlsx' || extension === 'xlsm') return lireXlsx(octets)
+  // L'extension ment parfois (un .xlsx renommé en .xls) : on regarde aussi le début du fichier.
+  const estZip = octets[0] === 0x50 && octets[1] === 0x4b
+  if ((extension === 'xlsx' || extension === 'xlsm' || extension === 'xls') && estZip) return lireXlsx(octets)
+  if (extension === 'xls') return lireXls(octets)
   if (extension === 'ods') return lireOds(octets)
   if (extension === 'csv' || extension === 'tsv' || extension === 'txt') return [{ feuille: nom, lignes: lireCsv(decoderTexte(octets)) }]
-  throw new Error(`Format de tableau non reconnu : .${extension} (formats acceptés : CSV, XLSX, ODS)`)
+  throw new Error(`Format de tableau non reconnu : .${extension} (formats acceptés : CSV, XLS, XLSX, ODS)`)
 }
 
 // ---------------------------------------------------------------- texte
