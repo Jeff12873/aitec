@@ -171,9 +171,9 @@ export async function discuter(messages, { surMorceau, temperature = 0.3, maxMot
   }
 }
 
-// Lit le texte d'une image (page scannée, photo de plaque signalétique…).
-export async function lireImage(imageJpeg, consigne) {
-  const image = `data:image/jpeg;base64,${imageJpeg.toString('base64')}`
+// Lit le texte d'une image (page scannée, photo de plaque signalétique…). JPEG, PNG, GIF ou BMP.
+export async function lireImage(octets, consigne, type = 'image/jpeg') {
+  const image = `data:${type};base64,${Buffer.from(octets).toString('base64')}`
   return discuter(
     [{ role: 'user', content: [{ type: 'image_url', image_url: { url: image } }, { type: 'text', text: consigne }] }],
     { temperature: 0.1, maxMots: 3000 },

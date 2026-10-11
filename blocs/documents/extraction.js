@@ -1,13 +1,15 @@
 // Lecture du texte des documents déposés.
 //
 // Trois cas, selon le type de fichier :
-//   - lu ici, par le serveur : Word, Excel, LibreOffice, PowerPoint, CSV, texte, HTML… ;
+//   - lu ici, par le serveur : Word (.docx et ancien .doc), Excel, LibreOffice, PowerPoint, CSV, texte, HTML… ;
+//                              les images contenues dans ces documents sont lues ensuite par l'IA (lecteur-images.js) ;
 //   - lu par le navigateur   : PDF et images. Le navigateur sait afficher une page de PDF en image,
 //                              ce qui permet de faire lire les pages scannées par l'IA (voir vue.js) ;
 //   - pas lu                 : plans, vidéos, archives… Le fichier est seulement rangé (pièce jointe).
 
 import { lireZip, lireTexteDansZip } from '../../serveur/socle/zip.js'
 import { lireTableur, decoderTexte, decoderEntites } from '../../serveur/socle/tableurs.js'
+import { lireWord97, lireFichierCompose } from '../../serveur/socle/word97.js'
 
 const LUS_PAR_LE_NAVIGATEUR = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']
 const TEXTES = ['txt', 'md', 'log', 'json', 'xml', 'ini', 'cfg', 'conf', 'yaml', 'yml', 'nc', 'gcode', 'tap', 'sql', 'eml']
@@ -18,10 +20,11 @@ export function extension(nom) {
 
 // Renvoie { lecture: 'serveur', pages: [{ page, texte }] } | { lecture: 'navigateur' } | { lecture: 'aucune' }
 export function extraireTexte(nom, octets) {
-  const ext = extension(nom)
+  const ext = formatReel(nom, octets)
   if (LUS_PAR_LE_NAVIGATEUR.includes(ext)) return { lecture: 'navigateur' }
 
   if (ext === 'docx' || ext === 'docm') return serveur(lireWord(octets))
+  if (ext === 'doc') return serveur(lireWord97(octets))
   if (ext === 'odt') return serveur(lireOdt(octets))
   if (ext === 'pptx') return { lecture: 'serveur', pages: lirePowerPoint(octets) }
   if (['xlsx', 'xlsm', 'ods', 'csv', 'tsv'].includes(ext)) return { lecture: 'serveur', pages: lireTableaux(nom, octets) }
@@ -29,6 +32,21 @@ export function extraireTexte(nom, octets) {
   if (ext === 'rtf') return serveur(texteDuRtf(decoderTexte(octets)))
   if (TEXTES.includes(ext)) return serveur(decoderTexte(octets))
   return { lecture: 'aucune' }
+}
+
+// Certains fichiers ont une extension trompeuse (un .docx renommé en .doc, par exemple) :
+// on regarde d'abord les premiers octets du fichier.
+function formatReel(nom, octets) {
+  const ext = extension(nom)
+  const debut = octets.subarray(0, 8)
+  const estZip = debut[0] === 0x50 && debut[1] === 0x4b
+  const estCompose = debut.readUInt32LE?.(0) === 0xe011cfd0
+  if (['doc', 'docx', 'dot', 'dotx'].includes(ext)) {
+    if (estZip) return 'docx'
+    if (estCompose) return 'doc'
+    if (octets.subarray(0, 5).toString() === '{\\rtf') return 'rtf'
+  }
+  return ext
 }
 
 function serveur(texte) {
@@ -110,4 +128,86 @@ function texteDuRtf(rtf) {
     .replace(/\\'([0-9a-f]{2})/gi, (_, code) => new TextDecoder('windows-1252').decode(new Uint8Array([parseInt(code, 16)])))
     .replace(/\\[a-z]+-?\d* ?/gi, '')
     .replace(/[{}]/g, '')
+}
+
+// ---------------------------------------------------------------- images contenues dans un document
+
+const DOSSIERS_IMAGES = /^(word|ppt|xl)\/media\/|^Pictures\//
+const TAILLE_MIN_IMAGE = 15_000 // en dessous : logos, puces, icônes
+const IMAGES_MAX = 40
+
+// Les images (photos, captures d'écran, schémas) d'un document Word, PowerPoint, Excel ou LibreOffice.
+// Renvoie [{ nom, octets }], sans les petites images ni les doublons (logo répété à chaque page…).
+export function imagesDuDocument(nom, octets) {
+  const ext = formatReel(nom, octets)
+  let images = []
+  try {
+    if (['docx', 'docm', 'pptx', 'xlsx', 'xlsm', 'odt', 'ods', 'odp'].includes(ext)) {
+      images = lireZip(octets)
+        .filter((f) => DOSSIERS_IMAGES.test(f.nom) && /\.(png|jpe?g|gif|bmp)$/i.test(f.nom))
+        .map((f) => ({ nom: f.nom.split('/').pop(), octets: f.lire() }))
+    } else if (ext === 'doc') {
+      const donnees = lireFichierCompose(octets).get('Data')
+      if (donnees) images = chercherImages(donnees)
+    }
+  } catch {
+    return []
+  }
+  const vues = new Set()
+  return images
+    .filter((image) => image.octets.length >= TAILLE_MIN_IMAGE)
+    .filter((image) => {
+      const cle = image.octets.length + ':' + image.octets.subarray(0, 64).toString('hex')
+      if (vues.has(cle)) return false
+      vues.add(cle)
+      return true
+    })
+    .slice(0, IMAGES_MAX)
+}
+
+// Dans un ancien .doc, les images sont rangées les unes après les autres dans le flux « Data » :
+// on repère les débuts et fins de fichiers PNG et JPEG.
+function chercherImages(donnees) {
+  const images = []
+  let position = 0
+  while (position < donnees.length) {
+    const png = donnees.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), position)
+    const jpeg = donnees.indexOf(Buffer.from([0xff, 0xd8, 0xff]), position)
+    const debut = [png, jpeg].filter((p) => p >= 0).sort((a, b) => a - b)[0]
+    if (debut === undefined) break
+    const fin = debut === png ? finDuPng(donnees, debut) : finDuJpeg(donnees, debut)
+    if (fin < 0) {
+      position = debut + 3 // signature trouvée au hasard des octets : on continue après
+      continue
+    }
+    images.push({ nom: `image${images.length + 1}.${debut === png ? 'png' : 'jpg'}`, octets: Buffer.from(donnees.subarray(debut, fin)) })
+    position = fin
+  }
+  return images
+}
+
+function finDuPng(donnees, debut) {
+  const iend = donnees.indexOf(Buffer.from('IEND'), debut)
+  return iend < 0 ? -1 : iend + 8
+}
+
+// Un JPEG est une suite de segments (marqueur FF xx + longueur) jusqu'aux données de l'image (FF DA) ;
+// dans ces données, FF D9 ne peut apparaître qu'à la fin.
+function finDuJpeg(donnees, debut) {
+  let position = debut + 2
+  while (position + 4 <= donnees.length) {
+    if (donnees[position] !== 0xff) return -1
+    const marqueur = donnees[position + 1]
+    if (marqueur === 0xff) {
+      position++ // octet de remplissage
+      continue
+    }
+    const longueur = donnees.readUInt16BE(position + 2)
+    if (marqueur === 0xda) {
+      const fin = donnees.indexOf(Buffer.from([0xff, 0xd9]), position + 2 + longueur)
+      return fin < 0 ? -1 : fin + 2
+    }
+    position += 2 + longueur
+  }
+  return -1
 }

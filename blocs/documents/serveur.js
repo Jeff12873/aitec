@@ -4,20 +4,17 @@ import crypto from 'node:crypto'
 import { db } from '../../serveur/socle/base.js'
 import { noterModification, etatPartage } from '../../serveur/socle/partage.js'
 import { ErreurHttp, envoyerOctets } from '../../serveur/socle/http.js'
-import { lireImage, discuter } from '../../serveur/socle/ia.js'
+import { lireImage, discuter, iaInstallee } from '../../serveur/socle/ia.js'
 import { journal } from '../../serveur/socle/installation.js'
-import { extraireTexte } from './extraction.js'
+import { extraireTexte, imagesDuDocument } from './extraction.js'
+import { CONSIGNE_IMAGE, relancerLecteurImages } from './lecteur-images.js'
 import { ajouterPassages, remplacerPassages, supprimerPassages, changerMachineDesPassages } from '../recherche/passages.js'
 
 const TAILLE_MAX = 900 * 1024 * 1024 // limite d'un champ SQLite (1 Go), avec une marge
 
-const CONSIGNE_IMAGE = `Transcris fidèlement tout le texte lisible de cette image (page de documentation technique, plaque signalétique, étiquette, schéma…).
-Garde les références, valeurs, unités et tableaux (une ligne par ligne de tableau, colonnes séparées par « | »).
-S'il n'y a presque pas de texte, décris en une ou deux phrases ce que montre l'image (machine, pièce, défaut visible).
-Réponds uniquement par la transcription, sans commentaire.`
-
 export function routes(r) {
   r.get('/api/documents', (ctx) => {
+    if (ctx.admin) relancerLecteurImages() // reprend une lecture d'images interrompue
     const conditions = []
     const valeurs = []
     if (ctx.query.machine) {
@@ -100,6 +97,23 @@ export function routes(r) {
     return { id: d.id, lecture }
   })
 
+  // Relit tous les documents que le serveur sait lire (utile après une mise à jour d'IASSITEC
+  // qui lit plus de formats, ou les images). Les PDF et photos, lus par le navigateur, ne sont pas touchés.
+  r.post('/api/documents/relire-tout', (ctx) => {
+    ctx.exigerAdmin()
+    let relus = 0
+    for (const { id } of db().prepare('SELECT id FROM documents').all()) {
+      const d = db().prepare('SELECT id, nom, contenu, machine_id FROM documents WHERE id = ?').get(id)
+      const octets = Buffer.from(d.contenu)
+      if (extraireTexte(d.nom, octets).lecture === 'navigateur') continue
+      supprimerPassages('document', d.id)
+      lireSurLeServeur(d.id, d.nom, octets, d.machine_id)
+      relus++
+    }
+    noterModification()
+    return { relus }
+  })
+
   // ---- lecture par le navigateur (PDF, images) : il envoie le texte de chaque page…
   r.post('/api/documents/:id/pages', async (ctx) => {
     ctx.exigerAdmin()
@@ -167,5 +181,12 @@ function lireSurLeServeur(id, nom, octets, machineId) {
   remplacerPassages('document', id, machineId, resultat.pages)
   const { nombre } = db().prepare("SELECT count(*) AS nombre FROM passages WHERE source = 'document' AND source_id = ?").get(id)
   db().prepare('UPDATE documents SET etat = ?, message = ?, pages = ? WHERE id = ?').run('lu', nombre ? '' : 'Aucun texte trouvé dans ce document.', resultat.pages.length, id)
+
+  // Photos et captures d'écran du document : lues ensuite par l'IA, en arrière-plan.
+  const images = iaInstallee() ? imagesDuDocument(nom, octets).length : 0
+  if (images) {
+    db().prepare("UPDATE documents SET etat = 'images', message = ? WHERE id = ?").run(`${images} image${images > 1 ? 's' : ''} en attente de lecture par l’IA`, id)
+    relancerLecteurImages()
+  }
   return 'serveur'
 }

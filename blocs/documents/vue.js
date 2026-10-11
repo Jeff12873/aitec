@@ -14,6 +14,7 @@ const ETATS = {
   'a-lire': ['orange', 'À lire'],
   'piece-jointe': ['', 'Pièce jointe'],
   erreur: ['rouge', 'Erreur'],
+  images: ['violet', 'Lecture des images…'],
 }
 
 export default {
@@ -28,10 +29,14 @@ export default {
     const liste = h('div')
     const recherche = h('input', { type: 'search', placeholder: 'Nom du document…' })
     const machine = h('select', {}, h('option', { value: '' }, 'Toutes les machines'), machines.map((m) => h('option', { value: m.id, selected: String(m.id) === query.machine }, `${m.repere} — ${m.designation}`)))
-    const suivi = h('div', { class: 'legende', style: { marginTop: '14px' } })
+    const zoneSuivi = h('div', { class: 'legende', style: { marginTop: '14px' } })
 
+    let suivi = null
     async function charger() {
       const documents = await api('/api/documents?' + new URLSearchParams({ q: recherche.value, machine: machine.value }))
+      // Tant que l'IA lit des images, la liste se met à jour toute seule.
+      clearTimeout(suivi)
+      if (documents.some((d) => d.etat === 'images')) suivi = setTimeout(() => liste.isConnected && charger(), 10_000)
       vider(
         liste,
         tableau({
@@ -48,7 +53,7 @@ export default {
               valeur: (d) =>
                 h('div', { class: 'actions', style: { flexWrap: 'nowrap' } },
                   d.passages ? h('button', { class: 'petit', title: 'Voir le texte lu et le traduire', onclick: () => voirTexte(d) }, ic('oeil', 15)) : null,
-                  estAdmin() && d.etat !== 'lu' && d.etat !== 'piece-jointe' ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d, machine.value) }, ic('rafraichir', 15), 'Lire') : null,
+                  estAdmin() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d, machine.value) }, ic('rafraichir', 15), 'Lire') : null,
                   estAdmin() ? h('button', { class: 'petit', title: 'Machine, nom…', onclick: () => modifier(d, machines) }, ic('crayon', 15)) : null,
                   estAdmin() ? h('button', { class: 'petit danger', title: 'Supprimer', onclick: () => supprimer(d) }, ic('poubelle', 15)) : null,
                 ),
@@ -80,13 +85,13 @@ export default {
       },
       ic('envoyer', 30),
       h('div', {}, h('strong', {}, 'Déposez vos fichiers ici'), ' ou cliquez pour les choisir'),
-      h('div', { class: 'discret', style: { fontSize: '13px', marginTop: '4px' } }, 'PDF (même scannés), Word, Excel, LibreOffice, PowerPoint, CSV, texte, photos… Les autres fichiers sont rangés en pièces jointes.'),
+      h('div', { class: 'discret', style: { fontSize: '13px', marginTop: '4px' } }, 'PDF (même scannés), Word (.docx et .doc, photos comprises), Excel, LibreOffice, PowerPoint, CSV, texte, photos… Les autres fichiers sont rangés en pièces jointes.'),
       choixFichiers,
     )
 
     async function deposer(fichiers) {
       for (const fichier of fichiers) {
-        const ligne = suiviFichier(suivi, fichier.name)
+        const ligne = suiviFichier(zoneSuivi, fichier.name)
         try {
           ligne.etape('Envoi…', 0.05)
           const entetes = { 'X-Nom': encodeURIComponent(fichier.name), 'X-Machine': machine.value || '' }
@@ -109,11 +114,20 @@ export default {
     vider(
       zone,
       h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Documents'), h('p', { class: 'sous-titre' }, 'Notices, schémas, procédures : tout ce que l’IA peut lire pour vous répondre'))),
-      estAdmin() ? h('div', { class: 'carte', style: { marginBottom: '16px' } }, h('p', { class: 'texte-2' }, 'Machine à laquelle rattacher les fichiers déposés : choisissez-la dans le filtre ci-dessous (facultatif).'), depot, suivi) : null,
-      h('div', { class: 'filtres' }, recherche, machine),
+      estAdmin() ? h('div', { class: 'carte', style: { marginBottom: '16px' } }, h('p', { class: 'texte-2' }, 'Machine à laquelle rattacher les fichiers déposés : choisissez-la dans le filtre ci-dessous (facultatif).'), depot, zoneSuivi) : null,
+      h('div', { class: 'filtres' }, recherche, machine, estAdmin() ? h('button', { title: 'Relire Word, Excel, PowerPoint… avec la dernière version d’IASSITEC (images comprises)', onclick: relireTout }, ic('rafraichir', 16), 'Tout relire') : null),
       liste,
     )
     await charger()
+
+    async function relireTout() {
+      if (!(await confirmer('Relire tous les documents Word, Excel, PowerPoint, LibreOffice et texte ? Les images qu’ils contiennent seront lues par l’IA en arrière-plan (cela peut prendre du temps). Les PDF et les photos ne sont pas concernés.'))) return
+      const resultat = await essayer(() => api('/api/documents/relire-tout', { methode: 'POST' }))
+      if (resultat) {
+        notifier(`${resultat.relus} documents relus. Lecture des images en cours…`)
+        charger()
+      }
+    }
   },
 }
 
