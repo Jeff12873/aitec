@@ -1,0 +1,24 @@
+﻿Code article;Désignation;Fabricant;Fournisseur principal;Qté stock;Stock mini;Unité;Magasin;PU HT;Équipements
+JT-PRS-200;Kit joints vérin principal presse 200 t;Pinette;Hydrau Services;1;1;pce;MAG-A1;294,15;PRS-01
+FLT-HYD-10;Filtre hydraulique retour 10 µm;Parker;Hydrau Services;4;2;pce;MAG-B2;139,16;PRS-01, PRS-02
+HUI-HM46-20;Huile hydraulique HM 46 (bidon 20 L);Total;Lubrifiants Est;6;4;pce;MAG-C3;587,24;PRS-01, PRS-02
+FLT-AIR-GA37;Filtre à air GA 37;Atlas Copco;Atlas Copco Service;2;2;pce;MAG-D4;68,9;CMP-01
+FLT-HUI-GA;Filtre à huile compresseur GA;Atlas Copco;Atlas Copco Service;1;2;pce;MAG-A5;484,15;CMP-01, CMP-02
+SEP-GA37;Séparateur air/huile GA 37;Atlas Copco;Atlas Copco Service;0;1;pce;MAG-B6;331,66;CMP-01
+HUI-ROTO-20;Huile Roto-Inject Fluid 20 L;Atlas Copco;Atlas Copco Service;3;1;pce;MAG-C7;55,97;CMP-01, CMP-02
+ROUL-6205;Roulement 6205-2RS;SKF;Roulements Diffusion;12;6;pce;MAG-D8;458,66;CONV-01, CONV-02, POMPE-01
+ROUL-6308;Roulement 6308-2Z;SKF;Roulements Diffusion;2;4;pce;MAG-A9;37,6;CONV-01
+BANDE-CONV1;Bande transporteuse 650 mm (ligne 1);Habasit;Convoyage Service;0;1;pce;MAG-B1;392,55;CONV-01
+MOT-TAMB-1;Motoréducteur tambour 1,5 kW;Interroll;Convoyage Service;1;1;pce;MAG-C2;66,59;CONV-01
+COUR-SPA-1250;Courroie trapézoïdale SPA 1250;Optibelt;Transmissions 54;8;4;pce;MAG-D3;85,28;CLIM-01, CMP-02
+FLT-G4-592;Filtre plan G4 592x592;Camfil;Filtration Plus;10;12;pce;MAG-A4;384,37;CLIM-01
+BUSE-SOUD-16;Buse de soudage 16 mm;Lincoln Electric;Soudure Pro;25;20;pce;MAG-B5;744,86;SOUD-01
+TUBE-CONT-12;Tube contact 1,2 mm;Lincoln Electric;Soudure Pro;40;50;pce;MAG-C6;114,93;SOUD-01
+PLAQ-CNMG12;Plaquette CNMG 120408;Sandvik;Outils Coupe;30;20;pce;MAG-D7;204,02;TOUR-03
+FRAISE-D12;Fraise carbure D12 4 dents;Sandvik;Outils Coupe;6;5;pce;MAG-A8;566,18;FRA-01
+BATT-E20;Batterie traction 48 V chariot;Linde;Linde MH;0;0;pce;MAG-B9;853,15;CHAR-01
+CABLE-PONT5;Câble de levage pont 5 t;Verlinde;Levage Contrôle;1;1;pce;MAG-C1;521,08;PONT-01
+FIN-COURSE-XC;Interrupteur fin de course XCKJ;Schneider Electric;Rexel;5;3;pce;MAG-D2;359,43;PRS-01, PRS-02, PONT-01
+VENT-ROB;Ventouse préhenseur robot;Schmalz;Robot Pièces;3;4;pce;MAG-A3;878,72;ROB-01
+CAPT-IND-M18;Capteur inductif M18;Sick;Rexel;4;2;pce;MAG-B4;45,74;CONV-01, CONV-02, ROB-01
+GARN-POMPE;Garniture mécanique pompe SEG;Grundfos;Pompes Service;1;1;pce;MAG-C5;773,19;POMPE-01

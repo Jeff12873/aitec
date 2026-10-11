@@ -127,6 +127,8 @@ export function routes(r) {
   })
 
   r.post('/api/mise-a-jour', async () => {
+    // Dans un dossier de développement (dépôt Git), la mise à jour écraserait le code en cours d'écriture.
+    if (fs.existsSync(path.join(RACINE, '.git'))) throw new ErreurHttp(409, 'Dossier de développement (Git) : mettez à jour avec « git pull » plutôt qu’ici.')
     const zip = path.join(chemins.cache, 'IASSITEC.zip')
     await telecharger(`https://github.com/${DEPOT_GITHUB}/releases/latest/download/IASSITEC.zip`, zip)
     appliquerMiseAJour(fs.readFileSync(zip))
