@@ -1,7 +1,7 @@
 # IASSITEC
 
-Assistant IA pour les agents de maintenance. Il connaît le parc, les pièces de rechange, l'historique
-des interventions et les documents de l'atelier, et répond aux questions **en français**, en citant ses sources.
+Assistant IA pour les agents de maintenance. Il connaît le parc, l'historique des
+interventions et les documents de l'atelier, et répond aux questions **en français**, en citant ses sources.
 
 - **IA gratuite, sur le poste** : un modèle libre (Qwen3.5) tourne avec llama.cpp. Rien ne sort de l'entreprise,
   tout fonctionne hors ligne après l'installation.

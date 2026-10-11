@@ -1,6 +1,6 @@
 # Bloc « parc »
 
-La liste des machines et leur fiche (informations, documents, pièces, interventions).
+La liste des machines et leur fiche (informations, documents, interventions), ouverte depuis les sources citées par l'IA.
 
 | Fichier | Rôle |
 |---|---|

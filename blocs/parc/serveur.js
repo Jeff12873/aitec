@@ -63,13 +63,10 @@ export function routes(r) {
         .all(...valeurs)
     },
 
-    // La fiche complète : la machine, ses documents, ses pièces, ses dernières interventions.
+    // La fiche complète : la machine, ses documents, ses dernières interventions.
     detailler: (m) => ({
       ...m,
       documents: db().prepare('SELECT id, nom, type, taille, etat FROM documents WHERE machine_id = ? ORDER BY nom').all(m.id),
-      pieces: db()
-        .prepare('SELECT p.id, p.reference, p.designation, p.stock, p.seuil, p.unite FROM pieces p JOIN pieces_machines pm ON pm.piece_id = p.id WHERE pm.machine_id = ? ORDER BY p.reference')
-        .all(m.id),
       interventions: db().prepare('SELECT * FROM interventions WHERE machine_id = ? ORDER BY date DESC LIMIT 50').all(m.id),
     }),
 

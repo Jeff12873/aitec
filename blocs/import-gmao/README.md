@@ -1,6 +1,6 @@
 # Bloc « import-gmao »
 
-Import des exports de GMAO (CSV, XLSX, ODS) vers les machines, les pièces ou les interventions.
+Import des exports de GMAO (CSV, XLSX, ODS) vers les machines ou les interventions.
 
 | Fichier | Rôle |
 |---|---|

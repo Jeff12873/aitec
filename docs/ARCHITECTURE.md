@@ -45,7 +45,7 @@ icône des raccourcis), `installation.json`, `reglages-poste.json`, `journal.txt
 | `tableau-de-bord` | Tuiles, graphiques, remarques de l'IA |
 | `assistant` | Discussion avec l'IA |
 | `recherche` | Passages, index, recherche par mots et par le sens |
-| `parc`, `pieces`, `interventions` | Les données de maintenance |
+| `parc`, `interventions` | Fiches des machines et des interventions (ouvertes depuis les sources de l'IA) |
 | `documents` | Dépôt et lecture des fichiers |
 | `import-gmao` | Import des exports de GMAO |
 | `administration` | Réglages, icône, mises à jour |
@@ -54,7 +54,7 @@ icône des raccourcis), `installation.json`, `reglages-poste.json`, `journal.txt
 ## Le fonctionnement de l'IA
 
 1. Tout ce qui peut être cherché est découpé en **passages** (table `passages`) : morceaux de documents
-   d'environ 1 200 caractères, et une fiche texte par machine, pièce et intervention.
+   d'environ 1 200 caractères, et une fiche texte par machine et par intervention.
 2. Chaque passage reçoit un **vecteur** (512 nombres) calculé par le petit modèle de recherche,
    en arrière-plan, sur le poste de l'administrateur.
 3. À chaque question : recherche par mots-clés (SQLite FTS5) + recherche par le sens (vecteurs),

@@ -8,7 +8,7 @@ import { etat } from '/socle/etat.js'
 
 const SUGGESTIONS = [
   'Quelles machines tombent le plus souvent en panne cette année ?',
-  'Quelles pièces faut-il commander ?',
+  'Quelles sont les pannes qui reviennent sur le convoyeur ?',
   'Comment remplacer le filtre hydraulique de la presse ?',
   'Quelles sont les dernières interventions sur le compresseur ?',
 ]
@@ -62,7 +62,7 @@ export default {
             { class: 'vide', style: { paddingTop: '60px' } },
             ic('etincelle', 40),
             h('h2', { style: { color: 'var(--texte)', marginBottom: '6px' } }, 'Que voulez-vous savoir ?'),
-            h('p', {}, 'L’assistant répond à partir de vos machines, pièces, interventions et documents, et cite ses sources.'),
+            h('p', {}, 'L’assistant répond à partir de vos machines, interventions et documents, et cite ses sources.'),
             h('div', { class: 'suggestions', style: { justifyContent: 'center', marginTop: '18px' } }, SUGGESTIONS.map((s) => h('button', { onclick: () => envoyer(s) }, s))),
           ),
         )
@@ -143,7 +143,7 @@ export default {
           { class: 'carte', style: { position: 'sticky', top: '86px' } },
           h('h3', { style: { marginBottom: '10px' } }, 'Machine concernée'),
           choixMachine,
-          h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '8px' } }, 'Choisir une machine limite la recherche à ses documents, sa fiche, ses pièces et ses interventions.'),
+          h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '8px' } }, 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.'),
           h('div', { class: 'actions', style: { marginTop: '16px' } }, h('button', { onclick: nouvelleConversation }, ic('plus', 16), 'Nouvelle conversation')),
           h('h3', { style: { margin: '22px 0 8px' } }, 'Bon à savoir'),
           h('ul', { class: 'texte-2', style: { paddingLeft: '18px', fontSize: '14px', margin: 0 } },
@@ -195,7 +195,7 @@ function dessinerMessage(message) {
 }
 
 function icone(source) {
-  return { document: 'document', machine: 'usine', piece: 'boite', intervention: 'cle' }[source] || 'document'
+  return { document: 'document', machine: 'usine', intervention: 'cle' }[source] || 'document'
 }
 
 function ouvrirSource(source) {

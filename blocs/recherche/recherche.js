@@ -28,7 +28,7 @@ export async function chercher(question, { machineId = null, limite = 8 } = {}) 
   return varier(classes, limite).map(decrirePassage).filter(Boolean)
 }
 
-// Les fiches (machines, pièces, interventions) sont nombreuses et se ressemblent : sans limite,
+// Les fiches (machines, interventions) sont nombreuses et se ressemblent : sans limite,
 // elles prendraient toute la place et les documents (notices, procédures) n'arriveraient jamais.
 // On leur laisse au plus 60 % des places, sauf s'il n'y a pas assez de documents.
 function varier(ids, limite) {
@@ -67,16 +67,17 @@ function chercherParMots(question, machineId, limite) {
   const lignes = db()
     .prepare(
       `SELECT p.id FROM passages_mots m JOIN passages p ON p.id = m.rowid
-       WHERE passages_mots MATCH ? ${filtreMachine(machineId)}
+       WHERE passages_mots MATCH ? AND p.source <> 'piece' ${filtreMachine(machineId)}
        ORDER BY m.rank LIMIT ?`,
     )
-    .all(requete, ...(machineId ? [machineId, machineId] : []), limite)
+    .all(requete, ...(machineId ? [machineId] : []), limite)
   return lignes.map((l) => l.id)
 }
 
+// Note : les passages « piece » viennent d'une ancienne version (pièces de rechange, fonction retirée) : on les ignore.
 function filtreMachine(machineId) {
   if (!machineId) return ''
-  return `AND (p.machine_id = ? OR (p.source = 'piece' AND p.source_id IN (SELECT piece_id FROM pieces_machines WHERE machine_id = ?)))`
+  return 'AND p.machine_id = ?'
 }
 
 // ---------------------------------------------------------------- par le sens
@@ -85,11 +86,11 @@ function filtreMachine(machineId) {
 let memoire = { cle: null, ids: null, matrice: null, dimensions: 0 }
 
 function chargerVecteurs() {
-  const { nombre, dernier } = db().prepare('SELECT count(*) AS nombre, max(id) AS dernier FROM passages WHERE vecteur IS NOT NULL').get()
+  const { nombre, dernier } = db().prepare("SELECT count(*) AS nombre, max(id) AS dernier FROM passages WHERE vecteur IS NOT NULL AND source <> 'piece'").get()
   const cle = `${etatPartage().version}-${nombre}-${dernier}`
   if (memoire.cle === cle) return memoire
 
-  const lignes = db().prepare('SELECT id, vecteur FROM passages WHERE vecteur IS NOT NULL').all()
+  const lignes = db().prepare("SELECT id, vecteur FROM passages WHERE vecteur IS NOT NULL AND source <> 'piece'").all()
   const dimensions = lignes.length ? lignes[0].vecteur.byteLength / 4 : 0
   const ids = new Int32Array(lignes.length)
   const matrice = new Float32Array(lignes.length * dimensions)
@@ -111,7 +112,7 @@ async function chercherParSens(question, machineId, limite) {
     autorises = new Set(
       db()
         .prepare(`SELECT p.id FROM passages p WHERE 1 ${filtreMachine(machineId)}`)
-        .all(machineId, machineId)
+        .all(machineId)
         .map((l) => l.id),
     )
   }
@@ -148,10 +149,6 @@ export function decrirePassage(id) {
     const m = db().prepare('SELECT repere, designation FROM machines WHERE id = ?').get(p.source_id)
     titre = `Fiche machine ${m?.repere || ''} — ${m?.designation || ''}`
     lien = `#/parc/${p.source_id}`
-  } else if (p.source === 'piece') {
-    const pc = db().prepare('SELECT reference, designation FROM pieces WHERE id = ?').get(p.source_id)
-    titre = `Pièce ${pc?.reference || ''} — ${pc?.designation || ''}`
-    lien = `#/pieces/${p.source_id}`
   } else if (p.source === 'intervention') {
     const i = db()
       .prepare('SELECT i.date, i.numero, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE i.id = ?')

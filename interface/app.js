@@ -10,7 +10,6 @@ import { api } from './socle/api.js'
 import tableauDeBord from '/blocs/tableau-de-bord/vue.js'
 import assistant from '/blocs/assistant/vue.js'
 import parc from '/blocs/parc/vue.js'
-import pieces from '/blocs/pieces/vue.js'
 import interventions from '/blocs/interventions/vue.js'
 import documents from '/blocs/documents/vue.js'
 import importGmao from '/blocs/import-gmao/vue.js'
@@ -21,7 +20,7 @@ import { afficherAccueil, ouvrirModeAdmin, quitterModeAdmin } from '/blocs/fichi
 
 // L'ordre est celui du menu. Seuls l'assistant, le tableau de bord et l'administration y figurent (menu: true) ;
 // les autres écrans s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
-const BLOCS = [assistant, tableauDeBord, administration, parc, pieces, interventions, documents, importGmao, aide, recherche]
+const BLOCS = [assistant, tableauDeBord, administration, parc, interventions, documents, importGmao, aide, recherche]
 
 const racine = document.getElementById('appli')
 let zone = null // l'endroit où s'affiche le bloc

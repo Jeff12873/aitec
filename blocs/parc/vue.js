@@ -1,6 +1,6 @@
-// Le parc : liste des machines et fiche de chaque machine.
+// Le parc : liste des machines et fiche de chaque machine (ouverte depuis les sources de l'IA).
 
-import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, nombreFr, tailleFr, apresPause } from '/socle/ui.js'
+import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, tailleFr, apresPause } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { estAdmin } from '/socle/etat.js'
 
@@ -100,21 +100,6 @@ async function afficherFiche(zone, id) {
         m.documents.length
           ? h('div', { class: 'legende' }, m.documents.map((d) => h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank', style: { display: 'flex', gap: '10px', alignItems: 'center', color: 'inherit' } }, ic('document', 16), h('span', { style: { flex: 1 } }, d.nom), h('span', { class: 'discret' }, tailleFr(d.taille)))))
           : h('div', { class: 'vide' }, 'Aucun document pour cette machine. Déposez sa notice dans Documents.'),
-      ),
-      h(
-        'div',
-        { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('boite', 18), 'Pièces de rechange')),
-        tableau({
-          lignes: m.pieces,
-          surClic: (p) => (location.hash = `#/pieces/${p.id}`),
-          vide: 'Aucune pièce rattachée.',
-          colonnes: [
-            { titre: 'Référence', valeur: (p) => h('span', { class: 'mono' }, p.reference) },
-            { titre: 'Désignation', valeur: (p) => p.designation },
-            { titre: 'Stock', classe: 'nombre', valeur: (p) => h('span', { class: p.stock <= p.seuil ? 'etiquette orange' : '' }, `${nombreFr(p.stock, 2)} ${p.unite}`) },
-          ],
-        }),
       ),
       h(
         'div',

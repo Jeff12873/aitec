@@ -12,9 +12,6 @@ export function routes(r) {
       .prepare("SELECT type, count(*) AS nombre FROM interventions WHERE date >= date('now', '-12 months') GROUP BY type ORDER BY nombre DESC")
       .all(),
     machinesEnPanne: machinesLesPlusEnPanne(6),
-    piecesACommander: db()
-      .prepare('SELECT id, reference, designation, stock, seuil, unite FROM pieces WHERE seuil > 0 AND stock <= seuil ORDER BY (stock - seuil), reference LIMIT 8')
-      .all(),
     dernieresInterventions: db()
       .prepare('SELECT i.id, i.date, i.type, i.description, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id ORDER BY i.date DESC, i.id DESC LIMIT 6')
       .all(),
@@ -30,7 +27,6 @@ export function routes(r) {
       interventionsParMois: interventionsParMois(),
       machinesLesPlusEnPanne12Mois: machinesLesPlusEnPanne(10),
       machinesEnHausse: machinesEnHausse(),
-      piecesACommander: db().prepare('SELECT reference, designation, stock, seuil FROM pieces WHERE seuil > 0 AND stock <= seuil LIMIT 20').all(),
       machinesSansDocument: db().prepare('SELECT repere, designation FROM machines WHERE id NOT IN (SELECT machine_id FROM documents WHERE machine_id IS NOT NULL) LIMIT 20').all(),
     }
     const texte = await discuter(
@@ -38,7 +34,7 @@ export function routes(r) {
         {
           role: 'system',
           content: `Tu es l'assistant d'un responsable de maintenance. À partir des données JSON fournies, écris 3 à 5 constats utiles, en français, sous forme de liste à puces courtes (une phrase chacune, avec les chiffres et les repères de machines).
-Mets en avant ce qui demande une action : machines dont les pannes augmentent, pièces à commander, machines sans documentation, déséquilibre préventif/correctif. N'invente rien qui ne soit pas dans les données. Si les données sont presque vides, dis simplement ce qu'il faudrait importer.`,
+Mets en avant ce qui demande une action : machines dont les pannes augmentent, pannes qui se répètent, machines sans documentation, déséquilibre préventif/correctif. N'invente rien qui ne soit pas dans les données. Si les données sont presque vides, dis simplement ce qu'il faudrait importer.`,
         },
         { role: 'user', content: JSON.stringify(donnees) },
       ],
@@ -56,8 +52,6 @@ function tuiles() {
   return {
     machines: compter('SELECT count(*) AS n FROM machines'),
     machinesHorsService: compter("SELECT count(*) AS n FROM machines WHERE etat <> '' AND etat NOT LIKE 'En service%'"),
-    pieces: compter('SELECT count(*) AS n FROM pieces'),
-    piecesACommander: compter('SELECT count(*) AS n FROM pieces WHERE seuil > 0 AND stock <= seuil'),
     interventions30j: compter("SELECT count(*) AS n FROM interventions WHERE date >= date('now', '-30 days')"),
     interventions30jAvant: compter("SELECT count(*) AS n FROM interventions WHERE date >= date('now', '-60 days') AND date < date('now', '-30 days')"),
     interventions: compter('SELECT count(*) AS n FROM interventions'),
@@ -117,5 +111,5 @@ function machinesEnHausse() {
 export function resumeChiffres() {
   const t = tuiles()
   const nom = reglage('nom_atelier', 'Atelier')
-  return `Atelier « ${nom} » : ${t.machines} machines (${t.machinesHorsService} hors service), ${t.pieces} pièces de rechange dont ${t.piecesACommander} sous le seuil de commande, ${t.interventions} interventions enregistrées dont ${t.interventions30j} ces 30 derniers jours, ${t.documents} documents.`
+  return `Atelier « ${nom} » : ${t.machines} machines (${t.machinesHorsService} hors service), ${t.interventions} interventions enregistrées dont ${t.interventions30j} ces 30 derniers jours, ${t.documents} documents.`
 }

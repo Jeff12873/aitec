@@ -100,7 +100,7 @@ async function modifierIntervention(intervention, machines, types, machineParDef
       { nom: 'cause', libelle: 'Cause / symptôme', type: 'zone' },
       { nom: 'intervenant', libelle: 'Intervenant' },
       { nom: 'duree_h', libelle: 'Durée (heures)', type: 'nombre' },
-      { nom: 'statut', libelle: 'Statut', type: 'choix', choix: ['Terminée', 'En cours', 'En attente de pièce', 'Planifiée'], defaut: 'Terminée' },
+      { nom: 'statut', libelle: 'Statut', type: 'choix', choix: ['Terminée', 'En cours', 'Planifiée'], defaut: 'Terminée' },
     ],
     intervention || {},
   )

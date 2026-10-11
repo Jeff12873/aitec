@@ -22,7 +22,7 @@ export default {
 
     vider(
       zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Import GMAO'), h('p', { class: 'sous-titre' }, 'Machines, pièces de rechange et historique des interventions, depuis un export CSV, Excel ou LibreOffice'))),
+      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Import GMAO'), h('p', { class: 'sous-titre' }, 'Machines et historique des interventions, depuis un export CSV, Excel ou LibreOffice'))),
       h(
         'div',
         { class: 'carte', style: { marginBottom: '16px' } },

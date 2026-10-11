@@ -20,7 +20,7 @@ export function afficherAccueil(racine) {
           { class: 'accueil-titre' },
           h('img', { src: '/api/icone', alt: '' }),
           h('h1', {}, 'Bienvenue dans IASSITEC'),
-          h('p', { class: 'sous-titre' }, "L'assistant de maintenance qui connaît votre parc, vos pièces et vos documents."),
+          h('p', { class: 'sous-titre' }, "L'assistant de dépannage qui connaît votre parc, son historique et vos documents."),
         ),
         h(
           'div',
@@ -111,7 +111,7 @@ export function choisirFichier() {
   return promesse
 }
 
-function creerFichier() {
+export function creerFichier() {
   const choix = explorateur('dossier', () => {})
   const form = formulaire([
     { nom: 'nomFichier', libelle: 'Nom du fichier', obligatoire: true, defaut: 'atelier', aide: '.datassitec sera ajouté' },
@@ -162,7 +162,7 @@ export async function ouvrirModeAdmin() {
     contenu: h(
       'div',
       {},
-      h('p', { class: 'texte-2' }, 'Le mode administrateur permet de modifier la base : machines, pièces, documents, imports. Un seul administrateur à la fois.'),
+      h('p', { class: 'texte-2' }, 'Le mode administrateur permet de modifier la base : documents, imports, réglages. Un seul administrateur à la fois.'),
       autre ? h('div', { class: 'bandeau' }, ic('alerte'), `${autre.nom} (${autre.poste}) modifie la base depuis ${heureFr(new Date(autre.depuis).toISOString())}.`) : null,
       form.element,
     ),

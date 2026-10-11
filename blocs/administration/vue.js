@@ -3,7 +3,7 @@
 import { h, vider, ic, fenetre, formulaire, essayer, notifier, confirmer, dateHeureFr, tailleFr, nombreFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { etat, estAdmin, actualiserEtat } from '/socle/etat.js'
-import { choisirFichier, ouvrirModeAdmin } from '/blocs/fichier/vue.js'
+import { choisirFichier, creerFichier, ouvrirModeAdmin } from '/blocs/fichier/vue.js'
 import documents from '/blocs/documents/vue.js'
 import importGmao from '/blocs/import-gmao/vue.js'
 
@@ -116,6 +116,7 @@ function carteFichier(infos) {
     h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '6px' } }, 'Elles sont dans le dossier « IASSITEC-sauvegardes », à côté du fichier. Pour revenir à une sauvegarde : voir l’aide « Sauvegardes ».'),
     h('div', { class: 'actions', style: { marginTop: '14px' } },
       h('button', { onclick: choisirFichier }, ic('dossier', 16), 'Ouvrir un autre fichier'),
+      h('button', { onclick: creerFichier }, ic('plus', 16), 'Créer un nouveau fichier'),
       h('a', { class: 'bouton', href: '#/aide/sauvegardes' }, 'Aide'),
     ),
   )

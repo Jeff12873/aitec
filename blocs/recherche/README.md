@@ -26,4 +26,4 @@ Utilisé par l'assistant et par la barre de recherche.
    (produit scalaire, les vecteurs étant normalisés).
 3. **Fusion** : chaque passage reçoit `1 / (60 + rang)` pour chaque liste où il apparaît ; on garde les meilleurs.
 
-Filtrer sur une machine garde ses documents, sa fiche, ses interventions et les pièces qui lui sont rattachées.
+Filtrer sur une machine garde ses documents, sa fiche et ses interventions.

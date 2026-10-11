@@ -1,4 +1,4 @@
-// Tableau de bord : tuiles chiffrées, graphiques, pièces à commander, remarques de l'IA.
+// Tableau de bord : tuiles chiffrées, graphiques, remarques de l'IA.
 
 import { h, vider, ic, dateFr, nombreFr, ilYa, essayer } from '/socle/ui.js'
 import { api } from '/socle/api.js'
@@ -31,10 +31,9 @@ export default {
 
       h(
         'div',
-        { class: 'grille grille-4', style: { marginBottom: '16px' } },
+        { class: 'grille grille-3', style: { marginBottom: '16px' } },
         tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, null),
         tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, null),
-        tuile('alerte', t.piecesACommander ? 'rouge' : '', 'Pièces à commander', nombreFr(t.piecesACommander), h('small', {}, `sur ${nombreFr(t.pieces)}`), null),
         tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
       ),
 
@@ -44,8 +43,7 @@ export default {
         h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
         carteRemarques(d.remarques),
         h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois'), graphiqueTypes(d.parType)),
-        h('div', { class: 'carte' }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois'), graphiquePannes(d.machinesEnPanne)),
-        h('div', { class: 'carte' }, entete('boite', 'Pièces à commander'), listePieces(d.piecesACommander)),
+        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois'), graphiquePannes(d.machinesEnPanne)),
         h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions'), listeInterventions(d.dernieresInterventions)),
       ),
     )
@@ -70,7 +68,7 @@ function bandeauDemarrage() {
     'div',
     { class: 'bandeau info' },
     ic('etincelle'),
-    h('div', {}, h('strong', {}, 'La base est vide. '), 'Dans Administration, importez les exports de votre GMAO (machines, pièces, historique) et déposez les notices des machines. ', h('a', { href: '#/aide/premiers-pas' }, 'Voir les premiers pas')),
+    h('div', {}, h('strong', {}, 'La base est vide. '), 'Dans Administration, importez les exports de votre GMAO (machines, historique des interventions) et déposez les notices des machines. ', h('a', { href: '#/aide/premiers-pas' }, 'Voir les premiers pas')),
   )
 }
 
@@ -105,20 +103,6 @@ function graphiqueTypes(parType) {
 function graphiquePannes(machines) {
   if (!machines.length) return h('div', { class: 'vide' }, 'Aucune panne enregistrée sur 12 mois.')
   return barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere} · ${m.designation}`, valeur: m.pannes })))
-}
-
-function listePieces(pieces) {
-  if (!pieces.length) return h('div', { class: 'vide' }, ic('coche', 28), 'Aucune pièce sous le seuil.')
-  return h(
-    'div',
-    { class: 'legende' },
-    pieces.map((p) =>
-      h('a', { href: `#/pieces/${p.id}`, style: { display: 'flex', gap: '10px', color: 'inherit', alignItems: 'center' } },
-        h('span', { class: `etiquette ${p.stock <= 0 ? 'rouge' : 'orange'}` }, `${nombreFr(p.stock, 2)} / ${nombreFr(p.seuil, 2)}`),
-        h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, h('span', { class: 'mono' }, p.reference), ' ', h('span', { class: 'texte-2' }, p.designation)),
-      ),
-    ),
-  )
 }
 
 function listeInterventions(liste) {
@@ -157,7 +141,7 @@ function carteRemarques(remarques) {
   }
 
   if (remarques) montrer(remarques)
-  else corps.append(h('p', { class: 'texte-2' }, 'L’IA peut relever les points qui demandent votre attention : pannes en hausse, pièces à commander, machines sans documentation…'))
+  else corps.append(h('p', { class: 'texte-2' }, 'L’IA peut relever les points qui demandent votre attention : pannes en hausse, pannes récurrentes, machines sans documentation…'))
 
   return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, h('span', { class: 'pastille', style: { color: 'var(--accent)' } }, ic('etincelle', 18)), 'Ce que l’IA remarque'), date), corps, h('div', { class: 'actions', style: { marginTop: '12px' } }, bouton, h('a', { class: 'bouton petit', href: '#/assistant' }, ic('etincelle', 14), 'Poser une question')))
 }

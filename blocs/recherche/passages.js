@@ -2,7 +2,7 @@
 //
 // Un document est découpé en passages d'environ 1 200 caractères (une demi-page),
 // qui se chevauchent un peu pour ne pas couper une explication en deux.
-// Chaque fiche (machine, pièce, intervention) donne un seul passage.
+// Chaque fiche (machine, intervention) donne un seul passage.
 
 import { db } from '../../serveur/socle/base.js'
 import { relancerIndexeur } from './indexeur.js'

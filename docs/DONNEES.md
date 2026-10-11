@@ -6,8 +6,7 @@ Base SQLite. Structure complète : `STRUCTURE` dans `serveur/socle/base.js`.
 |---|---|
 | `reglages` | `format` (version de la structure), `nom_atelier`, `mot_de_passe` (empreinte scrypt), `icone` et `icone_type`, `imports` (correspondances de colonnes retenues), `cree_le`, `cree_par` |
 | `machines` | `repere` (unique), `designation`, `famille`, `marque`, `modele`, `numero_serie`, `emplacement`, `mise_en_service`, `etat`, `notes` |
-| `pieces` | `reference` (unique), `designation`, `fabricant`, `fournisseur`, `stock`, `seuil`, `unite`, `emplacement`, `prix`, `notes` |
-| `pieces_machines` | Quelle pièce va sur quelle machine |
+| `pieces`, `pieces_machines` | Pièces de rechange : fonction retirée, tables gardées vides pour la compatibilité des fichiers |
 | `interventions` | `numero` (unique, facultatif), `date`, `machine_id`, `type`, `description`, `cause`, `intervenant`, `duree_h`, `statut` |
 | `documents` | Le fichier lui-même (`contenu`), son nom, type, taille, empreinte SHA-256, machine, état de lecture |
 | `passages` | Les morceaux de texte que l'IA peut retrouver, avec leur source, leur page et leur vecteur |

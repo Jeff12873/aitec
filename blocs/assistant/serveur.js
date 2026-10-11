@@ -19,7 +19,7 @@ Règles :
 - Appuie-toi uniquement sur les SOURCES et les CHIFFRES fournis. Les sources peuvent être dans une autre langue : traduis ce que tu en utilises.
 - Après chaque information, cite la source avec son numéro entre crochets, par exemple [2].
 - Si les sources ne contiennent pas la réponse, dis-le franchement (« Je ne trouve pas cette information dans la base. »), puis indique quel document ou quelle donnée il faudrait ajouter. N'invente jamais une référence, une valeur, un couple de serrage ou un réglage.
-- Pour une intervention à risque (électricité, hydraulique, pneumatique, pression, levage, pièces en mouvement), rappelle de consigner la machine et de suivre les consignes de sécurité du site.
+- Pour une intervention à risque (électricité, hydraulique, pneumatique, pression, levage, organes en mouvement), rappelle de consigner la machine et de suivre les consignes de sécurité du site.
 - Aujourd'hui, nous sommes le {date}.`
 
 export function routes(r) {

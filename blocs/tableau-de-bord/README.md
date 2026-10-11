@@ -1,7 +1,7 @@
 # Bloc « tableau-de-bord »
 
 Tuiles chiffrées, graphiques (interventions par mois, types, machines les plus en panne),
-pièces à commander, dernières interventions, et « Ce que l'IA remarque ».
+dernières interventions, et « Ce que l'IA remarque ».
 
 | Fichier | Rôle |
 |---|---|

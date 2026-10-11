@@ -1,4 +1,4 @@
-// Import des exports de GMAO (CSV, Excel, LibreOffice) vers les machines, les pièces ou les interventions.
+// Import des exports de GMAO (CSV, Excel, LibreOffice) vers les machines ou les interventions.
 //
 // Déroulé :
 //   1. POST /api/import/lire     → le fichier est lu, on renvoie ses colonnes, un aperçu et une correspondance proposée
@@ -13,7 +13,6 @@ import { nouveauJeton } from '../../serveur/socle/securite.js'
 import { lireTableur } from '../../serveur/socle/tableurs.js'
 import { convertir, lireDate } from '../../serveur/socle/tables.js'
 import { machines, indexerMachine } from '../parc/serveur.js'
-import { pieces, indexerPiece, rattacherMachines } from '../pieces/serveur.js'
 import { interventions, indexerIntervention } from '../interventions/serveur.js'
 
 // Les champs qu'on peut remplir, et les noms de colonnes qu'on reconnaît automatiquement
@@ -32,22 +31,6 @@ export const CIBLES = {
       { nom: 'mise_en_service', libelle: 'Mise en service', type: 'date', synonymes: ['mise en service', 'date mise en service', 'date mes', 'date installation', 'annee'] },
       { nom: 'etat', libelle: 'État', synonymes: ['etat', 'statut', 'status'] },
       { nom: 'notes', libelle: 'Notes', synonymes: ['notes', 'commentaire', 'commentaires', 'observations', 'remarques'] },
-    ],
-  },
-  pieces: {
-    libelle: 'Pièces de rechange',
-    champs: [
-      { nom: 'reference', libelle: 'Référence', obligatoire: true, synonymes: ['reference', 'ref', 'code article', 'article', 'code piece', 'n article', 'part number', 'pn', 'code'] },
-      { nom: 'designation', libelle: 'Désignation', obligatoire: true, synonymes: ['designation', 'libelle', 'libelle article', 'description', 'nom'] },
-      { nom: 'fabricant', libelle: 'Fabricant', synonymes: ['fabricant', 'marque', 'constructeur', 'manufacturer'] },
-      { nom: 'fournisseur', libelle: 'Fournisseur', synonymes: ['fournisseur', 'fournisseur principal', 'supplier', 'vendeur'] },
-      { nom: 'stock', libelle: 'Stock', type: 'nombre', synonymes: ['stock', 'stock actuel', 'quantite en stock', 'qte stock', 'quantite', 'qte', 'qty'] },
-      { nom: 'seuil', libelle: 'Seuil de commande', type: 'nombre', synonymes: ['seuil', 'seuil de commande', 'stock mini', 'stock minimum', 'stock min', 'mini', 'point de commande'] },
-      { nom: 'unite', libelle: 'Unité', synonymes: ['unite', 'u', 'unite de stock'] },
-      { nom: 'emplacement', libelle: 'Rangement', synonymes: ['emplacement', 'magasin', 'casier', 'localisation', 'rangement'] },
-      { nom: 'prix', libelle: 'Prix unitaire', type: 'nombre', synonymes: ['prix', 'prix unitaire', 'pu', 'pump', 'cout unitaire', 'cout'] },
-      { nom: 'notes', libelle: 'Notes', synonymes: ['notes', 'commentaire', 'observations'] },
-      { nom: 'machines', libelle: 'Machines (repères séparés par des virgules)', synonymes: ['machines', 'equipements', 'utilise sur', 'machine', 'equipement'] },
     ],
   },
   interventions: {
@@ -133,7 +116,7 @@ export function routes(r) {
 
 function importer(cible, lignes, correspondances, mettreAJour) {
   const bilan = { crees: 0, modifies: 0, ignores: 0, machinesCreees: 0, erreurs: [] }
-  const aIndexer = { machine: new Set(), piece: new Set(), intervention: new Set() }
+  const aIndexer = { machine: new Set(), intervention: new Set() }
 
   transaction(() => {
     lignes.forEach((ligne, numero) => {
@@ -146,7 +129,6 @@ function importer(cible, lignes, correspondances, mettreAJour) {
         // Chaque ligne est importée entièrement ou pas du tout.
         transaction(() => {
           if (cible === 'machines') importerMachine(valeurs, mettreAJour, bilan, aIndexer)
-          if (cible === 'pieces') importerPiece(valeurs, mettreAJour, bilan, aIndexer)
           if (cible === 'interventions') importerIntervention(valeurs, mettreAJour, bilan, aIndexer)
         })
       } catch (erreur) {
@@ -159,7 +141,6 @@ function importer(cible, lignes, correspondances, mettreAJour) {
   // Mise à jour de l'index de recherche (les vecteurs seront calculés ensuite, en arrière-plan).
   transaction(() => {
     for (const id of aIndexer.machine) indexerMachine(id)
-    for (const id of aIndexer.piece) indexerPiece(id)
     for (const id of aIndexer.intervention) indexerIntervention(id)
   })
   return bilan
@@ -181,22 +162,6 @@ function importerMachine(valeurs, mettreAJour, bilan, aIndexer) {
   if (!valeurs.designation) valeurs.designation = valeurs.repere
   const id = enregistrerAvecCle(machines, 'repere', valeurs, mettreAJour, bilan)
   if (id) aIndexer.machine.add(id)
-}
-
-function importerPiece(valeurs, mettreAJour, bilan, aIndexer) {
-  if (!valeurs.reference) throw new Error('référence vide')
-  if (!valeurs.designation) valeurs.designation = valeurs.reference
-  const id = enregistrerAvecCle(pieces, 'reference', valeurs, mettreAJour, bilan)
-  if (!id) return
-  if (valeurs.machines) {
-    const ids = String(valeurs.machines)
-      .split(/[,;/|\n]+/)
-      .map((repere) => repere.trim())
-      .filter(Boolean)
-      .map((repere) => trouverOuCreerMachine(repere, bilan, aIndexer))
-    rattacherMachines(id, ids)
-  }
-  aIndexer.piece.add(id)
 }
 
 function importerIntervention(valeurs, mettreAJour, bilan, aIndexer) {
