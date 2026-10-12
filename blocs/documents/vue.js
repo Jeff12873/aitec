@@ -59,6 +59,7 @@ export default {
                 h('div', { class: 'actions', style: { flexWrap: 'nowrap' } },
                   d.passages ? h('button', { class: 'petit', title: 'Voir le texte lu et le traduire', onclick: () => voirTexte(d) }, ic('oeil', 15)) : null,
                   estAdmin() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d) }, ic('rafraichir', 15), 'Lire') : null,
+                  estAdmin() && !['a-lire', 'erreur', 'piece-jointe'].includes(d.etat) ? h('button', { class: 'petit', title: 'Relire ce document (texte et images)', onclick: () => relire(d) }, ic('rafraichir', 15)) : null,
                   estAdmin() ? h('button', { class: 'petit', title: 'Machine, nom…', onclick: () => modifier(d, machines) }, ic('crayon', 15)) : null,
                   estAdmin() ? h('button', { class: 'petit danger', title: 'Supprimer', onclick: () => supprimer(d) }, ic('poubelle', 15)) : null,
                 ),
@@ -162,6 +163,7 @@ function bandeauLecture({ documents, images }) {
 async function lireDansLeNavigateur(id, fichier, ligne, genre = 'document') {
   const nom = fichier.name.toLowerCase()
   try {
+    verifierImagesDuNavigateur()
     if (nom.endsWith('.pdf')) await lirePdf(id, fichier, ligne, genre)
     else await lireImage(id, fichier, ligne)
   } catch (erreur) {
@@ -212,6 +214,33 @@ async function lirePdf(id, fichier, ligne, genre) {
   }
   if (lot.length) await api(`/api/documents/${id}/pages`, { methode: 'POST', corps: lot })
   await api(`/api/documents/${id}/fin`, { methode: 'POST', corps: { pages: pdf.numPages } })
+}
+
+// Certains navigateurs (LibreWolf, Firefox avec « resistFingerprinting », Brave…) brouillent les images
+// produites par les pages, pour empêcher le pistage. IASSITEC enregistrerait alors des rayures à la place
+// des pages : on vérifie avant, en dessinant quatre couleurs connues et en les relisant.
+export function verifierImagesDuNavigateur() {
+  const toile = document.createElement('canvas')
+  toile.width = toile.height = 4
+  const contexte = toile.getContext('2d', { willReadFrequently: true })
+  const couleurs = ['#ff0000', '#00ff00', '#0000ff', '#ffffff']
+  couleurs.forEach((couleur, i) => {
+    contexte.fillStyle = couleur
+    contexte.fillRect((i % 2) * 2, Math.floor(i / 2) * 2, 2, 2)
+  })
+  const attendu = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255]]
+  const lu = contexte.getImageData(0, 0, 4, 4).data
+  const fiable = attendu.every(([r, v, b], i) => {
+    const position = ((Math.floor(i / 2) * 2) * 4 + (i % 2) * 2) * 4
+    return lu[position] === r && lu[position + 1] === v && lu[position + 2] === b
+  })
+  if (!fiable) {
+    throw new Error(
+      'Ce navigateur brouille les images des pages (protection contre le pistage : LibreWolf, Firefox renforcé, Brave…). ' +
+        'IASSITEC ne peut pas y lire les schémas, plans et PDF scannés. Autorisez 127.0.0.1 dans ses réglages, ' +
+        'ou ouvrez IASSITEC dans Chrome, Edge ou Firefox (voir l’aide « Dépannage »).',
+    )
+  }
 }
 
 // La page contient-elle une vraie image (photo, capture), et pas seulement un logo ?

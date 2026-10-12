@@ -3,6 +3,13 @@
 <p>La préparation n'a pas été faite sur ce poste, ou n'est pas allée au bout : relancez <b>Preparer IASSITEC</b>. Sans IA, IASSITEC reste utilisable (consultation, recherche par mots).</p>
 <h2>L'IA est lente</h2>
 <p>Le premier chargement du modèle prend de quelques secondes à une minute ; ensuite les réponses sont plus rapides. L'IA se met en veille après un moment sans question (réglable dans Administration). Sans carte graphique, un modèle plus petit répond plus vite.</p>
+<h2>Les schémas, plans ou PDF scannés sont mal lus (« rayures », « motifs répétitifs »)</h2>
+<p>Certains navigateurs brouillent volontairement les images produites par les pages web, pour empêcher le pistage : <b>LibreWolf</b>, Firefox avec la protection renforcée « resistFingerprinting », Brave… IASSITEC dessine les pages des PDF dans le navigateur : il obtient alors des rayures au lieu des folios. Il le détecte et refuse de lire ces documents, avec un message.</p>
+<ul>
+<li><b>Le plus simple</b> : ouvrir IASSITEC (l'adresse <code>http://127.0.0.1:47800</code>) dans Chrome, Edge ou Firefox standard pour déposer les schémas.</li>
+<li><b>LibreWolf</b> : taper <code>about:config</code> dans la barre d'adresse, chercher <code>privacy.resistFingerprinting.exemptedDomains</code> et y mettre <code>127.0.0.1</code>, puis recharger IASSITEC. Ou accepter la demande « extraction de données de canevas » si l'icône apparaît dans la barre d'adresse.</li>
+</ul>
+<p>Ensuite, dans Administration › Documents, cliquez sur le bouton <b>Relire</b> (flèches) du document.</p>
 <h2>« Le fichier partagé est inaccessible »</h2>
 <p>Le lecteur réseau ne répond pas : vous consultez la dernière copie du poste. Vérifiez la connexion au réseau ; IASSITEC se remet à jour tout seul dès que le partage revient.</p>
 <h2>« X modifie en ce moment » et personne ne modifie</h2>
