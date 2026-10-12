@@ -153,6 +153,12 @@ function ecrireVerrou(verrou, { exclusif = false } = {}) {
 export function entrerAdmin(nom, { forcer = false } = {}) {
   if (!etat.fichier) throw Object.assign(new Error('Aucun fichier ouvert'), { statut: 409 })
   if (etat.admin) return { ok: true }
+  if (!fs.existsSync(etat.fichier)) {
+    throw Object.assign(
+      new Error(`Le fichier de l'atelier est introuvable (${etat.fichier}) : modification impossible. Vérifiez le lecteur réseau, ou ouvrez un autre fichier (Administration › Réglages).`),
+      { statut: 409 },
+    )
+  }
 
   const existant = lireVerrou()
   const abandonne = existant && Date.now() - existant.vu > VERROU_ABANDONNE
