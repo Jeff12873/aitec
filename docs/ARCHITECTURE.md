@@ -33,7 +33,7 @@ icône des raccourcis), `installation.json`, `reglages-poste.json`, `journal.txt
 | `partage.js` | Le fichier partagé : copie locale, verrou administrateur, publication, sauvegardes |
 | `tables.js` | Lecture et écriture des tables simples, routes standard, conversion des dates et nombres |
 | `ia.js` | Démarrage / arrêt des modèles (llama.cpp), questions au modèle, vecteurs de recherche |
-| `zip.js`, `tableurs.js` | Lecture des ZIP (Office récent), des CSV, XLS, XLSX et ODS |
+| `zip.js`, `tar.js`, `tableurs.js` | Lecture des ZIP (Office récent), des .tar.gz (kits Linux), des CSV, XLS, XLSX et ODS |
 | `fichier-compose.js`, `word97.js`, `excel97.js`, `powerpoint97.js` | Lecture des anciens formats Office (.doc, .xls, .ppt) |
 | `telechargement.js` | Téléchargements avec reprise et vérification |
 | `icone.js`, `securite.js` | Icône des raccourcis ; mots de passe |

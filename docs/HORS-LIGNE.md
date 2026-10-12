@@ -6,14 +6,27 @@ Node, llama.cpp et le modèle pendant la préparation) reste la version normale 
 
 ## Fabriquer le kit (sur un PC connecté à Internet)
 
+Le plus simple : **double-cliquer sur `Fabriquer kit hors ligne.bat`** (Windows) ou lancer
+**`sh fabriquer-kit-hors-ligne.sh`** (Linux). Trois questions : pour quels postes (Windows ou Linux), quels
+modèles, quel dossier. **Un kit Windows se fabrique depuis Linux, et inversement** : les archives sont
+décompressées par IASSITEC lui-même (`serveur/socle/zip.js` et `serveur/socle/tar.js`), sans outil du système.
+Les lanceurs se trouvent aussi dans chaque kit : on peut fabriquer un kit Linux à partir d'un kit Windows
+(et inversement) en reprenant ses modèles, sans les retélécharger.
+
+En ligne de commande :
+
 ```sh
 node outils/fabriquer-kit-hors-ligne.js                      # Windows, modèles petit + moyen (~11 Go)
 node outils/fabriquer-kit-hors-ligne.js --modeles moyen,grand # avec le modèle lourd (~31 Go)
 node outils/fabriquer-kit-hors-ligne.js --systeme linux       # kit pour des postes Linux
 ```
 
-Le kit est créé à côté du dossier IASSITEC (`IASSITEC-hors-ligne-windows`). Les modèles déjà téléchargés sur
-le PC sont repris ; tout est vérifié (taille et empreinte). Relancer la commande complète un kit interrompu.
+Le kit est créé à côté du dossier IASSITEC (`IASSITEC-hors-ligne-windows`). Les modèles déjà présents (sur le PC
+ou dans le kit d'où l'on part) sont repris ; tout est vérifié (taille et empreinte). Relancer complète un kit
+interrompu ou met à jour le programme d'un kit existant.
+
+Un kit Linux fabriqué sous Windows (ou copié sur une clé USB) perd les droits d'exécution des programmes :
+la préparation les remet d'elle-même.
 
 Le kit est trop gros pour les Releases GitHub (2 Go par fichier au plus) : il se copie sur une clé USB
 (formatée en exFAT ou NTFS : un modèle dépasse 4 Go) ou sur un partage réseau.

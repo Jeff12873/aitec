@@ -35,7 +35,8 @@ jobs:
           echo "VERSION=$version" >> "$GITHUB_ENV"
           mkdir -p dist/IASSITEC
           cp -r serveur blocs interface outils docs VERSION package.json README.md \
-            "Lancer IASSITEC.bat" "Preparer IASSITEC.bat" lancer-iassitec.sh preparer-iassitec.sh dist/IASSITEC/
+            "Lancer IASSITEC.bat" "Preparer IASSITEC.bat" "Fabriquer kit hors ligne.bat" \
+            lancer-iassitec.sh preparer-iassitec.sh fabriquer-kit-hors-ligne.sh dist/IASSITEC/
           chmod +x dist/IASSITEC/*.sh
           (cd dist && zip -qr IASSITEC.zip IASSITEC)
 

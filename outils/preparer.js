@@ -149,7 +149,7 @@ async function main() {
 
 function copierApplication(source, destination) {
   const aCopier = ['serveur', 'blocs', 'interface', 'outils', 'docs', 'VERSION', 'package.json', 'README.md', 'LICENCE',
-    'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh']
+    'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'Fabriquer kit hors ligne.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh', 'fabriquer-kit-hors-ligne.sh']
   fs.mkdirSync(destination, { recursive: true })
   for (const nom of aCopier) {
     const depuis = path.join(source, nom)

@@ -21,7 +21,7 @@ le décompresser, puis :
 - **Linux** : `sh preparer-iassitec.sh`
 
 **Poste sans Internet** : une version hors ligne (kit de ~11 Go à copier sur clé USB, fabriqué par
-`node outils/fabriquer-kit-hors-ligne.js`) installe tout sans téléchargement : voir [docs/HORS-LIGNE.md](docs/HORS-LIGNE.md).
+`Fabriquer kit hors ligne.bat` ou `sh fabriquer-kit-hors-ligne.sh`, pour Windows ou Linux depuis l'un ou l'autre) installe tout sans téléchargement : voir [docs/HORS-LIGNE.md](docs/HORS-LIGNE.md).
 
 La préparation installe IASSITEC dans le profil (`%LOCALAPPDATA%\IASSITEC` ou `~/.local/share/iassitec`),
 analyse le poste (mémoire, carte graphique), télécharge le moteur d'IA et le modèle adapté, l'essaie,

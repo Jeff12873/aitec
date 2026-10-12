@@ -166,7 +166,7 @@ export function routes(r) {
 // Le ZIP contient un dossier « IASSITEC/ ». On le décompresse à part, puis on remplace
 // les dossiers de code d'un coup : en cas d'erreur, l'ancienne version reste en place.
 const REMPLACES = ['serveur', 'blocs', 'interface', 'outils', 'docs']
-const FICHIERS_REMPLACES = ['VERSION', 'README.md', 'package.json', 'LICENCE', 'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh']
+const FICHIERS_REMPLACES = ['VERSION', 'README.md', 'package.json', 'LICENCE', 'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'Fabriquer kit hors ligne.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh', 'fabriquer-kit-hors-ligne.sh']
 
 function appliquerMiseAJour(octets) {
   const nouveau = path.join(chemins.cache, 'mise-a-jour')
@@ -183,7 +183,7 @@ function appliquerMiseAJour(octets) {
     if (fs.existsSync(path.join(RACINE, nom))) fs.renameSync(path.join(RACINE, nom), path.join(ancien, nom))
     fs.renameSync(path.join(source, nom), path.join(RACINE, nom))
   }
-  for (const lanceur of ['lancer-iassitec.sh', 'preparer-iassitec.sh']) {
+  for (const lanceur of ['lancer-iassitec.sh', 'preparer-iassitec.sh', 'fabriquer-kit-hors-ligne.sh']) {
     if (fs.existsSync(path.join(RACINE, lanceur))) fs.chmodSync(path.join(RACINE, lanceur), 0o755)
   }
   fs.rmSync(nouveau, { recursive: true, force: true })

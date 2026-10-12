@@ -2,31 +2,37 @@
 // modèles d'IA), à copier sur une clé USB ou un partage pour installer des postes sans Internet.
 // La version en ligne (IASSITEC.zip sur GitHub, qui télécharge au moment de la préparation) ne change pas.
 //
-// À lancer sur un PC connecté à Internet, depuis le dossier d'IASSITEC :
+// À lancer sur un PC connecté à Internet, Windows ou Linux : un kit Windows peut être fabriqué depuis Linux
+// et inversement. Le plus simple : double-cliquer sur « Fabriquer kit hors ligne.bat » (Windows) ou lancer
+// « sh fabriquer-kit-hors-ligne.sh » (Linux), qui posent les questions. Ou directement :
 //     node outils/fabriquer-kit-hors-ligne.js
 //
 // Options :
 //   --modeles petit,moyen      modèles à inclure (petit, moyen par défaut ; ajouter « grand » pour le lourd, +23,5 Go)
 //   --systeme windows|linux    système des postes à installer (windows par défaut)
 //   --dossier <dossier>        où créer le kit (par défaut : IASSITEC-hors-ligne-<système>, à côté d'IASSITEC)
+//   --choisir                  poser les questions (système, modèles, dossier) au lieu de prendre les valeurs par défaut
 //
 // Les fichiers déjà téléchargés sur ce PC (modèles de la préparation) sont repris, sans nouveau téléchargement.
 // Sur le poste : copier le dossier, puis lancer « Preparer IASSITEC.bat » (ou preparer-iassitec.sh).
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { execFileSync } from 'node:child_process'
+import readline from 'node:readline'
 import { RACINE, installation, dossierModelesParDefaut, version } from '../serveur/socle/installation.js'
 import { telecharger, tailleLisible } from '../serveur/socle/telechargement.js'
 import { telechargerDepuisHuggingFace, lireCatalogue } from '../serveur/socle/modeles.js'
 import { decompresser } from '../serveur/socle/zip.js'
+import { extraireTarGz } from '../serveur/socle/tar.js'
 
 const options = lireOptions(process.argv.slice(2))
 const catalogue = lireCatalogue()
 const nodeVersion = fs.readFileSync(path.join(RACINE, 'Preparer IASSITEC.bat'), 'utf8').match(/NODE_VERSION=(v[\d.]+)/)[1]
-const sortie = path.resolve(options.dossier || path.join(RACINE, '..', `IASSITEC-hors-ligne-${options.systeme}`))
-const kit = path.join(sortie, 'hors-ligne')
-const temporaire = path.join(sortie, 'temporaire') // dans le kit : même disque, pour pouvoir déplacer les fichiers
+let sortie, kit, temporaire
+
+// Ce qui est copié du programme dans le kit.
+const FICHIERS_DU_PROGRAMME = ['serveur', 'blocs', 'interface', 'outils', 'docs', 'VERSION', 'package.json', 'README.md',
+  'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'Fabriquer kit hors ligne.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh', 'fabriquer-kit-hors-ligne.sh']
 
 main().catch((erreur) => {
   console.error('\n✗ ' + erreur.message)
@@ -35,6 +41,10 @@ main().catch((erreur) => {
 })
 
 async function main() {
+  if (options.choisir) await poserLesQuestions()
+  sortie = path.resolve(options.dossier || path.join(RACINE, '..', `IASSITEC-hors-ligne-${options.systeme}`))
+  kit = path.join(sortie, 'hors-ligne')
+  temporaire = path.join(sortie, 'temporaire') // dans le kit : même disque, pour pouvoir déplacer les fichiers
   const modeles = options.modeles.map((code) => catalogue.modeles.find((m) => m.code === code) || erreur(`Modèle inconnu : ${code}`))
   const total = modeles.reduce((s, m) => s + m.taille_go, 0) + 0.7
   console.log(`\nKit hors ligne d'IASSITEC pour ${options.systeme}`)
@@ -45,21 +55,22 @@ async function main() {
 
   // 1. Le programme ---------------------------------------------------------------
   console.log('[1/4] Programme')
-  for (const nom of ['serveur', 'blocs', 'interface', 'outils', 'docs', 'VERSION', 'package.json', 'README.md', 'Lancer IASSITEC.bat', 'Preparer IASSITEC.bat', 'lancer-iassitec.sh', 'preparer-iassitec.sh']) {
+  for (const nom of FICHIERS_DU_PROGRAMME) {
     fs.rmSync(path.join(sortie, nom), { recursive: true, force: true })
     fs.cpSync(path.join(RACINE, nom), path.join(sortie, nom), { recursive: true })
   }
-  if (options.systeme === 'linux') for (const sh of ['lancer-iassitec.sh', 'preparer-iassitec.sh']) fs.chmodSync(path.join(sortie, sh), 0o755)
+  if (options.systeme === 'linux' && process.platform !== 'win32') for (const sh of ['lancer-iassitec.sh', 'preparer-iassitec.sh', 'fabriquer-kit-hors-ligne.sh']) fs.chmodSync(path.join(sortie, sh), 0o755)
 
   // 2. Node -----------------------------------------------------------------------
   console.log(`[2/4] Node ${nodeVersion}`)
   if (!fs.existsSync(path.join(kit, 'node'))) {
     const nom = options.systeme === 'windows' ? `node-${nodeVersion}-win-x64` : `node-${nodeVersion}-linux-x64`
-    const archive = path.join(temporaire, options.systeme === 'windows' ? `${nom}.zip` : `${nom}.tar.xz`)
+    const archive = path.join(temporaire, options.systeme === 'windows' ? `${nom}.zip` : `${nom}.tar.gz`)
     await telecharger(`https://nodejs.org/dist/${nodeVersion}/${path.basename(archive)}`, archive, { surProgression: progression(path.basename(archive)) })
     finProgression()
+    // Nos propres lecteurs ZIP et tar : le kit se fabrique de la même façon sous Windows et sous Linux.
     if (options.systeme === 'windows') decompresser(fs.readFileSync(archive), temporaire)
-    else execFileSync('tar', ['-xJf', archive, '-C', temporaire])
+    else extraireTarGz(fs.readFileSync(archive), temporaire)
     fs.renameSync(path.join(temporaire, nom), path.join(kit, 'node'))
   }
 
@@ -78,7 +89,7 @@ async function main() {
     fs.rmSync(cible, { recursive: true, force: true })
     fs.mkdirSync(cible, { recursive: true })
     if (options.systeme === 'windows') decompresser(fs.readFileSync(archive), cible)
-    else execFileSync('tar', ['-xzf', archive, '-C', cible])
+    else extraireTarGz(fs.readFileSync(archive), cible)
     fs.writeFileSync(path.join(cible, catalogue.llama), '')
   }
 
@@ -93,11 +104,12 @@ async function main() {
     ]),
     { depot: catalogue.recherche.depot, fichier: catalogue.recherche.fichier, local: catalogue.recherche.local },
   ]
-  const dejaSurCePC = installation()?.dossierModeles || dossierModelesParDefaut()
+  // Où chercher des modèles déjà présents : installation de ce PC, dossier commun, kit d'où l'on part.
+  const dejaSurCePC = [installation()?.dossierModeles, dossierModelesParDefaut(), path.join(RACINE, 'hors-ligne', 'modeles')].filter(Boolean)
   for (const f of fichiers) {
     const destination = path.join(dossierModeles, f.local)
-    const existant = path.join(dejaSurCePC, f.local)
-    if (!fs.existsSync(destination) && fs.existsSync(existant)) {
+    const existant = dejaSurCePC.map((d) => path.join(d, f.local)).find((chemin) => fs.existsSync(chemin) && path.resolve(chemin) !== path.resolve(destination))
+    if (!fs.existsSync(destination) && existant) {
       console.log(`  ${f.local} : copié depuis ce PC`)
       fs.copyFileSync(existant, destination)
     }
@@ -141,10 +153,45 @@ Version d'IASSITEC : ${version()} — fabriqué le ${new Date().toLocaleDateStri
   return options.systeme === 'windows' ? texte.replace(/\n/g, '\r\n') : texte
 }
 
+// Les trois questions des lanceurs « Fabriquer kit hors ligne ».
+async function poserLesQuestions() {
+  // On lit les réponses ligne par ligne (fonctionne aussi quand les réponses arrivent toutes d'un coup).
+  const lecteur = readline.createInterface({ input: process.stdin })
+  const lignes = lecteur[Symbol.asyncIterator]()
+  const demander = async (question) => {
+    process.stdout.write(question)
+    const { value } = await lignes.next()
+    return (value || '').trim()
+  }
+  console.log('\nFabrication d’un kit hors ligne d’IASSITEC (à copier sur une clé USB pour des postes sans Internet)\n')
+
+  const systeme = await demander('Pour quels postes ?\n  1. Windows\n  2. Linux\nVotre choix [1] : ')
+  options.systeme = systeme === '2' ? 'linux' : 'windows'
+
+  const formules = [
+    ['petit', 'moyen'],
+    ['moyen'],
+    ['moyen', 'grand'],
+    ['petit', 'moyen', 'grand'],
+  ]
+  const nom = (codes) => codes.map((c) => catalogue.modeles.find((m) => m.code === c).nom).join(' + ')
+  const taille = (codes) => (codes.reduce((s, c) => s + catalogue.modeles.find((m) => m.code === c).taille_go, 0) + 0.7).toFixed(0)
+  console.log('\nQuels modèles d’IA ?')
+  formules.forEach((f, i) => console.log(`  ${i + 1}. ${nom(f)} (environ ${taille(f)} Go)`))
+  const choix = Number(await demander('Votre choix [1] : ')) || 1
+  options.modeles = formules[choix - 1] || formules[0]
+
+  const parDefaut = path.resolve(path.join(RACINE, '..', `IASSITEC-hors-ligne-${options.systeme}`))
+  const dossier = await demander(`\nDossier du kit [${parDefaut}] : `)
+  options.dossier = dossier || parDefaut
+  lecteur.close()
+}
+
 function lireOptions(args) {
-  const options = { modeles: ['petit', 'moyen'], systeme: 'windows', dossier: null }
+  const options = { modeles: ['petit', 'moyen'], systeme: 'windows', dossier: null, choisir: false }
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--modeles') options.modeles = args[++i].split(',').map((c) => c.trim()).filter(Boolean)
+    if (args[i] === '--choisir') options.choisir = true
+    else if (args[i] === '--modeles') options.modeles = args[++i].split(',').map((c) => c.trim()).filter(Boolean)
     else if (args[i] === '--systeme') options.systeme = args[++i]
     else if (args[i] === '--dossier') options.dossier = args[++i]
   }

@@ -13,11 +13,13 @@ telecharger() {
   if command -v curl >/dev/null; then curl -L --fail -o "$2" "$1"; else wget -O "$2" "$1"; fi
 }
 
-if [ ! -x "$DEST/moteur/node/bin/node" ] && [ -x hors-ligne/node/bin/node ]; then
+if [ ! -x "$DEST/moteur/node/bin/node" ] && [ -f hors-ligne/node/bin/node ]; then
   # Version hors ligne : Node est dans le kit, on le copie au lieu de le télécharger.
+  # (chmod : un kit fabriqué sous Windows ou copié depuis une clé USB a perdu le droit d'exécution)
   echo "Copie de Node depuis le kit hors ligne…"
   mkdir -p "$DEST/moteur"
   cp -r hors-ligne/node "$DEST/moteur/node"
+  chmod +x "$DEST/moteur/node/bin/node"
 fi
 
 if [ ! -x "$DEST/moteur/node/bin/node" ]; then
