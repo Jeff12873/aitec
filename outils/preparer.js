@@ -10,6 +10,9 @@
 //   6. essai de l'IA
 //   7. raccourcis sur le Bureau et dans le menu
 //
+// Version hors ligne : si le dossier contient un kit « hors-ligne/ » (fabriqué par
+// outils/fabriquer-kit-hors-ligne.js), rien n'est téléchargé : Node, llama.cpp et les modèles sont copiés du kit.
+//
 // Options :
 //   --ici                     préparer dans le dossier actuel, sans copie (pour le développement)
 //   --modele mini|petit|moyen|grand   imposer un modèle
@@ -28,6 +31,8 @@ const SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const WINDOWS = process.platform === 'win32'
 const options = lireOptions(process.argv.slice(2))
 const catalogue = JSON.parse(fs.readFileSync(path.join(SOURCE, 'outils', 'catalogue.json'), 'utf8'))
+const KIT = path.join(SOURCE, 'hors-ligne')
+const kit = fs.existsSync(path.join(KIT, 'kit.json')) ? JSON.parse(fs.readFileSync(path.join(KIT, 'kit.json'), 'utf8')) : null
 
 // Ces modules sont importés après coup : ils viennent du dossier d'installation.
 let telecharger, tailleLisible, decompresser, telechargerDepuisHuggingFace, modeleConseille
@@ -39,7 +44,8 @@ main().catch((erreur) => {
 })
 
 async function main() {
-  titre('Préparation d’IASSITEC')
+  titre(kit ? 'Préparation d’IASSITEC (version hors ligne)' : 'Préparation d’IASSITEC')
+  if (kit && kit.systeme !== (WINDOWS ? 'windows' : 'linux')) throw new Error(`Ce kit hors ligne est fait pour ${kit.systeme}, pas pour ce système.`)
 
   // 1. Copie dans le profil de l'utilisateur ------------------------------------------
   const { dossierInstallationParDefaut, dossierModelesParDefaut } = await import('../serveur/socle/installation.js')
@@ -76,12 +82,15 @@ async function main() {
   // 4. Choix du modèle -----------------------------------------------------------------
   etape(4, 'Choix du modèle')
   const vram = carte ? carte.memoireGo : 0
-  const propose = modeleConseille(catalogue, ram, vram)
-  catalogue.modeles.forEach((m, i) => console.log(`  ${i + 1}. ${m.nom.padEnd(28)} ${m.code === propose.code ? '← conseillé' : ''}\n     ${m.pour}`))
-  let modele = catalogue.modeles.find((m) => m.code === options.modele) || propose
+  // Hors ligne, on ne peut choisir que parmi les modèles présents dans le kit.
+  const disponibles = kit ? catalogue.modeles.filter((m) => kit.modeles.includes(m.code)) : catalogue.modeles
+  const propose = modeleConseille({ modeles: disponibles }, ram, vram)
+  disponibles.forEach((m, i) => console.log(`  ${i + 1}. ${m.nom.padEnd(28)} ${m.code === propose.code ? '← conseillé' : ''}\n     ${m.pour}`))
+  if (kit) console.log(`  (version hors ligne : seuls les modèles du kit sont proposés)`)
+  let modele = disponibles.find((m) => m.code === options.modele) || propose
   if (!options.oui && !options.modele) {
-    const reponse = await demander(`\n  Modèle à installer [Entrée = ${modele.nom}, ou 1 à ${catalogue.modeles.length}] : `)
-    if (catalogue.modeles[Number(reponse) - 1]) modele = catalogue.modeles[Number(reponse) - 1]
+    const reponse = await demander(`\n  Modèle à installer [Entrée = ${modele.nom}, ou 1 à ${disponibles.length}] : `)
+    if (disponibles[Number(reponse) - 1]) modele = disponibles[Number(reponse) - 1]
   }
   console.log(`  → ${modele.nom}`)
 
@@ -165,16 +174,22 @@ async function installerLlama(dossier, variante) {
     ? `llama-${catalogue.llama}-bin-win-${variante}-x64.zip`
     : `llama-${catalogue.llama}-bin-ubuntu-${variante === 'cpu' ? '' : variante + '-'}x64.tar.gz`
   const url = `https://github.com/ggml-org/llama.cpp/releases/download/${catalogue.llama}/${nomArchive}`
-  const archive = path.join(dossier, 'moteur', nomArchive)
-  await telecharger(url, archive, { surProgression: progression(nomArchive) })
-  finProgression()
-
   fs.rmSync(cible, { recursive: true, force: true })
-  fs.mkdirSync(cible, { recursive: true })
-  if (WINDOWS) decompresser(fs.readFileSync(archive), cible)
-  else execFileSync('tar', ['-xzf', archive, '-C', cible])
+  if (kit) {
+    // Version hors ligne : llama.cpp est déjà décompressé dans le kit.
+    if (!fs.existsSync(path.join(KIT, `llama-${variante}`))) throw new Error(`llama.cpp (${variante}) absent du kit hors ligne`)
+    fs.cpSync(path.join(KIT, `llama-${variante}`), cible, { recursive: true })
+    console.log(`  Copié depuis le kit (${variante}).`)
+  } else {
+    const archive = path.join(dossier, 'moteur', nomArchive)
+    await telecharger(url, archive, { surProgression: progression(nomArchive) })
+    finProgression()
+    fs.mkdirSync(cible, { recursive: true })
+    if (WINDOWS) decompresser(fs.readFileSync(archive), cible)
+    else execFileSync('tar', ['-xzf', archive, '-C', cible])
+    fs.rmSync(archive, { force: true })
+  }
   fs.writeFileSync(path.join(cible, catalogue.llama), '') // repère de la version installée
-  fs.rmSync(archive, { force: true })
 
   const installe = trouverFichier(cible, WINDOWS ? 'llama-server.exe' : 'llama-server')
   if (!installe) throw new Error('llama-server introuvable dans ' + nomArchive)
@@ -214,10 +229,35 @@ function choisirCarte(appareils) {
 
 async function telechargerModele(depot, fichier, destination) {
   const nom = path.basename(destination)
+  if (kit) {
+    await copierDuKit(path.join(KIT, 'modeles', nom), destination)
+    console.log(`  ${nom} : prêt (${tailleLisible(fs.statSync(destination).size)})`)
+    return destination
+  }
   await telechargerDepuisHuggingFace(depot, fichier, destination, progression(nom))
   finProgression()
   console.log(`  ${nom} : prêt (${tailleLisible(fs.statSync(destination).size)})`)
   return destination
+}
+
+// Copie d'un gros fichier du kit (clé USB, partage…) avec avancement. Déjà présent et de même taille : rien à faire.
+async function copierDuKit(source, destination) {
+  if (!fs.existsSync(source)) throw new Error(`${path.basename(source)} absent du kit hors ligne`)
+  const total = fs.statSync(source).size
+  if (fs.existsSync(destination) && fs.statSync(destination).size === total) return
+  const partiel = destination + '.partiel'
+  const afficher = progression(path.basename(destination))
+  let copie = 0
+  await new Promise((ok, echec) => {
+    fs.createReadStream(source)
+      .on('data', (morceau) => afficher((copie += morceau.length), total))
+      .on('error', echec)
+      .pipe(fs.createWriteStream(partiel))
+      .on('finish', ok)
+      .on('error', echec)
+  })
+  finProgression()
+  fs.renameSync(partiel, destination)
 }
 
 // ---------------------------------------------------------------- étape 7

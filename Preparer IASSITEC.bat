@@ -11,6 +11,13 @@ rem Version de Node utilisee par IASSITEC (aussi dans preparer-iassitec.sh)
 set "NODE_VERSION=v24.21.0"
 
 if exist "%DEST%\moteur\node\node.exe" goto preparer
+rem Version hors ligne : Node est dans le kit, on le copie au lieu de le telecharger.
+if not exist "%~dp0hors-ligne\node\node.exe" goto telecharger
+echo Copie de Node depuis le kit hors ligne...
+xcopy "%~dp0hors-ligne\node" "%DEST%\moteur\node\" /e /i /q /y >nul || goto erreur
+goto preparer
+
+:telecharger
 echo Téléchargement de Node %NODE_VERSION%...
 mkdir "%DEST%\moteur" 2>nul
 curl.exe -L --fail -o "%DEST%\moteur\node.zip" "https://nodejs.org/dist/%NODE_VERSION%/node-%NODE_VERSION%-win-x64.zip" || goto erreur

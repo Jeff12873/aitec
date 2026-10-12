@@ -20,6 +20,9 @@ le décompresser, puis :
 - **Windows** : double-cliquer sur `Preparer IASSITEC.bat`
 - **Linux** : `sh preparer-iassitec.sh`
 
+**Poste sans Internet** : une version hors ligne (kit de ~11 Go à copier sur clé USB, fabriqué par
+`node outils/fabriquer-kit-hors-ligne.js`) installe tout sans téléchargement : voir [docs/HORS-LIGNE.md](docs/HORS-LIGNE.md).
+
 La préparation installe IASSITEC dans le profil (`%LOCALAPPDATA%\IASSITEC` ou `~/.local/share/iassitec`),
 analyse le poste (mémoire, carte graphique), télécharge le moteur d'IA et le modèle adapté, l'essaie,
 et crée les raccourcis. Internet n'est nécessaire que pendant cette étape. Détails : aide « Installation »
@@ -44,6 +47,7 @@ Le code est découpé en **blocs** (`blocs/<nom>/` : `serveur.js`, `vue.js`, `RE
 | [docs/FICHIER-PARTAGE.md](docs/FICHIER-PARTAGE.md) | Le fichier `.datassitec` partagé : copie, verrou, publication, sauvegardes |
 | [docs/DONNEES.md](docs/DONNEES.md) | Les tables du fichier |
 | [docs/MODELES.md](docs/MODELES.md) | Les modèles d'IA et comment en changer |
+| [docs/HORS-LIGNE.md](docs/HORS-LIGNE.md) | La version hors ligne (kit sur clé USB) |
 | [docs/AJOUTER-UN-BLOC.md](docs/AJOUTER-UN-BLOC.md) | Ajouter un écran |
 | [docs/AJOUTER-UN-CHAMP.md](docs/AJOUTER-UN-CHAMP.md) | Ajouter un champ à une table |
 | [docs/exemples/](docs/exemples) | Exports GMAO d'une usine fictive, pour essayer l'import |

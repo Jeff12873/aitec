@@ -13,6 +13,13 @@ telecharger() {
   if command -v curl >/dev/null; then curl -L --fail -o "$2" "$1"; else wget -O "$2" "$1"; fi
 }
 
+if [ ! -x "$DEST/moteur/node/bin/node" ] && [ -x hors-ligne/node/bin/node ]; then
+  # Version hors ligne : Node est dans le kit, on le copie au lieu de le télécharger.
+  echo "Copie de Node depuis le kit hors ligne…"
+  mkdir -p "$DEST/moteur"
+  cp -r hors-ligne/node "$DEST/moteur/node"
+fi
+
 if [ ! -x "$DEST/moteur/node/bin/node" ]; then
   echo "Téléchargement de Node $NODE_VERSION…"
   mkdir -p "$DEST/moteur"
