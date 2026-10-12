@@ -7,12 +7,14 @@ import { ErreurHttp, envoyerOctets } from '../../serveur/socle/http.js'
 import { lireImage, discuter, iaInstallee } from '../../serveur/socle/ia.js'
 import { journal } from '../../serveur/socle/installation.js'
 import { extraireTexte, imagesDuDocument } from './extraction.js'
-import { CONSIGNE_IMAGE, relancerLecteurImages } from './lecteur-images.js'
+import { CONSIGNE_IMAGE, relancerLecteurImages, etatLectureImages } from './lecteur-images.js'
 import { ajouterPassages, remplacerPassages, supprimerPassages, changerMachineDesPassages } from '../recherche/passages.js'
 
 const TAILLE_MAX = 900 * 1024 * 1024 // limite d'un champ SQLite (1 Go), avec une marge
 
 export function routes(r) {
+  r.get('/api/documents/lecture-images', () => etatLectureImages())
+
   r.get('/api/documents', (ctx) => {
     if (ctx.admin) relancerLecteurImages() // reprend une lecture d'images interrompue
     const conditions = []

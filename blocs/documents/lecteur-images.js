@@ -55,6 +55,18 @@ const CONSIGNE_DETAIL = `Cette image est une moitié agrandie d'un {nature}. Rec
 - pour un plan : les cotes, tolérances, repères de nomenclature et notes.
 Un élément par ligne. N'invente rien.`
 
+// Longueur maximale des réponses (en jetons) : une description utile tient en quelques lignes.
+const LONGUEURS = { image: 500, illustrations: 400, folio: 1200, detail: 900 }
+
+// Le moteur d'IA traite deux demandes à la fois (-np 2 dans ia.js) : on lui envoie les images par deux.
+const EN_PARALLELE = 2
+
+async function parPaquets(elements, traiter) {
+  for (let i = 0; i < elements.length; i += EN_PARALLELE) {
+    await Promise.all(elements.slice(i, i + EN_PARALLELE).map((element, j) => traiter(element, i + j)))
+  }
+}
+
 // ---------------------------------------------------------------- boucle de lecture
 
 let enCours = false
@@ -116,21 +128,20 @@ async function lireLesPages(d, pages) {
 
 async function analyserIllustrations(image) {
   if (!image) return ''
-  const texte = (await lireImage(image, CONSIGNE_ILLUSTRATIONS)).trim()
+  const texte = (await lireImage(image, CONSIGNE_ILLUSTRATIONS, 'image/jpeg', LONGUEURS.illustrations)).trim()
   return /^aucune\.?$/i.test(texte) ? '' : texte
 }
 
 async function analyserFolio(genre, parties) {
   const consigne = (genre === 'plan' ? CONSIGNE_PLAN : CONSIGNE_FOLIO).replace('{glossaire}', glossaire())
-  const morceaux = []
-  if (parties.page) morceaux.push((await lireImage(parties.page, consigne)).trim())
+  const consigneDetail = CONSIGNE_DETAIL.replace('{nature}', genre === 'plan' ? 'plan mécanique' : 'folio de schéma')
   // Sur le processeur, chaque image prend plusieurs minutes : on se contente de la vue d'ensemble.
-  for (const moitie of surProcesseur() ? [] : ['gauche', 'droite']) {
-    if (!parties[moitie]) continue
-    const detail = (await lireImage(parties[moitie], CONSIGNE_DETAIL.replace('{nature}', genre === 'plan' ? 'plan mécanique' : 'folio de schéma'))).trim()
-    morceaux.push(`Détail (moitié ${moitie}) :\n${detail}`)
-  }
-  return morceaux.filter(Boolean).join('\n\n')
+  const moities = surProcesseur() ? [] : ['gauche', 'droite'].filter((m) => parties[m])
+  const [ensemble, ...details] = await Promise.all([
+    parties.page ? lireImage(parties.page, consigne, 'image/jpeg', LONGUEURS.folio) : '',
+    ...moities.map((m) => lireImage(parties[m], consigneDetail, 'image/jpeg', LONGUEURS.detail)),
+  ])
+  return [ensemble.trim(), ...details.map((d, i) => `Détail (moitié ${moities[i]}) :\n${d.trim()}`)].filter(Boolean).join('\n\n')
 }
 
 // Photos contenues dans un document Word, PowerPoint ou LibreOffice
@@ -142,12 +153,13 @@ async function lireLesImagesDe(d) {
   db().prepare("DELETE FROM passages WHERE source = 'document' AND source_id = ? AND texte LIKE ?").run(d.id, DEBUT_PASSAGE + '%')
 
   let lues = 0
-  for (const [i, image] of images.entries()) {
-    if (!etatPartage().admin) return // le mode administrateur a été quitté : on reprendra plus tard
-    db().prepare('UPDATE documents SET message = ? WHERE id = ?').run(`Lecture des images : ${i + 1} sur ${images.length}`, d.id)
+  let interrompu = false
+  await parPaquets(images, async (image, i) => {
+    if (!etatPartage().admin) return (interrompu = true) // mode administrateur quitté : on reprendra plus tard
+    db().prepare('UPDATE documents SET message = ? WHERE id = ?').run(`Lecture des images : ${Math.min(i + EN_PARALLELE, images.length)} sur ${images.length}`, d.id)
     const type = { png: 'image/png', gif: 'image/gif', bmp: 'image/bmp' }[image.nom.split('.').pop().toLowerCase()] || 'image/jpeg'
     try {
-      const texte = (await lireImage(image.octets, CONSIGNE_IMAGE, type)).trim()
+      const texte = (await lireImage(image.octets, CONSIGNE_IMAGE, type, LONGUEURS.image)).trim()
       if (texte.length > 15) {
         ajouterPassages('document', d.id, d.machine_id, [{ page: null, texte: `${DEBUT_PASSAGE}${i + 1} du document]\n${texte}` }])
         lues++
@@ -157,16 +169,24 @@ async function lireLesImagesDe(d) {
       journal(`Image ${i + 1} de « ${d.nom} » illisible : ${erreur.message}`)
     }
     noterModification()
-  }
+  })
+  if (interrompu) return
   db().prepare("UPDATE documents SET etat = 'lu', message = ? WHERE id = ?").run(`${lues} image${lues > 1 ? 's' : ''} lue${lues > 1 ? 's' : ''} par l’IA`, d.id)
   noterModification()
 }
 
+// Ce qu'il reste à lire, pour l'afficher dans Documents : nombre de documents et d'images (estimé d'après les messages).
 export function etatLectureImages() {
   try {
-    return { restants: db().prepare("SELECT count(*) AS n FROM documents WHERE etat = 'images'").get().n, enCours }
+    const messages = db().prepare("SELECT message FROM documents WHERE etat = 'images'").all()
+    const images = messages.reduce((total, { message }) => {
+      const restant = message.match(/(\d+) sur (\d+)/) // « Lecture des images : 3 sur 10 »
+      if (restant) return total + Number(restant[2]) - Number(restant[1])
+      return total + Number(message.match(/^(\d+)/)?.[1] || 1) // « 6 images en attente… »
+    }, 0)
+    return { documents: messages.length, images, enCours }
   } catch {
-    return { restants: 0, enCours }
+    return { documents: 0, images: 0, enCours }
   }
 }
 

@@ -29,6 +29,7 @@ export default {
   async afficher(zone, { query }) {
     const machines = await api('/api/machines')
     const liste = h('div')
+    const avancement = h('div')
     const recherche = h('input', { type: 'search', placeholder: 'Nom du document…' })
     const machine = h('select', {}, h('option', { value: '' }, 'Toutes les machines'), machines.map((m) => h('option', { value: m.id, selected: String(m.id) === query.machine }, `${m.repere} — ${m.designation}`)))
     const zoneSuivi = h('div', { class: 'legende', style: { marginTop: '14px' } })
@@ -36,7 +37,8 @@ export default {
 
     let suivi = null
     async function charger() {
-      const documents = await api('/api/documents?' + new URLSearchParams({ q: recherche.value, machine: machine.value }))
+      const [documents, lecture] = await Promise.all([api('/api/documents?' + new URLSearchParams({ q: recherche.value, machine: machine.value })), api('/api/documents/lecture-images')])
+      vider(avancement, lecture.images ? bandeauLecture(lecture) : null)
       // Tant que l'IA lit des images, la liste se met à jour toute seule.
       clearTimeout(suivi)
       if (documents.some((d) => d.etat === 'images')) suivi = setTimeout(() => liste.isConnected && charger(), 10_000)
@@ -123,6 +125,7 @@ export default {
             h('p', { class: 'discret', style: { fontSize: '13px' } }, 'Schémas et plans (PDF) : chaque page est analysée par l’IA, qui la regardera aussi pour répondre (compter environ une minute par page). Machine de rattachement : choisissez-la dans le filtre ci-dessous (facultatif).'),
             depot, zoneSuivi)
         : null,
+      avancement,
       h('div', { class: 'filtres' }, recherche, machine, estAdmin() ? h('button', { title: 'Relire Word, Excel, PowerPoint… avec la dernière version d’IASSITEC (images comprises)', onclick: relireTout }, ic('rafraichir', 16), 'Tout relire') : null),
       liste,
     )
@@ -137,6 +140,21 @@ export default {
       }
     }
   },
+}
+
+// Avancement de la lecture des images en arrière-plan (environ 2 secondes par image avec une carte graphique).
+function bandeauLecture({ documents, images }) {
+  const minutes = Math.max(1, Math.round((images * 2) / 60))
+  return h(
+    'div',
+    { class: 'bandeau info' },
+    h('span', { class: 'point anime' }),
+    h('div', {},
+      h('strong', {}, `L’IA lit les images : ${images} restante${images > 1 ? 's' : ''} dans ${documents} document${documents > 1 ? 's' : ''}`),
+      ` (environ ${minutes} min avec une carte graphique, bien plus sur le processeur). `,
+      'Le texte des documents est déjà interrogeable ; restez en mode administrateur jusqu’à la fin, sinon la lecture reprendra au prochain passage.',
+    ),
+  )
 }
 
 // ---------------------------------------------------------------- lecture des PDF et des images
