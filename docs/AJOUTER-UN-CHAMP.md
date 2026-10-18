@@ -1,6 +1,6 @@
 # Ajouter un champ (exemple : la criticité d'une machine)
 
-1. **Structure** (`serveur/socle/base.js`) : ajouter la colonne dans `STRUCTURE`, augmenter `FORMAT`,
+1. **Structure** (`lib/base.js`) : ajouter la colonne dans `STRUCTURE`, augmenter `FORMAT`,
    et ajouter la migration dans `migrer()` :
    ```js
    if (format < 2) base.exec("ALTER TABLE machines ADD COLUMN criticite TEXT NOT NULL DEFAULT ''")

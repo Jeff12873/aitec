@@ -157,9 +157,9 @@ export default {
     saisie.focus()
 
     // Question transmise par la page de recherche (« Poser la question à l'IA »).
-    const transmise = sessionStorage.getItem('iassitec-question')
+    const transmise = sessionStorage.getItem('aitec-question')
     if (transmise) {
-      sessionStorage.removeItem('iassitec-question')
+      sessionStorage.removeItem('aitec-question')
       envoyer(transmise)
     }
   },
@@ -219,7 +219,7 @@ function ouvrirSource(source) {
 // La conversation survit à un changement d'écran et au rechargement de la page.
 function lireConversation() {
   try {
-    return JSON.parse(localStorage.getItem('iassitec-conversation') || '[]')
+    return JSON.parse(localStorage.getItem('aitec-conversation') || '[]')
   } catch {
     return []
   }
@@ -227,7 +227,7 @@ function lireConversation() {
 
 function garderConversation() {
   try {
-    localStorage.setItem('iassitec-conversation', JSON.stringify(conversation.slice(-40)))
+    localStorage.setItem('aitec-conversation', JSON.stringify(conversation.slice(-40)))
   } catch {
     // stockage indisponible : la conversation ne sera simplement pas gardée
   }

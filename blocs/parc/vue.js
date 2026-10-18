@@ -1,8 +1,8 @@
 // Le parc : liste des machines et fiche de chaque machine (ouverte depuis les sources de l'IA).
 
 import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, tailleFr, apresPause } from '/socle/ui.js'
-import { api } from '/socle/api.js'
-import { estAdmin } from '/socle/etat.js'
+import { api, adresse } from '/socle/api.js'
+import { peutModifier } from '/socle/etat.js'
 
 export const ETATS = ['En service', 'En panne', 'En réserve', 'Hors service', 'Réformée']
 
@@ -52,7 +52,7 @@ export default {
         'div',
         { class: 'entete-page' },
         h('div', {}, h('h1', {}, 'Parc'), h('p', { class: 'sous-titre' }, 'Les machines et équipements suivis')),
-        estAdmin() ? h('button', { class: 'principal', onclick: () => modifierMachine(null, valeurs) }, ic('plus', 16), 'Ajouter une machine') : null,
+        peutModifier() ? h('button', { class: 'principal', onclick: () => modifierMachine(null, valeurs) }, ic('plus', 16), 'Ajouter une machine') : null,
       ),
       h('div', { class: 'filtres' }, recherche, famille),
       liste,
@@ -80,8 +80,8 @@ async function afficherFiche(zone, id) {
       h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono', style: { fontSize: '22px' } }, m.repere), ' — ', m.designation), h('p', { class: 'sous-titre' }, [m.famille, m.emplacement].filter(Boolean).join(' · '))),
       etiquetteEtat(m.etat),
       h('a', { class: 'bouton principal', href: `#/assistant?machine=${m.id}` }, ic('etincelle', 16), "Demander à l'IA"),
-      estAdmin() ? h('button', { onclick: () => modifierMachine(m, valeurs) }, ic('crayon', 16), 'Modifier') : null,
-      estAdmin() ? h('button', { class: 'danger', onclick: () => supprimerMachine(m) }, ic('poubelle', 16)) : null,
+      peutModifier() ? h('button', { onclick: () => modifierMachine(m, valeurs) }, ic('crayon', 16), 'Modifier') : null,
+      peutModifier() ? h('button', { class: 'danger', onclick: () => supprimerMachine(m) }, ic('poubelle', 16)) : null,
     ),
     h(
       'div',
@@ -96,9 +96,9 @@ async function afficherFiche(zone, id) {
       h(
         'div',
         { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Documents'), estAdmin() ? h('a', { class: 'bouton petit', href: `#/administration/documents?machine=${m.id}` }, ic('plus', 14), 'Ajouter') : null),
+        h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Documents'), peutModifier() ? h('a', { class: 'bouton petit', href: `#/administration/documents?machine=${m.id}` }, ic('plus', 14), 'Ajouter') : null),
         m.documents.length
-          ? h('div', { class: 'legende' }, m.documents.map((d) => h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank', style: { display: 'flex', gap: '10px', alignItems: 'center', color: 'inherit' } }, ic('document', 16), h('span', { style: { flex: 1 } }, d.nom), h('span', { class: 'discret' }, tailleFr(d.taille)))))
+          ? h('div', { class: 'legende' }, m.documents.map((d) => h('a', { href: adresse(`/api/documents/${d.id}/fichier`), target: '_blank', style: { display: 'flex', gap: '10px', alignItems: 'center', color: 'inherit' } }, ic('document', 16), h('span', { style: { flex: 1 } }, d.nom), h('span', { class: 'discret' }, tailleFr(d.taille)))))
           : h('div', { class: 'vide' }, 'Aucun document pour cette machine. Déposez sa notice dans Documents.'),
       ),
       h(
@@ -148,7 +148,7 @@ export async function modifierMachine(machine, valeurs) {
         action: async () => {
           const donnees = form.lire()
           const { id } = await api(machine ? `/api/machines/${machine.id}` : '/api/machines', { methode: machine ? 'PUT' : 'POST', corps: donnees })
-          if (machine) window.iassitec.recharger()
+          if (machine) window.ktec.recharger()
           else location.hash = `#/parc/${id}`
         },
       },

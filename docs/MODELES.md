@@ -1,6 +1,6 @@
 # Les modèles d'IA
 
-La liste est dans `outils/catalogue.json`. La préparation (`outils/preparer.js`) propose le plus grand modèle
+La liste est dans `outils/catalogue.json` de KTEC (modèles communs à toutes les applications). L’installation propose le plus grand modèle
 que le poste peut faire tourner :
 
 | Code | Modèle | Taille | Conseillé pour |
@@ -16,7 +16,7 @@ enregistrés dans le fichier partagé doivent être calculés par le même modè
 
 ## Choisir un autre modèle
 
-- Sur un poste : **Administration › Réglages › Modèle d'IA de ce poste** (téléchargement depuis l'application), ou relancer la préparation et choisir dans la liste (ou `--modele grand`).
+- Sur un poste : **Administration › Réglages › Modèle d'IA de ce poste** (téléchargement depuis l'application), ou relancer l’installation de KTEC.
 - Ajouter un modèle à la liste : une entrée de plus dans `catalogue.json` (dépôt Hugging Face, nom du
   fichier GGUF, fichier « vision » s'il y en a un, mémoire minimale). Le modèle doit être pris en charge
   par llama.cpp.

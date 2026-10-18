@@ -1,5 +1,14 @@
-<h1>Importer un export GMAO</h1>
-<p>Dans <b>Administration › Import GMAO</b> (mode administrateur). IASSITEC lit les exports <b>CSV</b>, <b>Excel (.xlsx et ancien .xls)</b> et <b>LibreOffice (.ods)</b>. La première ligne doit contenir les noms des colonnes.</p>
+<h1>Données de la GMAO</h1>
+<p>Dans <b>Administration › Données de la GMAO</b>.</p>
+<h2>Directement depuis la base (le plus simple)</h2>
+<p>AITEC lit le parc et les interventions dans la base de la GMAO, par la connexion MySQL de KTEC, puis se tient à jour tout seul <b>tous les quarts d'heure</b> (seules les lignes nouvelles ou changées sont écrites). Deux requêtes, rangées dans le fichier de connaissances, disent où trouver les données : chacune renvoie une ligne par machine ou par intervention, avec des colonnes nommées comme les champs d'AITEC :</p>
+<ul>
+<li><b>Machines</b> : <code>repere</code>, <code>designation</code> (obligatoires), <code>famille</code>, <code>marque</code>, <code>modele</code>, <code>numero_serie</code>, <code>emplacement</code>, <code>mise_en_service</code>, <code>etat</code>, <code>notes</code>.</li>
+<li><b>Interventions</b> : <code>date</code>, <code>description</code> (obligatoires), <code>numero</code>, <code>machine</code> (le repère), <code>type</code>, <code>cause</code>, <code>intervenant</code>, <code>duree_h</code>, <code>statut</code>.</li>
+</ul>
+<p>Les dates peuvent être écrites AAAA-MM-JJ, JJ/MM/AAAA ou AAAAMMJJ.</p>
+<h2>Depuis un export</h2>
+<p>AITEC lit les exports <b>CSV</b>, <b>Excel (.xlsx et ancien .xls)</b> et <b>LibreOffice (.ods)</b>. La première ligne doit contenir les noms des colonnes.</p>
 <h2>Dans quel ordre</h2>
 <ol>
 <li><b>Les machines</b> (équipements) : repère et désignation au minimum.</li>
@@ -7,7 +16,7 @@
 </ol>
 <p>Si une intervention cite une machine inconnue, celle-ci est créée automatiquement (avec son seul repère).</p>
 <h2>La correspondance des colonnes</h2>
-<p>IASSITEC reconnaît les intitulés courants (« Code équipement », « Qté stock », « Date début », « N° OT »…). Vérifiez chaque ligne avant d'importer : un champ peut rester « ne pas importer ». La correspondance validée est retenue : le prochain export du même logiciel sera reconnu directement.</p>
+<p>AITEC reconnaît les intitulés courants (« Code équipement », « Qté stock », « Date début », « N° OT »…). Vérifiez chaque ligne avant d'importer : un champ peut rester « ne pas importer ». La correspondance validée est retenue : le prochain export du même logiciel sera reconnu directement.</p>
 <h2>Réimporter</h2>
 <p>Vous pouvez réimporter un export à jour à tout moment. Avec <b>Mettre à jour les lignes déjà présentes</b>, une machine (même repère) ou une intervention (même n° d'OT) déjà connue est mise à jour au lieu d'être ajoutée en double. Une intervention sans numéro n'est pas ajoutée deux fois si la date, la machine et la description sont identiques.</p>
-<p>Exemples d'exports (usine fictive) : dossier <code>docs/exemples</code> d'IASSITEC.</p>
+<p>Exemples d'exports (usine fictive) : dossier <code>docs/exemples</code> d'AITEC.</p>

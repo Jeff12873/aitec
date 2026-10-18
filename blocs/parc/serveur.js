@@ -1,7 +1,7 @@
 // Le parc : la liste des machines et leur fiche.
 
-import { db } from '../../serveur/socle/base.js'
-import { creerTable, routesTable } from '../../serveur/socle/tables.js'
+import { db } from '../../lib/base.js'
+import { creerTable, routesTable } from '../../lib/tables.js'
 import { remplacerPassages, supprimerPassages } from '../recherche/passages.js'
 
 export const machines = creerTable({

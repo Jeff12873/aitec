@@ -22,7 +22,7 @@ export default {
         'div',
         { class: 'entete-page' },
         h('div', {}, h('h1', {}, `Recherche : « ${question} »`), h('p', { class: 'sous-titre' }, `${resultats.length} passage${resultats.length > 1 ? 's' : ''} trouvé${resultats.length > 1 ? 's' : ''}, du plus pertinent au moins pertinent`)),
-        h('a', { class: 'bouton principal', href: '#/assistant', onclick: () => sessionStorage.setItem('iassitec-question', question) }, ic('etincelle', 16), 'Poser la question à l’IA'),
+        h('a', { class: 'bouton principal', href: '#/assistant', onclick: () => sessionStorage.setItem('aitec-question', question) }, ic('etincelle', 16), 'Poser la question à l’IA'),
       ),
       resultats.length
         ? resultats.map((r) =>

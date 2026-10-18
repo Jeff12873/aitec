@@ -1,8 +1,10 @@
-// Import des exports de GMAO : choix du fichier, vérification des colonnes, import.
+// Données de la GMAO : synchronisation directe avec la base MySQL (le plus simple, toujours à jour),
+// ou import d'un export : choix du fichier, vérification des colonnes, import.
 
-import { h, vider, ic, essayer, nombreFr } from '/socle/ui.js'
+import { h, vider, ic, essayer, nombreFr, notifier, dateHeureFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { estAdmin } from '/socle/etat.js'
+import { peutModifier, etat } from '/socle/etat.js'
+import { demanderMotDePasse } from '/socle/connexion.js'
 
 export default {
   chemin: 'import',
@@ -12,7 +14,7 @@ export default {
   aide: 'import-gmao',
 
   async afficher(zone) {
-    if (!estAdmin()) {
+    if (!peutModifier()) {
       vider(zone, h('div', { class: 'bandeau' }, ic('cadenas'), 'L’import est réservé au mode administrateur (bouton « Consultation » en haut à droite).'))
       return
     }
@@ -22,7 +24,9 @@ export default {
 
     vider(
       zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Import GMAO'), h('p', { class: 'sous-titre' }, 'Machines et historique des interventions, depuis un export CSV, Excel ou LibreOffice'))),
+      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Données de la GMAO'), h('p', { class: 'sous-titre' }, 'Machines et historique des interventions : directement depuis la base, ou depuis un export CSV, Excel ou LibreOffice'))),
+      await carteSynchronisation(),
+      h('h2', { style: { margin: '24px 0 10px' } }, 'Ou depuis un export'),
       h(
         'div',
         { class: 'carte', style: { marginBottom: '16px' } },
@@ -76,7 +80,7 @@ function afficherCorrespondance(zone, lecture, cibles, nomFichier) {
           'div',
           { class: 'carte' },
           h('div', { class: 'carte-entete' }, h('h2', {}, 'Correspondance des colonnes')),
-          h('p', { class: 'texte-2', style: { fontSize: '14px' } }, 'IASSITEC a reconnu les colonnes ci-dessous. Vérifiez-les : les champs marqués * sont obligatoires.'),
+          h('p', { class: 'texte-2', style: { fontSize: '14px' } }, 'AITEC a reconnu les colonnes ci-dessous. Vérifiez-les : les champs marqués * sont obligatoires.'),
           h('div', { class: 'formulaire' }, cibles[cible].champs.map((champ) => h('label', { class: 'champ' }, h('span', {}, champ.libelle + (champ.obligatoire ? ' *' : '')), choixColonne(champ)))),
           h('label', { class: 'actions texte-2', style: { marginTop: '16px' } }, h('span', { class: 'interrupteur' }, mettreAJour, h('span')), 'Mettre à jour les lignes déjà présentes (même repère, référence ou n°)'),
           h('div', { class: 'actions', style: { marginTop: '18px' } }, h('button', { class: 'principal', onclick: importer }, ic('envoyer', 16), `Importer ${nombreFr(f.total)} lignes`)),
@@ -120,4 +124,41 @@ function afficherCorrespondance(zone, lecture, cibles, nomFichier) {
   }
 
   dessiner()
+}
+
+// ---------------------------------------------------------------- synchronisation avec la base
+
+async function carteSynchronisation() {
+  const s = await api('/api/gmao/synchronisation')
+  const machines = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS repere, … AS designation, … AS famille, … AS emplacement … FROM …' }, s.requetes.machines)
+  const interventions = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS machine, … AS type, … AS description … FROM …' }, s.requetes.interventions)
+  const bilan = h('div')
+  const montrer = (b) => {
+    if (!b) return vider(bilan, h('p', { class: 'discret' }, 'Pas encore de synchronisation.'))
+    const ligne = (cle, titre) => b[cle] ? h('li', {}, `${titre} : ${nombreFr(b[cle].lignes)} lues, ${nombreFr(b[cle].crees)} nouvelles, ${nombreFr(b[cle].modifies)} modifiées, ${nombreFr(b[cle].inchanges)} inchangées${b[cle].ignores ? `, ${nombreFr(b[cle].ignores)} ignorées` : ''}`, b[cle].erreurs?.length ? h('div', { class: 'discret', style: { fontSize: '12px' } }, b[cle].erreurs.join(' ; ')) : null) : null
+    vider(bilan, h('p', { class: 'texte-2', style: { margin: '8px 0 4px' } }, `Dernière synchronisation avec des changements : ${dateHeureFr(b.date)}`), h('ul', { style: { margin: 0 } }, ligne('machines', 'Machines'), ligne('interventions', 'Interventions')))
+  }
+  montrer(s.derniere)
+  async function synchroniser() {
+    if (!etat.connexion?.ouverte) await demanderMotDePasse()
+    vider(bilan, h('p', { class: 'discret curseur' }, 'Lecture de la base et mise à jour'))
+    const b = await essayer(() => api('/api/gmao/synchroniser', { methode: 'POST' }))
+    if (b) {
+      montrer(b)
+      notifier('Données de la GMAO à jour.')
+    } else montrer(s.derniere)
+  }
+  return h('div', { class: 'carte' },
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('base', 18), 'Directement depuis la base de la GMAO')),
+    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC lit le parc et les interventions dans la base (connexion MySQL de KTEC), puis se tient à jour tout seul tous les quarts d’heure. Chaque requête renvoie une ligne par machine ou par intervention, avec des colonnes nommées comme les champs d’AITEC.'),
+    h('details', {},
+      h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),
+      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), machines),
+      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), interventions),
+      h('div', { class: 'actions', style: { marginTop: '10px' } },
+        h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: { machines: machines.value, interventions: interventions.value } }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
+    ),
+    h('div', { class: 'actions', style: { marginTop: '12px' } }, h('button', { class: 'principal', onclick: synchroniser }, ic('rafraichir', 16), 'Synchroniser maintenant')),
+    bilan,
+  )
 }

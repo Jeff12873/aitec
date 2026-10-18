@@ -7,11 +7,11 @@
 //                              ce qui permet de faire lire les pages scannées par l'IA (voir vue.js) ;
 //   - pas lu                 : plans, vidéos, archives… Le fichier est seulement rangé (pièce jointe).
 
-import { lireZip, lireTexteDansZip } from '../../serveur/socle/zip.js'
-import { lireTableur, decoderTexte, decoderEntites } from '../../serveur/socle/tableurs.js'
-import { lireWord97 } from '../../serveur/socle/word97.js'
-import { lirePpt } from '../../serveur/socle/powerpoint97.js'
-import { lireFichierCompose } from '../../serveur/socle/fichier-compose.js'
+import { lireZip, lireTexteDansZip } from 'ktec/zip.js'
+import { lireTableur, decoderTexte, decoderEntites } from '../../lib/tableurs.js'
+import { lireWord97 } from '../../lib/word97.js'
+import { lirePpt } from '../../lib/powerpoint97.js'
+import { lireFichierCompose } from '../../lib/fichier-compose.js'
 
 const LUS_PAR_LE_NAVIGATEUR = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']
 const TEXTES = ['txt', 'md', 'log', 'json', 'xml', 'ini', 'cfg', 'conf', 'yaml', 'yml', 'nc', 'gcode', 'tap', 'sql', 'eml']

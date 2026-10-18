@@ -1,10 +1,6 @@
 {
-  "name": "iassitec",
+  "name": "aitec",
   "private": true,
   "type": "module",
-  "description": "Assistant IA local pour les agents de maintenance. Aucune dépendance : seulement Node.",
-  "scripts": {
-    "demarrer": "node serveur/demarrer.js",
-    "preparer": "node outils/preparer.js --ici"
-  }
+  "description": "AITEC (ex IASSITEC), application KTEC : l'assistant IA de l'atelier. Lancée par le portail KTEC."
 }

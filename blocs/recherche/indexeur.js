@@ -4,10 +4,10 @@
 // puisque c'est une écriture dans le fichier partagé. S'il est interrompu, il reprend
 // au prochain passage en mode administrateur. Sans vecteur, un passage reste trouvable par ses mots.
 
-import { db } from '../../serveur/socle/base.js'
-import { etatPartage, noterModification } from '../../serveur/socle/partage.js'
-import { iaInstallee, vecteurs } from '../../serveur/socle/ia.js'
-import { journal } from '../../serveur/socle/installation.js'
+import { db } from '../../lib/base.js'
+import { etatPartage, noterModification } from 'ktec/partage.js'
+import { iaInstallee, vecteurs } from 'ktec/ia.js'
+import { journal } from 'ktec/installation.js'
 
 let enCours = false
 

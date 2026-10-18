@@ -1,11 +1,12 @@
 // Le tableau de bord : chiffres clés, graphiques et remarques de l'IA.
 
-import { db, reglage } from '../../serveur/socle/base.js'
-import { etatPartage } from '../../serveur/socle/partage.js'
-import { discuter, iaInstallee } from '../../serveur/socle/ia.js'
+import { db, reglage } from '../../lib/base.js'
+import { etatPartage } from 'ktec/partage.js'
+import { discuter, iaInstallee } from 'ktec/ia.js'
 
 export function routes(r) {
   r.get('/api/tableau-de-bord', () => ({
+    atelier: reglage('nom_atelier', ''),
     tuiles: tuiles(),
     parMois: interventionsParMois(),
     parType: db()

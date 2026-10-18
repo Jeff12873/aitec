@@ -1,10 +1,10 @@
-# Les données (structure du fichier `.datassitec`)
+# Les données (tables d'AITEC dans le fichier `.ktec`)
 
-Base SQLite. Structure complète : `STRUCTURE` dans `serveur/socle/base.js`.
+Le fichier de connaissances `.ktec` de KTEC est une base SQLite ; AITEC y range ses propres tables (à côté de celles des autres applications). Structure complète : `STRUCTURE` dans `lib/base.js`.
 
 | Table | Contenu |
 |---|---|
-| `reglages` | `format` (version de la structure, 2 actuellement), `nom_atelier`, `glossaire` (repères des schémas), `mot_de_passe` (empreinte scrypt), `icone` et `icone_type`, `imports` (correspondances de colonnes retenues), `cree_le`, `cree_par` |
+| `reglages` | Réglages d'AITEC : `format` (version de la structure, 2 actuellement), `nom_atelier`, `glossaire` (repères des schémas), `imports` (correspondances de colonnes retenues), `requetes_mysql` et `synchronisation` (synchronisation avec la GMAO). Le mot de passe administrateur est celui du fichier `.ktec` (KTEC). |
 | `machines` | `repere` (unique), `designation`, `famille`, `marque`, `modele`, `numero_serie`, `emplacement`, `mise_en_service`, `etat`, `notes` |
 | `pieces`, `pieces_machines` | Pièces de rechange : fonction retirée, tables gardées vides pour la compatibilité des fichiers |
 | `interventions` | `numero` (unique, facultatif), `date`, `machine_id`, `type`, `description`, `cause`, `intervenant`, `duree_h`, `statut` |
@@ -21,4 +21,4 @@ Les dates sont écrites `AAAA-MM-JJ`.
 2. Augmenter `FORMAT` et ajouter la migration dans `migrer()` (pour les fichiers existants), par exemple
    `if (format < 2) base.exec("ALTER TABLE machines ADD COLUMN criticite TEXT NOT NULL DEFAULT ''")`.
 
-Un fichier créé par une version plus récente d'IASSITEC est refusé par une version plus ancienne.
+Un fichier dont les tables d'AITEC viennent d'une version plus récente d'AITEC est refusé par une version plus ancienne.

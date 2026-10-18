@@ -1,19 +1,17 @@
-<h1>Mode administrateur</h1>
-<p>Par défaut, chacun est en <b>consultation</b> : il peut tout lire et interroger l'IA, sans rien modifier. Les modifications (imports, documents, fiches, réglages) demandent le <b>mode administrateur</b>.</p>
-<h2>Un seul administrateur à la fois</h2>
-<p>Quand vous passez en mode administrateur, IASSITEC pose un <b>verrou</b> à côté du fichier de l'atelier. Les autres postes voient « X modifie en ce moment » et restent en consultation.</p>
+<h1>Administration et mode administrateur</h1>
+<p>Les modifications (documents, données de la GMAO, fiches, réglages) sont écrites dans le fichier de connaissances commun de KTEC. <b>Un seul poste modifie à la fois</b> : il pose un verrou à côté du fichier, et les autres voient « X modifie en ce moment ».</p>
 <ul>
+<li><b>Fichier sans mot de passe</b> : la main est prise toute seule à la première modification, et rendue après 30 minutes sans modification.</li>
+<li><b>Fichier avec mot de passe</b> (Réglages de KTEC) : chacun est en <b>consultation</b> ; pour modifier, bouton <b>Consultation</b> en haut à droite, votre nom et le mot de passe. Revenez en consultation quand vous avez fini (bouton <b>Administrateur</b>).</li>
 <li>Vos modifications sont enregistrées sur le partage automatiquement, quelques secondes après chacune.</li>
-<li>Pensez à revenir en consultation quand vous avez fini (bouton <b>Administrateur</b> en haut à droite). Sinon, IASSITEC le fait seul après 30 minutes sans modification.</li>
-<li>Si un poste est resté bloqué en administrateur (poste éteint, IASSITEC planté), le verrou se libère au bout de 10 minutes. Avant, vous pouvez <b>reprendre la main</b> : les dernières secondes de modifications de l'autre poste, pas encore enregistrées, seraient perdues.</li>
+<li>Si un poste est resté bloqué (éteint, planté), le verrou se libère au bout de 10 minutes. Avant, vous pouvez <b>reprendre la main</b> : les dernières secondes de modifications de l'autre poste, pas encore enregistrées, seraient perdues.</li>
 </ul>
-<h2>Réglages communs</h2>
+<h2>Réglages d'AITEC</h2>
 <ul>
-<li><b>Nom de l'atelier</b> : affiché en haut du menu et donné à l'IA.</li>
-<li><b>Icône du logiciel</b> : importez votre image (PNG carré 512 × 512 conseillé). Elle est enregistrée dans le fichier : tous les postes l'affichent, et les raccourcis du Bureau la prennent au prochain lancement.</li>
-<li><b>Mot de passe</b> : le même pour tous les postes, enregistré chiffré dans le fichier. Il n'existe pas de moyen de le retrouver s'il est perdu : notez-le en lieu sûr.</li>
+<li><b>Nom de l'atelier</b> : affiché sur le tableau de bord et donné à l'IA.</li>
+<li><b>Glossaire des repères</b> : ce que signifient les repères de vos schémas (KM = contacteur, SP = pressostat…). L'IA s'en sert pour lire les folios et pour répondre ; « Tout relire » dans Documents fait réanalyser les schémas.</li>
+<li><b>Recherche par le sens</b> : l'état de l'index ; « Tout recalculer » après un changement de modèle de recherche.</li>
+<li><b>Reprendre un fichier IASSITEC</b> : copie les machines, interventions, documents et réglages d'un ancien <code>.datassitec</code> dans le fichier de connaissances.</li>
 </ul>
-<h2>Glossaire des repères</h2>
-<p>Dans Réglages : ce que signifient les repères de vos schémas (KM = contacteur, SP = pressostat…). L'IA s'en sert pour lire les folios et pour répondre. Adaptez-le à votre site ; puis « Tout relire » dans Documents fait réanalyser les schémas.</p>
-<h2>Réglages de ce poste</h2>
-<p>Votre nom, le délai de mise en veille de l'IA et le <b>modèle d'IA</b> ne concernent que votre poste. Le modèle <b>moyen</b> convient à un poste de bureau avec 16 Go ou une carte graphique de 8 Go ; le modèle <b>lourd</b> comprend mieux les schémas et les questions difficiles mais demande beaucoup plus de mémoire (48 Go, ou 32 Go + carte graphique de 16 Go). Le changement se fait dans Réglages › Modèle d'IA de ce poste (téléchargement de 6,6 ou 23,5 Go si le modèle n'est pas encore sur le poste).</p>
+<h2>Modèle d'IA de ce poste</h2>
+<p>Le modèle <b>moyen</b> convient à un poste de bureau avec 16 Go ou une carte graphique de 8 Go ; le modèle <b>lourd</b> comprend mieux les schémas et les questions difficiles mais demande beaucoup plus de mémoire (48 Go, ou 32 Go + carte graphique de 16 Go). Le choix ne concerne que ce poste et vaut pour toutes ses applications KTEC.</p>

@@ -18,7 +18,7 @@ les autres sont envoyées en image à l'IA. Le fichier lui-même est enregistré
 ## Ajouter un format
 
 Dans `extraction.js`, ajouter l'extension dans `extraireTexte` et une fonction qui renvoie le texte.
-Les formats Office récents sont des ZIP : `lireZip` (dans `serveur/socle/zip.js`) les ouvre.
+Les formats Office récents sont des ZIP : `lireZip` (dans le socle KTEC (`zip.js`)) les ouvre.
 
 ## Les images dans les documents
 
@@ -31,5 +31,5 @@ Les dessins vectoriels (EMF, WMF) ne sont pas lus.
 
 Le type est choisi au dépôt (`genre` : document, schema, plan). Pour un schéma ou un plan, le navigateur dessine chaque page
 (page entière en 1 800 px + deux moitiés agrandies) et l'envoie (`/api/documents/:id/rendu`) ; `lecteur-images.js` en tire une fiche
-par folio, avec le glossaire des repères (`serveur/socle/glossaire.js`). L'image entière est gardée : l'assistant joint celles
+par folio, avec le glossaire des repères (`lib/glossaire.js`). L'image entière est gardée : l'assistant joint celles
 des 2 folios les plus pertinents à la question (`imagesDesFolios` dans `blocs/assistant/serveur.js`).

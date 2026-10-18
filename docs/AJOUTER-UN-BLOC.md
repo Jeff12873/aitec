@@ -21,10 +21,10 @@
      }
      ```
    - `README.md` : à quoi il sert, ses fichiers.
-2. L'ajouter dans la liste `BLOCS` de `interface/app.js` (l'ordre est celui du menu).
-3. Relancer IASSITEC.
+2. L'ajouter dans la liste `blocs` de `interface/menu.js` (l'ordre est celui du menu).
+3. Relancer KTEC.
 
 - `menu: 'admin'` : visible seulement en mode administrateur ; `menu: false` : absent du menu.
-- Toute écriture dans la base se termine par `noterModification()` (voir `serveur/socle/partage.js`),
+- Toute écriture dans la base se termine par `noterModification()` (voir `ktec/partage.js`, le socle de KTEC),
   et commence par `ctx.exigerAdmin()`.
 - Icônes disponibles : `interface/socle/icones.js`.

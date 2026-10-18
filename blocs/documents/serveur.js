@@ -1,11 +1,11 @@
 // Les documents : dépôt, lecture du texte, consultation, rattachement à une machine.
 
 import crypto from 'node:crypto'
-import { db } from '../../serveur/socle/base.js'
-import { noterModification, etatPartage } from '../../serveur/socle/partage.js'
-import { ErreurHttp, envoyerOctets } from '../../serveur/socle/http.js'
-import { lireImage, discuter, iaInstallee } from '../../serveur/socle/ia.js'
-import { journal } from '../../serveur/socle/installation.js'
+import { db } from '../../lib/base.js'
+import { noterModification, etatPartage } from 'ktec/partage.js'
+import { ErreurHttp, envoyerOctets } from 'ktec/http.js'
+import { lireImage, discuter, iaInstallee } from 'ktec/ia.js'
+import { journal } from 'ktec/installation.js'
 import { extraireTexte, imagesDuDocument } from './extraction.js'
 import { CONSIGNE_IMAGE, relancerLecteurImages, etatLectureImages } from './lecteur-images.js'
 import { ajouterPassages, remplacerPassages, supprimerPassages, changerMachineDesPassages } from '../recherche/passages.js'
@@ -16,7 +16,7 @@ export function routes(r) {
   r.get('/api/documents/lecture-images', () => etatLectureImages())
 
   r.get('/api/documents', (ctx) => {
-    if (ctx.admin) relancerLecteurImages() // reprend une lecture d'images interrompue
+    if (etatPartage().admin) relancerLecteurImages() // reprend une lecture d'images interrompue
     const conditions = []
     const valeurs = []
     if (ctx.query.machine) {
@@ -101,7 +101,7 @@ export function routes(r) {
     return { id: d.id, lecture }
   })
 
-  // Relit tous les documents que le serveur sait lire (utile après une mise à jour d'IASSITEC
+  // Relit tous les documents que le serveur sait lire (utile après une mise à jour d'AITEC
   // qui lit plus de formats, ou les images). Les PDF et photos, lus par le navigateur, ne sont pas touchés.
   r.post('/api/documents/relire-tout', (ctx) => {
     ctx.exigerAdmin()

@@ -1,16 +1,18 @@
-// Administration : documents donnés à l'IA, import GMAO, et réglages (poste, fichier, icône, mot de passe, mises à jour).
+// Administration d'AITEC : documents donnés à l'IA, données de la GMAO (base MySQL ou exports), et réglages
+// (nom de l'atelier, glossaire, index de recherche, modèle d'IA, reprise d'un ancien fichier IASSITEC).
+// Le fichier .ktec lui-même (ouverture, mot de passe, sauvegardes) se règle dans les Réglages de KTEC.
 
-import { h, vider, ic, fenetre, formulaire, essayer, notifier, confirmer, dateHeureFr, tailleFr, nombreFr } from '/socle/ui.js'
+import { h, vider, ic, essayer, notifier, confirmer, tailleFr, nombreFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { etat, estAdmin, actualiserEtat } from '/socle/etat.js'
-import { choisirFichier, creerFichier, ouvrirModeAdmin } from '/blocs/fichier/vue.js'
-import documents from '/blocs/documents/vue.js'
-import importGmao from '/blocs/import-gmao/vue.js'
+import { peutModifier, actualiserEtat } from '/socle/etat.js'
+import { ouvrirModeAdmin } from '/socle/fichier.js'
+import documents from '../documents/vue.js'
+import importGmao from '../import-gmao/vue.js'
 
-// Les trois onglets de l'administration. Documents et Import GMAO réutilisent les écrans de leurs blocs.
+// Les trois onglets de l'administration. Documents et Données GMAO réutilisent les écrans de leurs blocs.
 const ONGLETS = [
   ['documents', 'Documents', 'document'],
-  ['import', 'Import GMAO', 'tableur'],
+  ['import', 'Données de la GMAO', 'tableur'],
   ['reglages', 'Réglages', 'reglages'],
 ]
 
@@ -22,20 +24,19 @@ export default {
   aide: 'administration',
 
   async afficher(zone, { id, query }) {
-    const onglet = ONGLETS.some(([cle]) => cle === id) ? id : estAdmin() ? 'documents' : 'reglages'
+    const onglet = ONGLETS.some(([cle]) => cle === id) ? id : 'documents'
     const contenu = h('div', { class: 'onglet-contenu' })
     vider(
       zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Administration'), h('p', { class: 'sous-titre' }, 'Ce que l’IA connaît (documents, exports GMAO) et les réglages'))),
+      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Administration'), h('p', { class: 'sous-titre' }, 'Ce que l’IA connaît (documents, données de la GMAO) et les réglages d’AITEC'))),
       h('div', { class: 'segments', style: { marginBottom: '20px' } },
         ONGLETS.map(([cle, titre, icone]) => h('button', { class: cle === onglet ? 'choisi' : '', onclick: () => (location.hash = `#/administration/${cle}`) }, ic(icone, 16), titre)),
       ),
       contenu,
     )
-
     if (onglet === 'reglages') return afficherReglages(contenu)
-    if (!estAdmin()) {
-      vider(contenu, h('div', { class: 'carte' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Ajouter des documents ou importer un export GMAO demande le mode administrateur.'), h('button', { class: 'principal', onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))))
+    if (!peutModifier()) {
+      vider(contenu, h('div', { class: 'carte' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Ajouter des documents ou mettre à jour les données de la GMAO demande le mode administrateur.'), h('button', { class: 'principal', onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))))
       return
     }
     if (onglet === 'documents') return documents.afficher(contenu, { query })
@@ -47,16 +48,12 @@ async function afficherReglages(zone) {
   const infos = await api('/api/admin/infos')
   vider(
     zone,
-    h(
-      'div',
-      { class: 'grille grille-2' },
-      cartePoste(infos.installation),
-      carteFichier(infos),
+    h('div', { class: 'grille grille-2' },
+      carteContenu(infos),
       carteModele(),
-      estAdmin()
-        ? [carteGlossaire(), carteAtelier(), carteIcone(), carteMotDePasse(), carteIndex(infos)]
-        : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, l’icône, le mot de passe et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
-      carteMiseAJour(infos),
+      peutModifier()
+        ? [carteGlossaire(), carteAtelier(infos), carteIndex(infos), carteReprise(infos)]
+        : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )
 }
@@ -69,38 +66,20 @@ function ligne(libelle, valeur) {
   return h('div', { style: { display: 'flex', gap: '12px', padding: '6px 0', borderBottom: '1px solid var(--bord)' } }, h('span', { class: 'discret', style: { minWidth: '150px' } }, libelle), h('span', { style: { wordBreak: 'break-all' } }, valeur || '—'))
 }
 
-// ---------------------------------------------------------------- ce poste
+// ---------------------------------------------------------------- contenu
 
-function cartePoste(config) {
-  const nom = h('input', { value: etat.poste?.nomAgent || '' })
-  const arret = h('input', { type: 'number', min: 1, max: 480, value: etat.poste?.arretIAMinutes || 20, style: { width: '110px' } })
-  const enregistrer = () => essayer(() => api('/api/poste', { methode: 'POST', corps: { nomAgent: nom.value, arretIAMinutes: Number(arret.value) } }).then(actualiserEtat), 'Réglages du poste enregistrés')
-
+function carteContenu(infos) {
+  const s = infos.statistiques
   return carte(
-    'puce',
-    'Ce poste',
-    config
-      ? h('div', {}, ligne('Modèle d’IA', config.modele.nom), ligne('Calcul sur', config.appareilNom), ligne('Mémoire du poste', `${config.poste.ramGo} Go`), ligne('Préparé le', dateHeureFr(config.prepareLe)))
-      : h('div', { class: 'bandeau' }, ic('alerte'), 'L’IA n’est pas installée sur ce poste : lancez « Preparer IASSITEC » (voir l’aide).'),
-    h('div', { class: 'formulaire', style: { marginTop: '16px' } },
-      h('label', { class: 'champ' }, h('span', {}, 'Votre nom'), nom, h('small', { class: 'aide' }, 'Proposé en mode administrateur')),
-      h('label', { class: 'champ' }, h('span', {}, 'Mettre l’IA en veille après (minutes)'), arret, h('small', { class: 'aide' }, 'Libère la mémoire du poste')),
-    ),
-    h('div', { class: 'actions', style: { marginTop: '14px' } },
-      h('button', { class: 'principal', onclick: enregistrer }, 'Enregistrer'),
-      h('button', { onclick: () => essayer(() => api('/api/ia/arreter', { methode: 'POST' }), 'IA mise en veille') }, ic('marche', 16), 'Mettre l’IA en veille'),
-      h('button', { class: 'discret', onclick: quitter }, ic('sortie', 16), 'Quitter IASSITEC'),
-    ),
+    'nuage',
+    'Ce que l’IA connaît',
+    ligne('Machines', nombreFr(s.machines)),
+    ligne('Interventions', nombreFr(s.interventions)),
+    ligne('Documents', `${nombreFr(s.documents)} (${tailleFr(s.octetsDocuments)})`),
+    ligne('Passages', nombreFr(s.passages)),
+    h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '10px' } }, 'Tout est rangé dans le fichier de connaissances commun de KTEC : ', h('span', { class: 'mono' }, infos.fichier), '.'),
   )
 }
-
-async function quitter() {
-  if (!(await confirmer('Fermer IASSITEC sur ce poste ? Relancez-le ensuite avec son raccourci.'))) return
-  await api('/api/quitter', { methode: 'POST' })
-  document.body.innerHTML = '<div class="accueil"><div class="accueil-titre"><h1>IASSITEC est fermé</h1><p class="sous-titre">Vous pouvez fermer cet onglet.</p></div></div>'
-}
-
-// ---------------------------------------------------------------- modèle d'IA (propre à ce poste)
 
 function carteModele() {
   const zone = h('div', {}, h('p', { class: 'discret' }, 'Chargement…'))
@@ -109,7 +88,7 @@ function carteModele() {
   async function dessiner() {
     const etat = await api('/api/modeles')
     if (!zone.isConnected && minuterie) return clearTimeout(minuterie)
-    if (!etat.installe) return vider(zone, h('p', { class: 'discret' }, 'L’IA n’est pas installée sur ce poste : lancez d’abord la préparation.'))
+    if (!etat.installe) return vider(zone, h('p', { class: 'discret' }, 'L’IA n’est pas installée sur ce poste : lancez d’abord l’installation de KTEC.'))
     const t = etat.telechargement
     const enCours = t && !t.fini && !t.erreur
     vider(
@@ -135,7 +114,7 @@ function carteModele() {
   async function choisir(m) {
     const message = m.present
       ? `Utiliser ${m.nom} sur ce poste ? L’IA redémarre à la prochaine question.`
-      : `Télécharger ${m.nom} (${m.tailleGo.toLocaleString('fr-FR')} Go) puis l’utiliser sur ce poste ? Il faut une connexion à Internet ; IASSITEC reste utilisable pendant le téléchargement.`
+      : `Télécharger ${m.nom} (${m.tailleGo.toLocaleString('fr-FR')} Go) puis l’utiliser sur ce poste ? Il faut une connexion à Internet ; AITEC reste utilisable pendant le téléchargement.`
     if (!(await confirmer(message))) return
     const resultat = await essayer(() => api(`/api/modeles/${m.code}`, { methode: 'POST' }))
     if (resultat?.pret) notifier(`${m.nom} est maintenant utilisé.`)
@@ -146,7 +125,7 @@ function carteModele() {
   return carte(
     'etincelle',
     'Modèle d’IA de ce poste',
-    h('p', { class: 'texte-2' }, 'Un modèle plus lourd comprend mieux les schémas et les questions difficiles, mais demande plus de mémoire et répond plus lentement. Ce choix ne concerne que ce poste.'),
+    h('p', { class: 'texte-2' }, 'Un modèle plus lourd comprend mieux les schémas et les questions difficiles, mais demande plus de mémoire et répond plus lentement. Ce choix ne concerne que ce poste, et vaut pour toutes les applications KTEC.'),
     zone,
   )
 }
@@ -169,113 +148,24 @@ function carteGlossaire() {
   )
 }
 
-// ---------------------------------------------------------------- fichier
+// ---------------------------------------------------------------- nom de l'atelier
 
-function carteFichier(infos) {
-  const s = infos.statistiques
-  return carte(
-    'nuage',
-    'Fichier de l’atelier',
-    ligne('Fichier', infos.fichier),
-    ligne('Taille', infos.tailleFichier ? tailleFr(infos.tailleFichier) : ''),
-    s ? ligne('Contenu', `${nombreFr(s.passages)} passages, ${tailleFr(s.octetsDocuments)} de documents`) : null,
-    h('h3', { style: { margin: '16px 0 8px' } }, 'Sauvegardes automatiques'),
-    infos.sauvegardes.length
-      ? h('div', { class: 'texte-2', style: { fontSize: '14px' } }, infos.sauvegardes.map((s) => h('div', {}, `${dateHeureFr(new Date(s.date).toISOString())} — ${tailleFr(s.taille)}`)))
-      : h('p', { class: 'discret' }, 'Aucune pour l’instant : une sauvegarde est faite à chaque passage en mode administrateur (une par heure au plus, les 5 dernières sont gardées).'),
-    h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '6px' } }, 'Elles sont dans le dossier « IASSITEC-sauvegardes », à côté du fichier. Pour revenir à une sauvegarde : voir l’aide « Sauvegardes ».'),
-    h('div', { class: 'actions', style: { marginTop: '14px' } },
-      h('button', { onclick: choisirFichier }, ic('dossier', 16), 'Ouvrir un autre fichier'),
-      h('button', { onclick: creerFichier }, ic('plus', 16), 'Créer un nouveau fichier'),
-      h('a', { class: 'bouton', href: '#/aide/sauvegardes' }, 'Aide'),
-    ),
-  )
-}
-
-// ---------------------------------------------------------------- réglages communs (mode administrateur)
-
-function carteAtelier() {
-  const nom = h('input', { value: etat.atelier || '' })
+function carteAtelier(infos) {
+  const nom = h('input', { value: infos.atelier || '' })
   return carte(
     'usine',
     'Nom de l’atelier',
-    h('p', { class: 'texte-2' }, 'Affiché en haut du menu et donné à l’IA.'),
+    h('p', { class: 'texte-2' }, 'Affiché sur le tableau de bord et donné à l’IA.'),
     h('div', { class: 'actions' }, nom, h('button', { class: 'principal', onclick: () => essayer(() => api('/api/admin/atelier', { methode: 'POST', corps: { nom: nom.value } }).then(actualiserEtat), 'Nom enregistré') }, 'Enregistrer')),
   )
 }
 
-function carteIcone() {
-  const apercu = h('img', { src: `/api/icone?v=${Date.now()}`, alt: '', style: { width: '84px', height: '84px', borderRadius: '18px', objectFit: 'contain', background: 'var(--carte-2)' } })
-  const choix = h('input', {
-    type: 'file',
-    accept: 'image/png,image/svg+xml,image/jpeg,image/webp',
-    style: { display: 'none' },
-    onchange: async (e) => {
-      const fichier = e.target.files[0]
-      if (!fichier) return
-      if (await essayer(() => api('/api/admin/icone', { methode: 'POST', fichier }), 'Icône enregistrée pour tous les postes')) {
-        await actualiserEtat()
-        location.reload()
-      }
-    },
-  })
-  return carte(
-    'image',
-    'Icône du logiciel',
-    h('div', { class: 'actions', style: { alignItems: 'center', gap: '18px' } },
-      apercu,
-      h('div', { style: { flex: 1 } },
-        h('p', { class: 'texte-2' }, 'Votre icône, la même sur tous les postes : menu, onglet du navigateur et raccourcis. Format conseillé : PNG carré de 512 × 512 pixels (les raccourcis n’acceptent que le PNG).'),
-        h('div', { class: 'actions' },
-          h('button', { class: 'principal', onclick: () => choix.click() }, ic('envoyer', 16), 'Importer une icône'),
-          etat.iconePersonnalisee ? h('button', { class: 'discret', onclick: () => essayer(() => api('/api/admin/icone', { methode: 'DELETE' })).then(() => location.reload()) }, 'Remettre l’icône d’origine') : null,
-        ),
-      ),
-      choix,
-    ),
-  )
-}
-
-function carteMotDePasse() {
-  return carte(
-    'cadenas',
-    'Mot de passe administrateur',
-    h('p', { class: 'texte-2' }, 'Le même pour tous les postes : il est enregistré (chiffré) dans le fichier de l’atelier.'),
-    h('button', {
-      onclick: () => {
-        const form = formulaire([
-          { nom: 'actuel', libelle: 'Mot de passe actuel', type: 'mot-de-passe', obligatoire: true, large: true },
-          { nom: 'nouveau', libelle: 'Nouveau mot de passe', type: 'mot-de-passe', obligatoire: true },
-          { nom: 'confirmation', libelle: 'Nouveau (encore)', type: 'mot-de-passe', obligatoire: true },
-        ])
-        fenetre({
-          titre: 'Changer le mot de passe',
-          contenu: form.element,
-          boutons: [
-            { texte: 'Annuler', classe: 'discret' },
-            {
-              texte: 'Changer',
-              classe: 'principal',
-              action: async () => {
-                const v = form.lire()
-                if (v.nouveau !== v.confirmation) throw new Error('Les deux nouveaux mots de passe sont différents.')
-                await api('/api/admin/mot-de-passe', { methode: 'POST', corps: v })
-                notifier('Mot de passe changé')
-              },
-            },
-          ],
-        })
-      },
-    }, 'Changer le mot de passe'),
-  )
-}
-
 function carteIndex(infos) {
-  const restants = etat.indexation?.restants || 0
+  const restants = infos.indexation?.restants || 0
   return carte(
     'loupe',
     'Recherche par le sens',
-    h('p', { class: 'texte-2' }, restants ? `${nombreFr(restants)} passages en attente : l’IA les prépare en arrière-plan tant que vous restez en mode administrateur.` : 'Tous les passages sont prêts pour la recherche par le sens.'),
+    h('p', { class: 'texte-2' }, restants ? `${nombreFr(restants)} passages en attente : l’IA les prépare en arrière-plan tant que ce poste garde la main sur le fichier.` : 'Tous les passages sont prêts pour la recherche par le sens.'),
     h('p', { class: 'discret', style: { fontSize: '13px' } }, `${nombreFr(infos.statistiques?.passages || 0)} passages au total.`),
     h('button', {
       onclick: async () => {
@@ -287,32 +177,32 @@ function carteIndex(infos) {
   )
 }
 
-// ---------------------------------------------------------------- mises à jour
+// ---------------------------------------------------------------- reprise d'un fichier IASSITEC
 
-function carteMiseAJour(infos) {
-  const resultat = h('div', { class: 'texte-2', style: { marginTop: '10px' } })
-  async function verifier() {
-    resultat.textContent = 'Vérification…'
-    const r = await essayer(() => api('/api/mise-a-jour'))
-    if (!r) return (resultat.textContent = '')
-    if (!r.disponible) return (resultat.textContent = r.message)
-    if (!r.nouvelle) return (resultat.textContent = `IASSITEC est à jour (version ${r.actuelle}).`)
-    vider(resultat, h('p', {}, `Nouvelle version disponible : ${r.disponible}.`), h('button', { class: 'principal', onclick: installer }, ic('telecharger', 16), 'Installer et redémarrer'))
-  }
-  async function installer() {
-    vider(resultat, h('p', { class: 'curseur' }, 'Téléchargement et installation'))
-    if (await essayer(() => api('/api/mise-a-jour', { methode: 'POST' }))) {
-      resultat.textContent = 'Mise à jour installée : IASSITEC redémarre…'
-      setTimeout(() => location.reload(), 6000)
-    }
-  }
+function carteReprise(infos) {
+  const chemin = h('input', { value: infos.ancienFichier?.chemin || '', placeholder: 'Chemin du fichier .datassitec' })
+  const remplacer = h('input', { type: 'checkbox' })
+  const s = infos.statistiques
+  const dejaRempli = s.machines + s.interventions + s.documents > 0
   return carte(
-    'telecharger',
-    'Mises à jour',
-    ligne('Version installée', infos.version),
-    ligne('Installé dans', infos.dossierInstallation),
-    h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '10px' } }, 'La mise à jour ne change que le programme : le modèle d’IA, le fichier de l’atelier et vos réglages sont gardés.'),
-    h('div', { class: 'actions' }, h('button', { onclick: verifier }, ic('rafraichir', 16), 'Vérifier les mises à jour')),
-    resultat,
+    'dossier',
+    'Reprendre un fichier IASSITEC',
+    h('p', { class: 'texte-2' }, 'Les machines, interventions, documents (avec leur lecture par l’IA), passages et réglages d’un ancien fichier .datassitec sont copiés dans le fichier de connaissances de KTEC. Le fichier d’origine n’est pas modifié.'),
+    infos.ancienFichier ? h('p', { class: 'discret', style: { fontSize: '13px' } }, `Fichier trouvé sur ce poste : ${tailleFr(infos.ancienFichier.taille)}.`) : null,
+    chemin,
+    dejaRempli ? h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' } }, remplacer, 'Remplacer ce qu’AITEC contient déjà') : null,
+    h('div', { class: 'actions', style: { marginTop: '10px' } },
+      h('button', {
+        class: 'principal',
+        onclick: async () => {
+          if (!(await confirmer('Copier ce fichier IASSITEC dans le fichier de connaissances ? Avec beaucoup de documents, cela peut prendre une minute.'))) return
+          const bilan = await essayer(() => api('/api/admin/importer-datassitec', { methode: 'POST', corps: { chemin: chemin.value.trim(), remplacer: remplacer.checked } }))
+          if (bilan) {
+            notifier(`Repris : ${nombreFr(bilan.machines || 0)} machines, ${nombreFr(bilan.interventions || 0)} interventions, ${nombreFr(bilan.documents || 0)} documents, ${nombreFr(bilan.passages || 0)} passages.`)
+            window.ktec.recharger()
+          }
+        },
+      }, ic('telecharger', 16), 'Reprendre ce fichier'),
+    ),
   )
 }

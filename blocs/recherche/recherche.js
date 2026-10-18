@@ -5,9 +5,9 @@
 //   - par le sens (vecteurs)      : trouve « surchauffe du moteur » quand la notice dit « température excessive ».
 // Les deux classements sont fusionnés (méthode « RRF » : on additionne 1 / (60 + rang)).
 
-import { db } from '../../serveur/socle/base.js'
-import { etatPartage } from '../../serveur/socle/partage.js'
-import { iaInstallee, vecteurs } from '../../serveur/socle/ia.js'
+import { db } from '../../lib/base.js'
+import { etatPartage } from 'ktec/partage.js'
+import { iaInstallee, vecteurs } from 'ktec/ia.js'
 
 const MOTS_VIDES = new Set(
   `le la les l de des du d un une et ou à au aux en pour par sur sous dans avec sans est sont été être avoir ai as a ont

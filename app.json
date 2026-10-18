@@ -1,0 +1,8 @@
+{
+  "id": "aitec",
+  "nom": "AITEC",
+  "sousTitre": "Assistant IA",
+  "description": "L’assistant IA de l’atelier : parc, historique des interventions et documents, réponses en français avec leurs sources.",
+  "icone": "interface/icone.svg",
+  "besoins": ["ia", "java"]
+}

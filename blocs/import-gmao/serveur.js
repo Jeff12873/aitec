@@ -1,19 +1,21 @@
-// Import des exports de GMAO (CSV, Excel, LibreOffice) vers les machines ou les interventions.
+// Données de la GMAO : synchronisation avec la base MySQL (synchronisation.js), ou import des exports
+// (CSV, Excel, LibreOffice) vers les machines ou les interventions.
 //
 // Déroulé :
 //   1. POST /api/import/lire     → le fichier est lu, on renvoie ses colonnes, un aperçu et une correspondance proposée
-//   2. l'administrateur vérifie la correspondance « colonne du fichier → champ d'IASSITEC »
+//   2. l'administrateur vérifie la correspondance « colonne du fichier → champ d'AITEC »
 //   3. POST /api/import/valider  → les lignes sont créées ou mises à jour
 // La correspondance validée est retenue : le prochain export du même logiciel sera reconnu tout seul.
 
-import { db, transaction, reglageJson, modifierReglage } from '../../serveur/socle/base.js'
-import { noterModification } from '../../serveur/socle/partage.js'
-import { ErreurHttp } from '../../serveur/socle/http.js'
-import { nouveauJeton } from '../../serveur/socle/securite.js'
-import { lireTableur } from '../../serveur/socle/tableurs.js'
-import { convertir, lireDate } from '../../serveur/socle/tables.js'
+import { db, transaction, reglageJson, modifierReglage } from '../../lib/base.js'
+import { noterModification } from 'ktec/partage.js'
+import { ErreurHttp } from 'ktec/http.js'
+import crypto from 'node:crypto'
+import { lireTableur } from '../../lib/tableurs.js'
+import { convertir, lireDate } from '../../lib/tables.js'
 import { machines, indexerMachine } from '../parc/serveur.js'
 import { interventions, indexerIntervention } from '../interventions/serveur.js'
+import { routes as routesSynchronisation } from './synchronisation.js'
 
 // Les champs qu'on peut remplir, et les noms de colonnes qu'on reconnaît automatiquement
 // (en minuscules, sans accents). Ajoutez ici les intitulés de votre GMAO.
@@ -53,6 +55,8 @@ export const CIBLES = {
 const enAttente = new Map()
 
 export function routes(r) {
+  routesSynchronisation(r)
+
   r.get('/api/import/cibles', () =>
     Object.fromEntries(Object.entries(CIBLES).map(([cle, c]) => [cle, { libelle: c.libelle, champs: c.champs.map(({ nom, libelle, obligatoire }) => ({ nom, libelle, obligatoire: Boolean(obligatoire) })) }])),
   )
@@ -68,7 +72,7 @@ export function routes(r) {
     }
     if (!feuilles.length) throw new ErreurHttp(400, 'Aucune donnée trouvée dans ce fichier.')
 
-    const jeton = nouveauJeton()
+    const jeton = crypto.randomBytes(24).toString('hex')
     enAttente.set(jeton, { nom, feuilles, depuis: Date.now() })
     for (const [cle, valeur] of enAttente) if (Date.now() - valeur.depuis > 3_600_000) enAttente.delete(cle)
 
@@ -114,8 +118,8 @@ export function routes(r) {
 
 // ---------------------------------------------------------------- import
 
-function importer(cible, lignes, correspondances, mettreAJour) {
-  const bilan = { crees: 0, modifies: 0, ignores: 0, machinesCreees: 0, erreurs: [] }
+export function importer(cible, lignes, correspondances, mettreAJour) {
+  const bilan = { crees: 0, modifies: 0, inchanges: 0, ignores: 0, machinesCreees: 0, erreurs: [] }
   const aIndexer = { machine: new Set(), intervention: new Set() }
 
   transaction(() => {
@@ -152,7 +156,11 @@ function enregistrerAvecCle(table, cle, valeurs, mettreAJour, bilan) {
     bilan.ignores++
     return null
   }
-  const id = table.enregistrer(valeurs, existant?.id)
+  const { id, change } = table.enregistrerSiChange(valeurs, existant?.id)
+  if (!change) {
+    bilan.inchanges++
+    return null // rien à réindexer
+  }
   existant ? bilan.modifies++ : bilan.crees++
   return id
 }

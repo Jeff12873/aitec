@@ -5,8 +5,8 @@
 //   - une page sans texte (scan) ou une photo : on l'envoie en image à l'IA, qui la lit.
 
 import { h, vider, ic, tableau, fenetre, confirmer, essayer, notifier, dateFr, tailleFr, apresPause } from '/socle/ui.js'
-import { api } from '/socle/api.js'
-import { estAdmin } from '/socle/etat.js'
+import { api, adresse } from '/socle/api.js'
+import { peutModifier } from '/socle/etat.js'
 import { texteIA } from '/socle/texte-ia.js'
 
 export const GENRES = { document: 'Documents', schema: 'Schémas (électriques, pneumatiques…)', plan: 'Plans mécaniques' }
@@ -48,7 +48,7 @@ export default {
           lignes: documents,
           vide: 'Aucun document. Déposez les notices, schémas, procédures, fiches techniques…',
           colonnes: [
-            { titre: 'Nom', valeur: (d) => [h('a', { href: `/api/documents/${d.id}/fichier`, target: '_blank' }, d.nom), d.genre && d.genre !== 'document' ? [' ', h('span', { class: 'etiquette violet' }, d.genre === 'schema' ? 'Schéma' : 'Plan')] : null] },
+            { titre: 'Nom', valeur: (d) => [h('a', { href: adresse(`/api/documents/${d.id}/fichier`), target: '_blank' }, d.nom), d.genre && d.genre !== 'document' ? [' ', h('span', { class: 'etiquette violet' }, d.genre === 'schema' ? 'Schéma' : 'Plan')] : null] },
             { titre: 'Machine', valeur: (d) => (d.repere ? h('a', { href: `#/parc/${d.machine_id}`, class: 'mono' }, d.repere) : '') },
             { titre: 'État', valeur: (d) => h('span', { class: `etiquette ${ETATS[d.etat]?.[0] || ''}`, title: d.message }, ETATS[d.etat]?.[1] || d.etat) },
             { titre: 'Taille', classe: 'nombre', valeur: (d) => tailleFr(d.taille) },
@@ -58,10 +58,10 @@ export default {
               valeur: (d) =>
                 h('div', { class: 'actions', style: { flexWrap: 'nowrap' } },
                   d.passages ? h('button', { class: 'petit', title: 'Voir le texte lu et le traduire', onclick: () => voirTexte(d) }, ic('oeil', 15)) : null,
-                  estAdmin() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d) }, ic('rafraichir', 15), 'Lire') : null,
-                  estAdmin() && !['a-lire', 'erreur', 'piece-jointe'].includes(d.etat) ? h('button', { class: 'petit', title: 'Relire ce document (texte et images)', onclick: () => relire(d) }, ic('rafraichir', 15)) : null,
-                  estAdmin() ? h('button', { class: 'petit', title: 'Machine, nom…', onclick: () => modifier(d, machines) }, ic('crayon', 15)) : null,
-                  estAdmin() ? h('button', { class: 'petit danger', title: 'Supprimer', onclick: () => supprimer(d) }, ic('poubelle', 15)) : null,
+                  peutModifier() && ['a-lire', 'erreur'].includes(d.etat) ? h('button', { class: 'petit', title: 'Lire ce document', onclick: () => relire(d) }, ic('rafraichir', 15), 'Lire') : null,
+                  peutModifier() && !['a-lire', 'erreur', 'piece-jointe'].includes(d.etat) ? h('button', { class: 'petit', title: 'Relire ce document (texte et images)', onclick: () => relire(d) }, ic('rafraichir', 15)) : null,
+                  peutModifier() ? h('button', { class: 'petit', title: 'Machine, nom…', onclick: () => modifier(d, machines) }, ic('crayon', 15)) : null,
+                  peutModifier() ? h('button', { class: 'petit danger', title: 'Supprimer', onclick: () => supprimer(d) }, ic('poubelle', 15)) : null,
                 ),
             },
           ],
@@ -120,14 +120,14 @@ export default {
     vider(
       zone,
       h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, 'Documents'), h('p', { class: 'sous-titre' }, 'Notices, schémas, procédures : tout ce que l’IA peut lire pour vous répondre'))),
-      estAdmin()
+      peutModifier()
         ? h('div', { class: 'carte', style: { marginBottom: '16px' } },
             h('div', { class: 'actions', style: { marginBottom: '12px' } }, h('span', { class: 'texte-2' }, 'Les fichiers déposés sont des :'), genre),
             h('p', { class: 'discret', style: { fontSize: '13px' } }, 'Schémas et plans (PDF) : chaque page est analysée par l’IA, qui la regardera aussi pour répondre (compter environ une minute par page). Machine de rattachement : choisissez-la dans le filtre ci-dessous (facultatif).'),
             depot, zoneSuivi)
         : null,
       avancement,
-      h('div', { class: 'filtres' }, recherche, machine, estAdmin() ? h('button', { title: 'Relire Word, Excel, PowerPoint… avec la dernière version d’IASSITEC (images comprises)', onclick: relireTout }, ic('rafraichir', 16), 'Tout relire') : null),
+      h('div', { class: 'filtres' }, recherche, machine, peutModifier() ? h('button', { title: 'Relire Word, Excel, PowerPoint… avec la dernière version d’AITEC (images comprises)', onclick: relireTout }, ic('rafraichir', 16), 'Tout relire') : null),
       liste,
     )
     await charger()
@@ -179,9 +179,9 @@ async function lireDansLeNavigateur(id, fichier, ligne, genre = 'document') {
 //   - document : une page scannée (sans texte) est lue tout de suite par l'IA ; une page avec des photos
 //     est envoyée pour que l'IA décrive les illustrations en arrière-plan.
 async function lirePdf(id, fichier, ligne, genre) {
-  const pdfjs = await import('/vendor/pdfjs/pdf.min.mjs')
-  pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs'
-  const pdf = await pdfjs.getDocument({ data: await fichier.arrayBuffer(), cMapUrl: '/vendor/pdfjs/cmaps/', cMapPacked: true }).promise
+  const pdfjs = await import(new URL('../../interface/vendor/pdfjs/pdf.min.mjs', import.meta.url).href)
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('../../interface/vendor/pdfjs/pdf.worker.min.mjs', import.meta.url).href
+  const pdf = await pdfjs.getDocument({ data: await fichier.arrayBuffer(), cMapUrl: new URL('../../interface/vendor/pdfjs/cmaps/', import.meta.url).href, cMapPacked: true }).promise
   const envoyerImage = (numero, partie, image) => api(`/api/documents/${id}/rendu?page=${numero}&partie=${partie}`, { methode: 'POST', fichier: image })
 
   let lot = []
@@ -217,7 +217,7 @@ async function lirePdf(id, fichier, ligne, genre) {
 }
 
 // Certains navigateurs (LibreWolf, Firefox avec « resistFingerprinting », Brave…) brouillent les images
-// produites par les pages, pour empêcher le pistage. IASSITEC enregistrerait alors des rayures à la place
+// produites par les pages, pour empêcher le pistage. AITEC enregistrerait alors des rayures à la place
 // des pages : on vérifie avant, en dessinant quatre couleurs connues et en les relisant.
 export function verifierImagesDuNavigateur() {
   const toile = document.createElement('canvas')
@@ -237,8 +237,8 @@ export function verifierImagesDuNavigateur() {
   if (!fiable) {
     throw new Error(
       'Ce navigateur brouille les images des pages (protection contre le pistage : LibreWolf, Firefox renforcé, Brave…). ' +
-        'IASSITEC ne peut pas y lire les schémas, plans et PDF scannés. Autorisez 127.0.0.1 dans ses réglages, ' +
-        'ou ouvrez IASSITEC dans Chrome, Edge ou Firefox (voir l’aide « Dépannage »).',
+        'AITEC ne peut pas y lire les schémas, plans et PDF scannés. Autorisez 127.0.0.1 dans ses réglages, ' +
+        'ou ouvrez AITEC dans Chrome, Edge ou Firefox (voir l’aide « Dépannage »).',
     )
   }
 }
@@ -334,7 +334,7 @@ async function relire(d) {
   if (!resultat) return
   if (resultat.lecture === 'navigateur') {
     // Le navigateur doit relire le fichier : on le récupère depuis la base.
-    const reponse = await fetch(`/api/documents/${d.id}/fichier`)
+    const reponse = await fetch(adresse(`/api/documents/${d.id}/fichier`))
     const fichier = new File([await reponse.blob()], d.nom, { type: reponse.headers.get('Content-Type') })
     const zone = h('div', { class: 'legende' })
     fenetre({ titre: `Lecture de ${d.nom}`, contenu: zone })
@@ -345,7 +345,7 @@ async function relire(d) {
       notifier(erreur.message, 'erreur')
     }
   }
-  window.iassitec.recharger()
+  window.ktec.recharger()
 }
 
 async function modifier(d, machines) {
@@ -367,7 +367,7 @@ async function modifier(d, machines) {
         action: async () => {
           await api(`/api/documents/${d.id}`, { methode: 'PUT', corps: { nom: nom.value.trim(), machine_id: machine.value, genre: genre.value } })
           if (genre.value !== d.genre && d.nom.toLowerCase().endsWith('.pdf')) await relire({ ...d, genre: genre.value })
-          else window.iassitec.recharger()
+          else window.ktec.recharger()
         },
       },
     ],
@@ -376,7 +376,7 @@ async function modifier(d, machines) {
 
 async function supprimer(d) {
   if (!(await confirmer(`Supprimer « ${d.nom} » de la base ?`, { texte: 'Supprimer', danger: true }))) return
-  if (await essayer(() => api(`/api/documents/${d.id}`, { methode: 'DELETE' }), 'Document supprimé')) window.iassitec.recharger()
+  if (await essayer(() => api(`/api/documents/${d.id}`, { methode: 'DELETE' }), 'Document supprimé')) window.ktec.recharger()
 }
 
 // Le texte lu, page par page, avec traduction en français.

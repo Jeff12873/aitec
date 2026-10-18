@@ -1,55 +1,42 @@
 # Architecture
 
-IASSITEC est un petit serveur web qui tourne **sur le poste de l'agent** et qu'on utilise dans le navigateur.
-Aucune bibliothèque à installer, aucune étape de compilation : on modifie un fichier, on relance, c'est pris en compte.
+AITEC est une application **KTEC** : le portail KTEC fournit le serveur web (sur le poste de l'agent, utilisé dans
+le navigateur), la coquille de l'interface, l'IA, la connexion MySQL et le fichier de connaissances `.ktec` partagé.
+Ce dépôt ne contient que ce qui est propre à AITEC.
 
 ```
-navigateur  ──►  serveur Node (127.0.0.1:47800)  ──►  copie locale du fichier .datassitec  ◄──►  lecteur réseau
-                          │
-                          └──►  llama.cpp : modèle de réponse (Qwen3.5) + modèle de recherche (Qwen3-Embedding)
+navigateur  ──►  KTEC (127.0.0.1:47700)  ──►  /api/aitec/…  (routes des blocs d'AITEC)
+                      │
+                      ├──►  copie locale du fichier .ktec  ◄──►  lecteur réseau (verrou, publication)
+                      ├──►  llama.cpp : modèle de réponse (Qwen3.5) + modèle de recherche (Qwen3-Embedding)
+                      └──►  java Moteur ──► MySQL de la GMAO (lecture seule) : synchronisation du parc et des interventions
 ```
 
 ## Les dossiers
 
 | Dossier | Contenu |
 |---|---|
-| `serveur/demarrer.js` | Point de départ : rouvre le fichier, charge les blocs, démarre le serveur, ouvre le navigateur |
-| `serveur/socle/` | Les outils communs (voir ci-dessous) |
+| `app.json` | Nom, description, icône, composants nécessaires (IA, Java) |
 | `blocs/<nom>/` | Une fonction de l'application = un dossier : `serveur.js` (routes), `vue.js` (écran), `README.md` |
-| `interface/` | La page, le thème (`theme.css`), le menu (`app.js`), les outils d'écran (`socle/`), l'aide, pdf.js |
-| `outils/` | La préparation d'un poste (`preparer.js`) et la liste des versions à télécharger (`catalogue.json`) |
+| `lib/` | Les données d'AITEC dans le `.ktec` (`base.js` : tables, réglages), tables simples (`tables.js`), lecture des tableurs (`tableurs.js`) et des anciens formats Office, glossaire des repères |
+| `interface/` | Menu (`menu.js`), icône, aide intégrée, pdf.js |
 | `docs/` | Cette documentation, et des exemples d'exports GMAO (usine fictive) |
 
-Dossiers créés sur le poste, jamais dans Git : `moteur/` (Node, llama.cpp), `cache/` (copie du fichier,
-icône des raccourcis), `installation.json`, `reglages-poste.json`, `journal.txt`.
-
-## Le socle du serveur
-
-| Fichier | Rôle |
-|---|---|
-| `installation.js` | Chemins, réglages du poste, journal |
-| `http.js` | Le serveur web : routes, fichiers de l'interface, réponses en flux |
-| `base.js` | Ouverture de la base SQLite, structure des tables, transactions |
-| `partage.js` | Le fichier partagé : copie locale, verrou administrateur, publication, sauvegardes |
-| `tables.js` | Lecture et écriture des tables simples, routes standard, conversion des dates et nombres |
-| `ia.js` | Démarrage / arrêt des modèles (llama.cpp), questions au modèle, vecteurs de recherche |
-| `zip.js`, `tar.js`, `tableurs.js` | Lecture des ZIP (Office récent), des .tar.gz (kits Linux), des CSV, XLS, XLSX et ODS |
-| `fichier-compose.js`, `word97.js`, `excel97.js`, `powerpoint97.js` | Lecture des anciens formats Office (.doc, .xls, .ppt) |
-| `telechargement.js` | Téléchargements avec reprise et vérification |
-| `icone.js`, `securite.js` | Icône des raccourcis ; mots de passe |
+Le code serveur importe le socle de KTEC par `ktec/…` (`ktec/partage.js` pour le verrou et la publication,
+`ktec/ia.js`, `ktec/mysql.js`, `ktec/http.js`…), et `lib/` par chemins relatifs. Toute écriture commence par
+`ctx.exigerAdmin()` et se termine par `noterModification()`.
 
 ## Les blocs
 
 | Bloc | Écran / rôle |
 |---|---|
-| `fichier` | Accueil, choix et création du fichier, mode administrateur |
 | `tableau-de-bord` | Tuiles, graphiques, remarques de l'IA |
 | `assistant` | Discussion avec l'IA |
 | `recherche` | Passages, index, recherche par mots et par le sens |
 | `parc`, `interventions` | Fiches des machines et des interventions (ouvertes depuis les sources de l'IA) |
 | `documents` | Dépôt et lecture des fichiers |
-| `import-gmao` | Import des exports de GMAO |
-| `administration` | Réglages, icône, mises à jour |
+| `import-gmao` | Données de la GMAO : synchronisation avec la base MySQL (`synchronisation.js`), import des exports |
+| `administration` | Documents, données de la GMAO, réglages (atelier, glossaire, index, modèle, reprise d'un fichier IASSITEC) |
 | `aide` | L'aide intégrée |
 
 ## Le fonctionnement de l'IA
@@ -65,3 +52,10 @@ icône des raccourcis), `installation.json`, `reglages-poste.json`, `journal.txt
 
 Les deux modèles tournent avec `llama-server` (llama.cpp), lancés à la demande et arrêtés après un moment
 sans utilisation. Rien ne sort du poste.
+
+## La synchronisation avec la GMAO
+
+Deux requêtes, rangées dans le `.ktec` (réglage `requetes_mysql`), renvoient une ligne par machine et par
+intervention avec des colonnes nommées comme les champs d'AITEC. Tous les quarts d'heure (et sur demande), elles
+sont lancées par la connexion MySQL de KTEC ; seules les lignes nouvelles ou changées sont écrites, et une fiche
+inchangée garde ses passages et leurs vecteurs. Rien n'est republié si rien n'a changé.

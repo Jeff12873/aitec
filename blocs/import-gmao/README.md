@@ -16,4 +16,4 @@ Une correspondance validée à la main est de toute façon retenue dans le fichi
 
 ## Types d'intervention
 
-`normaliserType` traduit les codes de la GMAO (CUR, PREV, SYST…) vers les types d'IASSITEC.
+`normaliserType` traduit les codes de la GMAO (CUR, PREV, SYST…) vers les types d'AITEC.

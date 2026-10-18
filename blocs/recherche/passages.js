@@ -4,7 +4,7 @@
 // qui se chevauchent un peu pour ne pas couper une explication en deux.
 // Chaque fiche (machine, intervention) donne un seul passage.
 
-import { db } from '../../serveur/socle/base.js'
+import { db } from '../../lib/base.js'
 import { relancerIndexeur } from './indexeur.js'
 
 const TAILLE = 1200
@@ -43,8 +43,12 @@ export function nettoyerTexte(texte) {
 
 // Remplace tous les passages d'une source.
 //   pages : [{ page, texte }]   (page = null pour une fiche ou un document sans pages)
+// Passages déjà identiques : rien n'est touché (leurs vecteurs de recherche sont gardés).
 export function remplacerPassages(source, sourceId, machineId, pages) {
   const base = db()
+  const voulus = pages.flatMap(({ page, texte }) => decouper(texte).map((morceau) => `${page ?? ''}\u0001${morceau}`))
+  const actuels = base.prepare('SELECT page, texte, machine_id FROM passages WHERE source = ? AND source_id = ? ORDER BY id').all(source, sourceId)
+  if (actuels.length === voulus.length && actuels.every((p, i) => `${p.page ?? ''}\u0001${p.texte}` === voulus[i] && (p.machine_id ?? null) === (machineId ?? null))) return
   base.prepare('DELETE FROM passages WHERE source = ? AND source_id = ?').run(source, sourceId)
   ajouterPassages(source, sourceId, machineId, pages)
 }

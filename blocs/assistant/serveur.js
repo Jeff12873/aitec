@@ -6,16 +6,16 @@
 //
 // Les consignes sont dans CONSIGNES ci-dessous : c'est l'endroit où ajuster le comportement de l'IA.
 
-import { db, reglage } from '../../serveur/socle/base.js'
-import { ouvrirFlux } from '../../serveur/socle/http.js'
-import { discuter, iaInstallee } from '../../serveur/socle/ia.js'
-import { installation } from '../../serveur/socle/installation.js'
-import { glossaire } from '../../serveur/socle/glossaire.js'
+import { db, reglage } from '../../lib/base.js'
+import { ouvrirFlux } from 'ktec/http.js'
+import { discuter, iaInstallee } from 'ktec/ia.js'
+import { installation } from 'ktec/installation.js'
+import { glossaire } from '../../lib/glossaire.js'
 import fs from 'node:fs'
 import { chercher } from '../recherche/recherche.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
 
-const CONSIGNES = `Tu es IASSITEC, l'assistant des agents de maintenance de l'atelier « {atelier} ».
+const CONSIGNES = `Tu es AITEC, l'assistant des agents de maintenance de l'atelier « {atelier} ».
 
 Règles :
 - Réponds toujours en français, clairement et sans détour, comme à un technicien sur le terrain, sans formule de politesse. Pour une procédure, donne des étapes numérotées.

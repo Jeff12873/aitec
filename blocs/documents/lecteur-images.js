@@ -10,11 +10,11 @@
 // Comptez de quelques secondes à une minute par image. Un document en attente a l'état « images ».
 // Si le mode administrateur est quitté, la lecture reprend là où elle en était au passage suivant.
 
-import { db } from '../../serveur/socle/base.js'
-import { etatPartage, noterModification } from '../../serveur/socle/partage.js'
-import { iaInstallee, lireImage, surProcesseur } from '../../serveur/socle/ia.js'
-import { journal } from '../../serveur/socle/installation.js'
-import { glossaire } from '../../serveur/socle/glossaire.js'
+import { db } from '../../lib/base.js'
+import { etatPartage, noterModification } from 'ktec/partage.js'
+import { iaInstallee, lireImage, surProcesseur } from 'ktec/ia.js'
+import { journal } from 'ktec/installation.js'
+import { glossaire } from '../../lib/glossaire.js'
 import { ajouterPassages } from '../recherche/passages.js'
 import { imagesDuDocument } from './extraction.js'
 

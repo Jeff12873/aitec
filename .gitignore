@@ -1,13 +1,17 @@
-# Programmes et modèles téléchargés par la préparation (jamais dans Git)
-moteur/
-modeles/
-# Fichiers propres à chaque poste
-installation.json
-reglages-poste.json
-cache/
-journal.txt
-# Données : le fichier de l'atelier ne va jamais sur GitHub
+# Liste blanche : seuls les fichiers du programme sont publiés.
+# Tout autre fichier déposé ici (exports de la GMAO, fichiers .ktec ou .datassitec, moteurs…) reste sur le poste.
+/*
+!/.github/
+!/.gitignore
+!/app.json
+!/blocs/
+!/docs/
+!/interface/
+!/lib/
+!/README.md
+!/VERSION
+!/package.json
+
+*.ktec
 *.datassitec
 *.verrou
-IASSITEC-sauvegardes/
-IASSITEC-hors-ligne-*/

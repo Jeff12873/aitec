@@ -25,7 +25,7 @@ export default {
 
     vider(
       zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, etat.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
+      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
 
       t.machines === 0 ? bandeauDemarrage() : null,
 

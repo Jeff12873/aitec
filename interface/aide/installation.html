@@ -1,22 +1,9 @@
 <h1>Installation sur un poste</h1>
-<p>IASSITEC s'installe <b>dans le profil de l'utilisateur</b> : rien n'est écrit dans Program Files, et aucun droit d'administrateur Windows n'est nécessaire.</p>
-<h2>Windows</h2>
-<ol>
-<li>Téléchargez <code>IASSITEC.zip</code> (page des versions du projet sur GitHub) et décompressez-le, par exemple dans Téléchargements.</li>
-<li>Double-cliquez sur <b>Preparer IASSITEC.bat</b>. La préparation :
-<ul><li>installe IASSITEC dans <code>%LOCALAPPDATA%\IASSITEC</code> ;</li>
-<li>analyse le poste (mémoire, carte graphique) et propose le modèle d'IA adapté ;</li>
-<li>télécharge le moteur d'IA et le modèle (de 3 à 24 Go selon le modèle) ;</li>
-<li>essaie l'IA et crée les raccourcis sur le Bureau et dans le menu Démarrer.</li></ul></li>
-<li>Lancez IASSITEC avec son raccourci : il s'ouvre dans le navigateur.</li>
-</ol>
-<p>Les modèles sont rangés dans <code>C:\Users\Public\IASSITEC\modeles</code> : un deuxième agent du même poste ne les télécharge pas une seconde fois.</p>
-<h2>Linux</h2>
-<pre>sh preparer-iassitec.sh</pre>
-<p>IASSITEC est installé dans <code>~/.local/share/iassitec</code> et ajouté au menu des applications.</p>
-<h2>Poste sans Internet : la version hors ligne</h2>
-<p>Un « kit hors ligne » contient tout (programme, moteur d'IA, modèles) : il se copie sur une clé USB ou un partage. Lancez <b>Preparer IASSITEC.bat</b> depuis le kit : rien n'est téléchargé, tout est copié. Le kit se fabrique sur un PC connecté à Internet avec <b>Fabriquer kit hors ligne.bat</b> (Windows) ou <code>sh fabriquer-kit-hors-ligne.sh</code> (Linux) : on choisit les postes visés (Windows ou Linux, depuis l'un ou l'autre), les modèles et le dossier.</p>
+<p>AITEC est une application de la suite <b>KTEC</b> : il s'installe avec KTEC, <b>dans le profil de l'utilisateur</b> (rien dans Program Files, aucun droit d'administrateur Windows). KTEC installe une seule fois ce que les applications partagent : le moteur d'IA et son modèle, Java et le pilote MySQL.</p>
+<p>AITEC s'ouvre depuis le portail KTEC (sa tuile) ; on passe d'une application à l'autre par le bas du menu. La connexion MySQL est commune : le mot de passe n'est demandé qu'une fois.</p>
+<h2>Poste sans Internet</h2>
+<p>Le kit hors ligne de KTEC contient tout (programmes, moteur d'IA, modèles) et se copie sur une clé USB : rien n'est téléchargé.</p>
 <h2>Internet</h2>
-<p>Internet n'est nécessaire que pendant la préparation (et pour les mises à jour). Ensuite, tout fonctionne hors ligne : aucune donnée ne quitte le poste.</p>
-<h2>Changer de modèle</h2>
-<p>Relancez la préparation : elle propose à nouveau la liste des modèles. Les fichiers déjà téléchargés ne le sont pas une seconde fois.</p>
+<p>Internet n'est nécessaire que pour installer (sans kit) et mettre à jour. Ensuite, tout fonctionne hors ligne : aucune donnée ne quitte le poste.</p>
+<h2>Changer de modèle d'IA</h2>
+<p>Administration › Réglages › <b>Modèle d'IA de ce poste</b>. Le choix vaut pour ce poste et pour toutes ses applications KTEC.</p>

@@ -1,6 +1,5 @@
-# À chaque envoi sur « main » : fabrique IASSITEC.zip et le publie dans les Releases GitHub.
-# Les postes installés le trouvent ensuite dans Administration › Mises à jour.
-# Le zip ne contient que le code : le moteur d'IA et le modèle sont téléchargés par la préparation.
+# À chaque envoi sur « main » : fabrique aitec.zip (l'application seule) et le publie dans les Releases GitHub.
+# C'est ce paquet que l'installateur KTEC télécharge ; le socle commun (serveur, IA, Java) vient de KTEC.
 
 name: Publier
 
@@ -28,23 +27,20 @@ jobs:
         run: |
           for fichier in $(git ls-files '*.js' | grep -v vendor/); do node --check "$fichier"; done
 
-      - name: IASSITEC.zip
+      - name: aitec.zip
         run: |
           version="$(cat VERSION).${{ github.run_number }}"
           echo "$version" > VERSION
           echo "VERSION=$version" >> "$GITHUB_ENV"
-          mkdir -p dist/IASSITEC
-          cp -r serveur blocs interface outils docs VERSION package.json README.md \
-            "Lancer IASSITEC.bat" "Preparer IASSITEC.bat" "Fabriquer kit hors ligne.bat" \
-            lancer-iassitec.sh preparer-iassitec.sh fabriquer-kit-hors-ligne.sh dist/IASSITEC/
-          chmod +x dist/IASSITEC/*.sh
-          (cd dist && zip -qr IASSITEC.zip IASSITEC)
+          mkdir -p dist/aitec
+          cp -r app.json blocs lib interface docs VERSION package.json README.md dist/aitec/
+          (cd dist && zip -qr aitec.zip aitec)
 
       - name: Release
         env:
           NOTES: ${{ github.event.head_commit.message }}
         run: |
-          gh release create "v$VERSION" dist/IASSITEC.zip --title "IASSITEC $VERSION" --notes "${NOTES:-Nouvelle version}"
+          gh release create "v$VERSION" dist/aitec.zip --title "AITEC $VERSION" --notes "${NOTES:-Nouvelle version}"
           # On garde les 3 dernières versions
           gh release list --limit 100 --json tagName --jq '.[3:][].tagName' | while read -r ancienne; do
             gh release delete "$ancienne" --yes --cleanup-tag

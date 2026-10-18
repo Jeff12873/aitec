@@ -2,7 +2,7 @@
 
 import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, nombreFr, apresPause } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { estAdmin } from '/socle/etat.js'
+import { peutModifier } from '/socle/etat.js'
 
 export default {
   chemin: 'interventions',
@@ -52,7 +52,7 @@ export default {
         'div',
         { class: 'entete-page' },
         h('div', {}, h('h1', {}, 'Interventions'), h('p', { class: 'sous-titre' }, 'L’historique des pannes, entretiens et réglages')),
-        estAdmin() ? h('button', { class: 'principal', onclick: () => modifierIntervention(null, machines, types, query.machine) }, ic('plus', 16), 'Ajouter une intervention') : null,
+        peutModifier() ? h('button', { class: 'principal', onclick: () => modifierIntervention(null, machines, types, query.machine) }, ic('plus', 16), 'Ajouter une intervention') : null,
       ),
       h('div', { class: 'filtres' }, recherche, machine, type),
       liste,
@@ -72,8 +72,8 @@ async function afficherFiche(zone, id) {
       h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
       h('div', { style: { flex: 1 } }, h('h1', {}, `Intervention du ${dateFr(i.date)}`), h('p', { class: 'sous-titre' }, i.numero ? `N° ${i.numero}` : '')),
       h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type),
-      estAdmin() ? h('button', { onclick: () => modifierIntervention(i, machines, types) }, ic('crayon', 16), 'Modifier') : null,
-      estAdmin() ? h('button', { class: 'danger', onclick: () => supprimerIntervention(i) }, ic('poubelle', 16)) : null,
+      peutModifier() ? h('button', { onclick: () => modifierIntervention(i, machines, types) }, ic('crayon', 16), 'Modifier') : null,
+      peutModifier() ? h('button', { class: 'danger', onclick: () => supprimerIntervention(i) }, ic('poubelle', 16)) : null,
     ),
     h(
       'div',
@@ -118,7 +118,7 @@ async function modifierIntervention(intervention, machines, types, machineParDef
           donnees.machine_id = Number(donnees.machine_id) || null
           if (!donnees.numero) donnees.numero = null
           const { id } = await api(intervention ? `/api/interventions/${intervention.id}` : '/api/interventions', { methode: intervention ? 'PUT' : 'POST', corps: donnees })
-          if (intervention) window.iassitec.recharger()
+          if (intervention) window.ktec.recharger()
           else location.hash = `#/interventions/${id}`
         },
       },
