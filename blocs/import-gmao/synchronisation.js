@@ -9,6 +9,7 @@
 // Automatique : tous les quarts d'heure, quand la connexion MySQL est ouverte et que ce poste peut modifier
 // le fichier sans mot de passe (ou est en mode administrateur).
 
+import crypto from 'node:crypto'
 import { reglageJson, modifierReglage } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { executerRequete, etatConnexion } from 'ktec/mysql.js'
@@ -55,11 +56,20 @@ export function synchroniser() {
       if (!q.machines && !q.interventions) throw new ErreurHttp(409, 'Aucune requête réglée : indiquez d’abord comment lire le parc et les interventions dans la base.')
       if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion MySQL fermée : saisissez le mot de passe.')
       const bilan = { date: new Date().toISOString() }
+      const empreintes = reglageJson('synchronisation_empreintes', {})
+      const nouvelles = {}
       // Le parc d'abord : les interventions s'y rattachent par le repère.
       for (const cible of ['machines', 'interventions']) {
         if (!q[cible]) continue
         const depart = Date.now()
         const resultat = await executerRequete(sansCommentaires(q[cible]), LIGNES_MAX)
+        // Mêmes données que la dernière fois (empreinte) : rien à faire, et surtout pas de prise du verrou
+        // (les autres postes verraient « X modifie le fichier » à chaque synchronisation).
+        const empreinte = crypto.createHash('sha256').update(q[cible]).update(JSON.stringify(resultat.lignes)).digest('hex')
+        if (empreintes[cible] === empreinte) {
+          bilan[cible] = { lignes: resultat.lignes.length, crees: 0, modifies: 0, inchanges: resultat.lignes.length, ignores: 0, machinesCreees: 0, erreurs: [], dureeMs: Date.now() - depart, identique: true }
+          continue
+        }
         exigerEcriture()
         const correspondances = correspondancesParNom(cible, resultat.colonnes.map((c) => c.nom))
         // Une clé en double dans la base (même repère, même n° de RI) : la première ligne seulement, sinon les deux
@@ -74,12 +84,18 @@ export function synchroniser() {
           return true
         })
         const b = importer(cible, lignes, correspondances, true)
+        nouvelles[cible] = empreinte
         bilan[cible] = { lignes: lignes.length, doublons: resultat.lignes.length - lignes.length, crees: b.crees, modifies: b.modifies, inchanges: b.inchanges, ignores: b.ignores, machinesCreees: b.machinesCreees, erreurs: b.erreurs.slice(0, 5), dureeMs: Date.now() - depart }
       }
       const change = ['machines', 'interventions'].some((c) => bilan[c] && (bilan[c].crees || bilan[c].modifies || bilan[c].machinesCreees))
       // Le bilan n'est enregistré (et le fichier republié) que si quelque chose a changé.
       if (change) {
         modifierReglage('synchronisation', bilan)
+        modifierReglage('synchronisation_empreintes', { ...empreintes, ...nouvelles })
+        noterModification()
+      } else if (Object.keys(nouvelles).length && Object.entries(nouvelles).some(([c, e]) => empreintes[c] !== e)) {
+        // Lu, sans changement, mais l'empreinte n'était pas encore retenue : on la retient (une seule fois).
+        modifierReglage('synchronisation_empreintes', { ...empreintes, ...nouvelles })
         noterModification()
       }
       journal(`AITEC : synchronisation avec la GMAO ${JSON.stringify(Object.fromEntries(['machines', 'interventions'].filter((c) => bilan[c]).map((c) => [c, { crees: bilan[c].crees, modifies: bilan[c].modifies, inchanges: bilan[c].inchanges }])))}`)
