@@ -140,6 +140,12 @@ async function carteSynchronisation() {
   }
   montrer(s.derniere)
   async function synchroniser() {
+    // Requêtes modifiées dans les cases mais pas encore enregistrées : on les enregistre d'abord.
+    if (machines.value.trim() !== (s.requetes.machines || '').trim() || interventions.value.trim() !== (s.requetes.interventions || '').trim()) {
+      const ok = await essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: { machines: machines.value, interventions: interventions.value } }))
+      if (!ok) return
+      s.requetes = ok
+    }
     if (!etat.connexion?.ouverte) await demanderMotDePasse()
     vider(bilan, h('p', { class: 'discret curseur' }, 'Lecture de la base et mise à jour'))
     const b = await essayer(() => api('/api/gmao/synchroniser', { methode: 'POST' }))
@@ -150,15 +156,19 @@ async function carteSynchronisation() {
   }
   return h('div', { class: 'carte' },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('base', 18), 'Directement depuis la base de la GMAO')),
-    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC lit le parc et les interventions dans la base (connexion MySQL de KTEC), puis se tient à jour tout seul tous les quarts d’heure. Chaque requête renvoie une ligne par machine ou par intervention, avec des colonnes nommées comme les champs d’AITEC.'),
-    h('details', {},
+    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC lit le parc et les interventions dans la base de la GMAO (la connexion MySQL de KTEC, réglée une fois dans les Réglages du portail), puis se tient à jour tout seul tous les quarts d’heure.'),
+    h('ol', { class: 'texte-2', style: { fontSize: '14px', marginTop: 0 } },
+      h('li', {}, 'Deux requêtes SELECT disent où trouver les données : une ligne par machine, une ligne par intervention. Leurs colonnes portent les noms des champs d’AITEC (« AS repere », « AS date »…). La colonne « machine » des interventions (le repère de la machine) rattache chaque intervention à sa machine : sans elle, l’IA ne sait pas sur quoi porte une intervention.'),
+      h('li', {}, '« Synchroniser maintenant » enregistre les requêtes dans le fichier de connaissances et lit la base une première fois. Ensuite, c’est automatique.')),
+    s.requetes.machines || s.requetes.interventions ? null : h('div', { class: 'bandeau info' }, ic('base'), 'Aucune requête pour l’instant : ouvrez « Les requêtes » ci-dessous.'),
+    h('details', { open: !(s.requetes.machines && s.requetes.interventions) },
       h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),
       h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), machines),
       h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), interventions),
       h('div', { class: 'actions', style: { marginTop: '10px' } },
         h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: { machines: machines.value, interventions: interventions.value } }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
     ),
-    h('div', { class: 'actions', style: { marginTop: '12px' } }, h('button', { class: 'principal', onclick: synchroniser }, ic('rafraichir', 16), 'Synchroniser maintenant')),
+    h('div', { class: 'actions', style: { marginTop: '12px' } }, h('button', { class: 'principal', onclick: synchroniser, title: 'Enregistre les requêtes si elles ont changé, puis lit la base' }, ic('rafraichir', 16), 'Synchroniser maintenant')),
     bilan,
   )
 }
