@@ -70,14 +70,17 @@ function chercherParMots(question, machineId, limite) {
        WHERE passages_mots MATCH ? AND p.source <> 'piece' ${filtreMachine(machineId)}
        ORDER BY m.rank LIMIT ?`,
     )
-    .all(requete, ...(machineId ? [machineId] : []), limite)
+    .all(requete, ...listeMachines(machineId), limite)
   return lignes.map((l) => l.id)
 }
 
 // Note : les passages « piece » viennent d'une ancienne version (pièces de rechange, fonction retirée) : on les ignore.
+// machineId : une machine, ou une liste (toutes les machines d'une ligne ou d'un sous-ensemble).
+const listeMachines = (machineId) => (Array.isArray(machineId) ? machineId : machineId ? [machineId] : []).map(Number).filter(Boolean)
 function filtreMachine(machineId) {
-  if (!machineId) return ''
-  return 'AND p.machine_id = ?'
+  const ids = listeMachines(machineId)
+  if (!ids.length) return ''
+  return `AND p.machine_id IN (${ids.map(() => '?').join(', ')})`
 }
 
 // ---------------------------------------------------------------- par le sens
@@ -108,11 +111,11 @@ async function chercherParSens(question, machineId, limite) {
   if (!ids.length) return []
 
   let autorises = null
-  if (machineId) {
+  if (listeMachines(machineId).length) {
     autorises = new Set(
       db()
         .prepare(`SELECT p.id FROM passages p WHERE 1 ${filtreMachine(machineId)}`)
-        .all(machineId)
+        .all(...listeMachines(machineId))
         .map((l) => l.id),
     )
   }

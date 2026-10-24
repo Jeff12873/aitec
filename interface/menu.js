@@ -25,3 +25,4 @@ const champRecherche = h('input', {
   },
 })
 export const barre = () => h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)
+export const styles = 'interface/app.css'

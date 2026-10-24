@@ -14,6 +14,8 @@ import { glossaire } from '../../lib/glossaire.js'
 import fs from 'node:fs'
 import { chercher } from '../recherche/recherche.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
+import { lireInfo } from 'ktec/ktec.js'
+import { executerRequete, etatConnexion } from 'ktec/mysql.js'
 
 const CONSIGNES = `Tu es AITEC, l'assistant de dépannage des agents de maintenance de l'atelier « {atelier} ». Tu réponds comme un technicien d'assistance expérimenté au téléphone avec un collègue devant la machine : court, précis, dans l'ordre où on vérifie.
 
@@ -52,16 +54,41 @@ Poser des questions pour affiner :
 - Si les sources permettent de répondre : réponds directement, sans ligne CHOIX. Au plus une question finale si elle fait avancer le dépannage (« Le défaut revient-il à chaque cycle ? »).`
 
 export function routes(r) {
+  // Les deux premiers niveaux de l'arborescence des machines (ligne › sous-ensemble), avec les machines d'AITEC
+  // rangées dessous. L'arbre vient de la requête réglée dans PDRTec (même fichier de connaissances) ; sans elle,
+  // ou sans connexion à la base : null (on garde la simple liste des machines).
+  r.get('/api/arborescence', async () => {
+    const sql = lireInfo('pdrtec.arborescence', null)?.arbre
+    if (!sql || !etatConnexion().ouverte) return null
+    const r2 = await executerRequete(sql.replace(/--[^\n]*/g, ''), 1_000_000)
+    const i = (nom) => r2.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
+    const [iN, iP, iC, iD, iO] = ['noeud', 'parent', 'code', 'designation', 'ordre'].map(i)
+    if (iN < 0 || iP < 0 || iC < 0) return null
+    const noeuds = new Map(r2.lignes.map((l) => [String(l[iN]), { id: String(l[iN]), parent: String(l[iP] ?? ''), code: String(l[iC] ?? '').trim(), desi: String(l[iD] ?? '').trim(), ordre: Number(l[iO]) || 0, enfants: [] }]))
+    for (const n of noeuds.values()) noeuds.get(n.parent)?.enfants.push(n)
+    const parRepere = new Map(db().prepare('SELECT id, repere FROM machines').all().map((m) => [String(m.repere).trim(), m.id]))
+    // Toutes les machines d'AITEC sous un nœud (lui compris).
+    const sous = (n, acc = new Set()) => { const id = parRepere.get(n.code); if (id) acc.add(id); n.enfants.forEach((e) => sous(e, acc)); return acc }
+    const libelle = (n) => (n.desi && n.desi !== n.code ? `${n.code} (${n.desi})` : n.code)
+    const tri = (a, b) => a.ordre - b.ordre || a.code.localeCompare(b.code, 'fr', { numeric: true })
+    // Les lignes : les vraies racines (sans parent) ; une machine dont le parent n'est plus actif n'en est pas une.
+    return [...noeuds.values()].filter((n) => !n.parent || n.parent === '0' || n.parent === 'null').sort(tri)
+      .map((n) => ({ id: n.id, libelle: libelle(n), machines: [...sous(n)], enfants: n.enfants.sort(tri).map((e) => ({ id: e.id, libelle: libelle(e), machines: [...sous(e)] })).filter((e) => e.machines.length) }))
+      .filter((n) => n.machines.length)
+  })
+
   // POST /api/assistant { question, historique: [{ role, contenu }], machineId }
   // Réponse en flux : « sources », puis des « texte » successifs, puis « fin » (ou « erreur »).
   r.post('/api/assistant', async (ctx) => {
-    const { question, historique = [], machineId = null } = await ctx.json()
+    const { question, historique = [], machineId = null, machineIds = null, groupe = '' } = await ctx.json()
     const flux = ouvrirFlux(ctx.res)
     const arret = new AbortController()
     ctx.res.on('close', () => arret.abort()) // l'agent a fermé la page ou cliqué « Arrêter »
 
     try {
-      const passages = await chercher(texteDeRecherche(question, historique), { machineId, limite: 8 })
+      // Une machine, ou toutes celles d'une ligne / d'un sous-ensemble de l'arborescence.
+      const filtre = machineIds?.length ? machineIds : machineId
+      const passages = await chercher(texteDeRecherche(question, historique), { machineId: filtre, limite: 8 })
       flux.envoyer('sources', passages.map((p, i) => ({ numero: i + 1, titre: p.titre, lien: p.lien, source: p.source, extrait: p.texte.slice(0, 400) })))
 
       if (!iaInstallee()) {
@@ -71,7 +98,7 @@ export function routes(r) {
         return flux.envoyer('fin', {})
       }
 
-      await discuter(construireMessages(question, historique, passages, machineId), {
+      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null), {
         surMorceau: (morceau) => flux.envoyer('texte', morceau),
         signal: arret.signal,
         // Réponses courtes et régulières : une limite de longueur, peu de fantaisie.
@@ -94,7 +121,7 @@ function texteDeRecherche(question, historique) {
   return [question, ...precedents.reverse()].join('\n')
 }
 
-function construireMessages(question, historique, passages, machineId) {
+function construireMessages(question, historique, passages, machineId, groupe = null) {
   const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
     .replace('{glossaire}', glossaire())
@@ -103,6 +130,8 @@ function construireMessages(question, historique, passages, machineId) {
   if (machineId) {
     const m = db().prepare('SELECT * FROM machines WHERE id = ?').get(machineId)
     if (m) contexte += `La question porte sur la machine ${m.repere} (${m.designation}${m.marque ? ', ' + m.marque : ''}${m.modele ? ' ' + m.modele : ''}).\n\n`
+  } else if (groupe) {
+    contexte += `La question porte sur ${groupe.nom || 'un ensemble de machines'} (${groupe.nombre} machine${groupe.nombre > 1 ? 's' : ''} de l'arborescence).\n\n`
   }
   contexte += passages.length
     ? 'SOURCES :\n\n' + passages.map((p, i) => `[${i + 1}] ${p.titre}\n${p.texte}`).join('\n\n')

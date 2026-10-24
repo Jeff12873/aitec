@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.2.5",
+      "date": "2026-10-24",
+      "points": [
+        "Machine concernée : choix par ligne puis sous-ensemble, comme l'arborescence de PDRTec"
+      ]
+    },
+    {
       "version": "0.2.4",
       "date": "2026-10-24",
       "points": [

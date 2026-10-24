@@ -16,6 +16,8 @@ const SUGGESTIONS = [
 // Conversation en cours : [{ role: 'agent' | 'assistant', contenu, sources }]
 let conversation = lireConversation()
 let machineChoisie = ''
+// Arborescence (deux niveaux : ligne › sous-ensemble) : le nœud choisi limite la recherche à toutes ses machines.
+let ligneChoisie = '', ensembleChoisi = ''
 let enCours = null // AbortController de la réponse en cours
 
 export default {
@@ -27,8 +29,8 @@ export default {
   rafraichir: false, // ne pas recharger l'écran pendant une discussion
 
   async afficher(zone, { query }) {
-    const machines = await api('/api/machines')
-    if (query.machine) machineChoisie = query.machine
+    const [machines, arbre] = await Promise.all([api('/api/machines'), api('/api/arborescence').catch(() => null)])
+    if (query.machine) { machineChoisie = query.machine; ligneChoisie = ''; ensembleChoisi = '' }
 
     const messages = h('div', { class: 'messages' })
     const saisie = h('textarea', {
@@ -46,12 +48,37 @@ export default {
       },
     })
     const boutonEnvoyer = h('button', { class: 'principal', title: 'Envoyer', onclick: () => (enCours ? arreter() : envoyer()) }, ic('avion', 18))
-    const choixMachine = h(
-      'select',
-      { onchange: (e) => (machineChoisie = e.target.value) },
-      h('option', { value: '' }, 'Toute la base'),
-      machines.map((m) => h('option', { value: m.id, selected: String(m.id) === String(machineChoisie) }, `${m.repere} — ${m.designation}`)),
-    )
+    // Avec l'arborescence : deux menus en cascade (ligne, puis sous-ensemble). Sans : la liste des machines.
+    const zoneMachine = h('div', { class: 'choix-arbre' })
+    function dessinerChoix() {
+      if (!arbre?.length) {
+        return vider(zoneMachine, h('select', { onchange: (e) => (machineChoisie = e.target.value) },
+          h('option', { value: '' }, 'Toute la base'),
+          machines.map((m) => h('option', { value: m.id, selected: String(m.id) === String(machineChoisie) }, `${m.repere} — ${m.designation}`))))
+      }
+      const ligne = arbre.find((n) => n.id === ligneChoisie)
+      const machine = machineChoisie ? machines.find((m) => String(m.id) === String(machineChoisie)) : null
+      vider(zoneMachine,
+        // Une machine précise venue d'un autre écran (« Demander à l'assistant » depuis le parc).
+        machine ? h('div', { class: 'machine-precise' }, h('span', {}, `${machine.repere} — ${machine.designation}`), h('button', { class: 'discret icone-seule', title: 'Revenir à l’arborescence', onclick: () => { machineChoisie = ''; dessinerChoix() } }, ic('x', 14))) : null,
+        machine ? null : h('label', { class: 'champ' }, h('span', {}, 'Ligne'),
+          h('select', { onchange: (e) => { ligneChoisie = e.target.value; ensembleChoisi = ''; dessinerChoix() } },
+            h('option', { value: '' }, 'Toute la base'),
+            arbre.map((n) => h('option', { value: n.id, selected: n.id === ligneChoisie }, `${n.libelle} · ${n.machines.length}`)))),
+        !machine && ligne?.enfants.length ? h('label', { class: 'champ cascade' }, h('span', {}, '└ Sous-ensemble'),
+          h('select', { onchange: (e) => { ensembleChoisi = e.target.value; dessinerChoix() } },
+            h('option', { value: '' }, `Toute la ligne ${ligne.libelle.split(' ')[0]}`),
+            ligne.enfants.map((e) => h('option', { value: e.id, selected: e.id === ensembleChoisi }, `${e.libelle} · ${e.machines.length}`)))) : null)
+    }
+    // Le filtre envoyé à l'assistant : une machine, ou toutes celles du nœud choisi.
+    function filtreMachines() {
+      if (machineChoisie) return { machineId: Number(machineChoisie) || null }
+      const ligne = arbre?.find((n) => n.id === ligneChoisie)
+      const ensemble = ligne?.enfants.find((e) => e.id === ensembleChoisi)
+      const noeud = ensemble || ligne
+      return noeud ? { machineIds: noeud.machines, groupe: noeud.libelle } : {}
+    }
+    dessinerChoix()
 
     function dessinerMessages() {
       vider(messages)
@@ -94,7 +121,7 @@ export default {
       vider(boutonEnvoyer, ic('stop', 18))
       boutonEnvoyer.title = 'Arrêter'
       try {
-        await flux('/api/assistant', { question, historique, machineId: Number(machineChoisie) || null }, (type, donnees) => {
+        await flux('/api/assistant', { question, historique, ...filtreMachines() }, (type, donnees) => {
           if (type === 'sources') reponse.sources = donnees
           if (type === 'texte') reponse.contenu += donnees
           if (type === 'erreur') reponse.contenu += `\n\n⚠ ${donnees.message}`
@@ -142,8 +169,8 @@ export default {
           'div',
           { class: 'carte', style: { position: 'sticky', top: '86px' } },
           h('h3', { style: { marginBottom: '10px' } }, 'Machine concernée'),
-          choixMachine,
-          h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '8px' } }, 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.'),
+          zoneMachine,
+          h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '8px' } }, arbre?.length ? 'Choisir une ligne ou un sous-ensemble limite la recherche aux documents, fiches et interventions de ses machines.' : 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.'),
           h('div', { class: 'actions', style: { marginTop: '16px' } }, h('button', { onclick: nouvelleConversation }, ic('plus', 16), 'Nouvelle conversation')),
           h('h3', { style: { margin: '22px 0 8px' } }, 'Bon à savoir'),
           h('ul', { class: 'texte-2', style: { paddingLeft: '18px', fontSize: '14px', margin: 0 } },
