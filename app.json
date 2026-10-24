@@ -1,6 +1,7 @@
 {
   "id": "aitec",
   "nom": "AITEC",
+  "couleur": "#2dd4bf",
   "sousTitre": "Assistant IA",
   "description": "L’assistant IA de l’atelier : parc, historique des interventions et documents, réponses en français avec leurs sources.",
   "icone": "interface/icone.svg",

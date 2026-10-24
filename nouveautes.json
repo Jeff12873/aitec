@@ -1,6 +1,26 @@
 {
   "versions": [
-    { "version": "0.2.1", "date": "2026-10-19", "points": ["Synchronisation avec la GMAO mieux expliquée"] },
-    { "version": "0.2.0", "date": "2026-10-18", "points": ["IASSITEC devient AITEC, dans la suite KTEC", "Données de la GMAO lues directement dans la base"] }
+    {
+      "version": "0.2.2",
+      "date": "2026-10-24",
+      "points": [
+        "AITEC passe en vert d'eau"
+      ]
+    },
+    {
+      "version": "0.2.1",
+      "date": "2026-10-19",
+      "points": [
+        "Synchronisation avec la GMAO mieux expliquée"
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-10-18",
+      "points": [
+        "IASSITEC devient AITEC, dans la suite KTEC",
+        "Données de la GMAO lues directement dans la base"
+      ]
+    }
   ]
 }
