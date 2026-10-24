@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.2.3",
+      "date": "2026-10-24",
+      "points": [
+        "Réglages chiffrés avec la clé du site"
+      ]
+    },
+    {
       "version": "0.2.2",
       "date": "2026-10-24",
       "points": [
