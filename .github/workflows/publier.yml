@@ -33,7 +33,7 @@ jobs:
           echo "$version" > VERSION
           echo "VERSION=$version" >> "$GITHUB_ENV"
           mkdir -p dist/aitec
-          cp -r app.json blocs lib interface docs VERSION package.json README.md dist/aitec/
+          cp -r app.json blocs lib interface docs VERSION package.json README.md nouveautes.json dist/aitec/
           (cd dist && zip -qr aitec.zip aitec)
 
       - name: Release
