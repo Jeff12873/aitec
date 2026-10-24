@@ -5,6 +5,7 @@ import { api } from '/socle/api.js'
 import { barres, anneau, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { etat } from '/socle/etat.js'
+import { texteSeul } from '../interventions/vue.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 // Mêmes couleurs que le graphique par mois : correctif en violet, préventif en bleu.
@@ -115,7 +116,7 @@ function listeInterventions(liste) {
         h('span', { class: 'discret', style: { minWidth: '84px' } }, dateFr(i.date)),
         h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type),
         h('b', { class: 'mono' }, i.repere || ''),
-        h('span', { class: 'texte-2', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, i.description),
+        h('span', { class: 'texte-2', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, texteSeul(i.description)),
       ),
     ),
   )

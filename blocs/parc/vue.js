@@ -3,6 +3,7 @@
 import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, tailleFr, apresPause } from '/socle/ui.js'
 import { api, adresse } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
+import { texteSeul } from '../interventions/vue.js'
 
 export const ETATS = ['En service', 'En panne', 'En réserve', 'Hors service', 'Réformée']
 
@@ -112,7 +113,7 @@ async function afficherFiche(zone, id) {
           colonnes: [
             { titre: 'Date', valeur: (i) => dateFr(i.date) },
             { titre: 'Type', valeur: (i) => i.type },
-            { titre: 'Description', valeur: (i) => i.description },
+            { titre: 'Description', valeur: (i) => texteSeul(i.description) },
           ],
         }),
       ),

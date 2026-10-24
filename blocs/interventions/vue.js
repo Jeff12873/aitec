@@ -35,8 +35,8 @@ export default {
             { titre: 'N°', valeur: (i) => h('span', { class: 'mono discret' }, i.numero || '') },
             { titre: 'Machine', valeur: (i) => (i.repere ? h('b', { class: 'mono' }, i.repere) : '') },
             { titre: 'Type', valeur: (i) => h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type) },
-            { titre: 'Description', valeur: (i) => i.description },
-            { titre: 'Cause', valeur: (i) => h('span', { class: 'texte-2' }, i.cause) },
+            { titre: 'Description', valeur: (i) => texteSeul(i.description) },
+            { titre: 'Cause', valeur: (i) => h('span', { class: 'texte-2' }, texteSeul(i.cause)) },
             { titre: 'Durée', classe: 'nombre', valeur: (i) => (i.duree_h !== null ? `${nombreFr(i.duree_h, 2)} h` : '') },
           ],
         }),
@@ -61,6 +61,26 @@ export default {
   },
 }
 
+// Les commentaires de la GMAO arrivent souvent en HTML (« <div>…</div> », « <br> ») : sur la fiche, on garde la
+// mise en forme (seulement quelques balises sûres, jamais de script ni de lien) ; dans les listes, le texte seul.
+const BALISES = new Set(['DIV', 'P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'UL', 'OL', 'LI', 'SPAN'])
+export function texteRiche(html) {
+  const source = new DOMParser().parseFromString(String(html || ''), 'text/html').body
+  const copier = (noeud) => {
+    if (noeud.nodeType === Node.TEXT_NODE) return document.createTextNode(noeud.textContent)
+    if (noeud.nodeType !== Node.ELEMENT_NODE) return null
+    const enfants = [...noeud.childNodes].map(copier).filter(Boolean)
+    if (!BALISES.has(noeud.tagName)) return enfants.length ? h('span', {}, enfants) : null
+    return h(noeud.tagName.toLowerCase(), {}, enfants)
+  }
+  return h('div', { class: 'texte-riche' }, [...source.childNodes].map(copier).filter(Boolean))
+}
+export function texteSeul(html) {
+  const texte = String(html || '')
+  if (!/<[a-z][^>]*>/i.test(texte)) return texte
+  return new DOMParser().parseFromString(texte.replace(/<br\s*\/?>|<\/(div|p|li)>/gi, ' '), 'text/html').body.textContent.replace(/\s+/g, ' ').trim()
+}
+
 async function afficherFiche(zone, id) {
   const [i, machines, types] = await Promise.all([api(`/api/interventions/${id}`), api('/api/machines'), api('/api/interventions-types')])
   const info = (libelle, valeur) => h('div', {}, h('div', { class: 'discret', style: { fontSize: '13px' } }, libelle), h('div', {}, valeur || '—'))
@@ -83,8 +103,8 @@ async function afficherFiche(zone, id) {
         info('Intervenant', i.intervenant), info('Durée', i.duree_h !== null ? `${nombreFr(i.duree_h, 2)} h` : ''), info('Statut', i.statut),
       ),
       h('h3', {}, 'Description'),
-      h('p', { style: { whiteSpace: 'pre-wrap' } }, i.description),
-      i.cause ? [h('h3', { style: { marginTop: '14px' } }, 'Cause / symptôme'), h('p', { style: { whiteSpace: 'pre-wrap' } }, i.cause)] : null,
+      texteRiche(i.description),
+      i.cause ? [h('h3', { style: { marginTop: '14px' } }, 'Cause / symptôme'), texteRiche(i.cause)] : null,
     ),
   )
 }

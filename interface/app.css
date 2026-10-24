@@ -5,3 +5,7 @@
 .choix-arbre .cascade { margin-left: 18px; }
 .machine-precise { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent-doux); color: var(--accent); font-weight: 600; font-size: 14px; }
 .machine-precise span { flex: 1; }
+
+/* Commentaires de la GMAO mis en forme */
+.texte-riche { white-space: pre-wrap; line-height: 1.5; }
+.texte-riche div, .texte-riche p { margin: 0 0 4px; }

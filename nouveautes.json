@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.2.6",
+      "date": "2026-10-24",
+      "points": [
+        "Commentaires de la GMAO mis en forme (plus de balises <div> affichées)"
+      ]
+    },
+    {
       "version": "0.2.5",
       "date": "2026-10-24",
       "points": [
