@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.2.4",
+      "date": "2026-10-24",
+      "points": [
+        "Réponses courtes, comme un technicien d'assistance : cause probable, vérifications dans l'ordre, sécurité"
+      ]
+    },
+    {
       "version": "0.2.3",
       "date": "2026-10-24",
       "points": [
