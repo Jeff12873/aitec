@@ -256,6 +256,18 @@ export function routes(r) {
     return f.exemples.map((id) => lire.get(id)).filter(Boolean).map((i) => ({ ...i, description: sansBalises(i.description).replace(/\s+/g, ' ').slice(0, 240) }))
   })
 
+  // Les pannes connues les plus fréquentes des machines visées (une machine, ou celles d'une ligne) :
+  // l'assistant les propose en pastilles au-dessus de la saisie.
+  r.post('/api/pannes/suggestions', async (ctx) => {
+    const { machineId = null, machineIds = null } = await ctx.json()
+    const ids = (machineIds?.length ? machineIds : machineId ? [machineId] : []).map(Number).filter(Boolean)
+    if (!ids.length) return []
+    return db()
+      .prepare(`SELECT p.id, p.symptome, p.nombre, p.machine_id, m.repere FROM pannes p LEFT JOIN machines m ON m.id = p.machine_id
+                WHERE p.machine_id IN (${ids.map(() => '?').join(',')}) ORDER BY p.nombre DESC, p.derniere DESC LIMIT 8`)
+      .all(...ids)
+  })
+
   r.get('/api/pannes/analyse', () => analyse)
 
   // Lance l'analyse d'une ligne de l'arborescence (en tâche de fond : suivre avec GET /api/pannes/analyse).

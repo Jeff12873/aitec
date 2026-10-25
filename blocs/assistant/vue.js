@@ -60,7 +60,26 @@ export default {
     const boutonEnvoyer = h('button', { class: 'principal', title: 'Envoyer', onclick: () => (enCours ? arreter() : envoyer()) }, ic('avion', 18))
     // Avec l'arborescence : deux menus en cascade (ligne, puis sous-ensemble). Sans : la liste des machines.
     const zoneMachine = h('div', { class: 'choix-arbre' })
+    // Les pannes connues de la machine (ou de la ligne) choisie, en pastilles : un clic pose la question.
+    const zonePannes = h('div', { class: 'pastilles-pannes' })
+    let demandePannes = 0
+    async function majPannes() {
+      const filtre = filtreMachines()
+      const numero = ++demandePannes
+      const pannes = filtre.machineId || filtre.machineIds ? await api('/api/pannes/suggestions', { methode: 'POST', corps: filtre }).catch(() => []) : []
+      if (numero !== demandePannes) return // un autre choix est arrivé entre-temps
+      const plusieurs = new Set(pannes.map((p) => p.machine_id)).size > 1
+      vider(zonePannes, pannes.length ? [
+        h('span', { class: 'titre-pastilles', title: 'Les pannes qui reviennent, tirées des rapports d’intervention' }, ic('historique', 14), 'Pannes connues'),
+        pannes.map((p) => h('button', { class: 'pastille-panne', title: `${p.repere} : ${p.symptome} (${p.nombre} cas)`, onclick: () => repondre(`${p.symptome} sur ${p.repere}`, { machineId: p.machine_id }) },
+          plusieurs ? h('b', { class: 'mono' }, p.repere) : null, h('span', {}, p.symptome), h('small', {}, p.nombre))),
+      ] : null)
+    }
     function dessinerChoix() {
+      dessinerMenus()
+      majPannes()
+    }
+    function dessinerMenus() {
       if (!arbre?.length) {
         return vider(zoneMachine, menuDeroulant({
           choix: [{ valeur: '', libelle: 'Toute la base' }, ...machines.map((m) => ({ valeur: String(m.id), libelle: `${m.repere} — ${m.designation}` }))],
@@ -277,6 +296,7 @@ export default {
             h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation')),
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
           messages,
+          zonePannes,
           h('div', { class: 'barre-machine' },
             h('span', { class: 'titre-barre-machine', title: arbre?.length ? 'Choisir une ligne ou un sous-ensemble limite la recherche aux documents, fiches et interventions de ses machines.' : 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.' }, ic('usine', 15), 'Machine concernée'),
             zoneMachine),

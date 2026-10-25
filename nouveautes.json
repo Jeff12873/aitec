@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.4.2",
+      "date": "2026-10-25",
+      "points": [
+        "Machine ou ligne choisie : ses pannes connues en pastilles au-dessus de la saisie ; un clic pose la question"
+      ]
+    },
+    {
       "version": "0.4.1",
       "date": "2026-10-25",
       "points": [

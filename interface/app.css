@@ -104,3 +104,13 @@
 .case-relue { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; }
 .case-relue input { width: auto; flex: none; }
 @media (max-width: 900px) { .fiche-panne { grid-template-columns: 1fr; } .cause-panne { grid-template-columns: 1fr; gap: 4px; } }
+
+/* Pannes connues de la machine choisie, en pastilles au-dessus de la saisie */
+.pastilles-pannes { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 0 0 10px; }
+.pastilles-pannes:empty { display: none; }
+.titre-pastilles { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--texte-3); margin-right: 2px; }
+.pastille-panne { display: inline-flex; align-items: center; gap: 6px; max-width: 320px; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 400; color: var(--texte-2); background: var(--carte); border: 1px solid var(--bord); }
+.pastille-panne:hover { border-color: var(--accent); color: var(--texte); }
+.pastille-panne span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pastille-panne b { font-size: 11px; color: var(--accent); }
+.pastille-panne small { color: var(--accent); font-variant-numeric: tabular-nums; }
