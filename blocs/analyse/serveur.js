@@ -10,7 +10,7 @@ import { sansBalises } from '../recherche/passages.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { lireArborescencesTableau, lireArborescence } from '../../lib/arborescence.js'
 
-// La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau : F.LT3, J.LT3…).
+// La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau, sous la ligne).
 async function placeDe(machineId) {
   for (const lire of [lireArborescencesTableau, lireArborescence]) {
     const a = await lire().catch(() => null)
