@@ -54,10 +54,14 @@
 .coche-precision span { white-space: nowrap; }
 .coche-precision:has(input:checked) { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
 
-/* Panneau de droite : sources de la réponse, ou aide */
-.panneau-assistant { position: sticky; top: 86px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; gap: 12px; }
-.onglets-panneau { align-self: flex-start; }
-.contenu-panneau { overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+/* La discussion prend toute la largeur ; les sources s'ouvrent dans un volet à droite, à la demande */
+.discussion.discussion-pleine { grid-template-columns: minmax(0, 1fr); max-width: 1000px; margin: 0 auto; }
+.haut-discussion { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 6px; }
+.tiroir-sources { position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: min(400px, 92vw); display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--carte); border-left: 1px solid var(--bord-fort); box-shadow: -12px 0 30px rgba(0, 0, 0, .35); animation: tiroir-entree .18s ease-out; }
+.tiroir-sources[hidden] { display: none; }
+@keyframes tiroir-entree { from { transform: translateX(30px); opacity: 0; } }
+.entete-tiroir { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.contenu-panneau { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 .source-panneau { display: block; width: 100%; text-align: left; padding: 9px 11px; border-radius: 10px; background: var(--carte-2); border: 1px solid var(--bord); color: var(--texte-2); font-weight: 400; cursor: pointer; }
 .source-panneau:hover { border-color: var(--bord-fort); color: var(--texte); }
 .source-panneau.surlignee { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux); }
@@ -66,9 +70,6 @@
 .titre-source span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .extrait-source { margin-top: 5px; font-size: 12px; line-height: 1.45; color: var(--texte-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* Un panneau de droite un peu plus large pour lire les titres des sources */
-.discussion { grid-template-columns: minmax(0, 1fr) 380px; }
-@media (max-width: 1100px) { .discussion { grid-template-columns: minmax(0, 1fr); } }
 
 /* Préventif fait ces 48 dernières heures sur les machines visées */
 .bandeau-preventif { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, #f59e0b 55%, transparent); background: color-mix(in srgb, #f59e0b 10%, transparent); font-size: 13px; }

@@ -120,9 +120,16 @@ export default {
       conversation.forEach((message, i) => messages.append(dessinerMessage({ ...message, dernier: i === conversation.length - 1 }, rappels, message)))
     }
 
-    // Le panneau de droite : les sources de la réponse choisie (la dernière par défaut), ou l'aide.
+    // Le volet des sources, fermé tant qu'on ne le demande pas (« 8 sources » sous une réponse, ou un renvoi [n]) :
+    // les sources de la réponse choisie, ou l'aide.
     const panneau = h('div', { class: 'contenu-panneau' })
     const boutonsOnglets = h('div', { class: 'segments onglets-panneau' })
+    const fermerTiroir = () => { tiroir.hidden = true; document.removeEventListener('keydown', surEchap) }
+    const surEchap = (e) => e.key === 'Escape' && fermerTiroir()
+    const tiroir = h('aside', { class: 'tiroir-sources', hidden: true },
+      h('div', { class: 'entete-tiroir' }, boutonsOnglets, h('button', { class: 'discret icone-seule', title: 'Fermer (Échap)', onclick: fermerTiroir }, ic('x', 16))),
+      panneau)
+    const ouvrirTiroir = () => { tiroir.hidden = false; document.addEventListener('keydown', surEchap) }
     let onglet = 'sources'
     let sourcesDe = null // la réponse dont on montre les sources
     function dessinerPanneau(surligne = null) {
@@ -131,7 +138,7 @@ export default {
         h('button', { class: onglet === 'aide' ? 'choisi' : '', onclick: () => { onglet = 'aide'; dessinerPanneau() } }, ic('aide', 15), 'Aide'))
       if (onglet === 'aide') {
         return vider(panneau, h('ul', { class: 'texte-2', style: { paddingLeft: '18px', fontSize: '14px', margin: 0 } },
-          h('li', {}, 'Les numéros [1], [2]… renvoient aux sources, à droite : cliquez sur une source pour l’ouvrir.'),
+          h('li', {}, 'Les numéros [1], [2]… et « 8 sources » sous une réponse ouvrent ce volet : cliquez sur une source pour l’ouvrir.'),
           h('li', {}, 'Une question courte ? L’assistant propose quelques cases à cocher pour la préciser.'),
           h('li', {}, 'Les notices en anglais ou en allemand sont traduites dans la réponse.'),
           h('li', {}, 'L’IA peut se tromper : vérifiez toujours dans la source avant d’intervenir.')))
@@ -143,10 +150,12 @@ export default {
         s.extrait ? h('div', { class: 'extrait-source' }, s.extrait) : null)))
       panneau.querySelector('.surlignee')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     }
-    function montrerSources(message, numero = null) {
+    // ouvrir : à la demande de l'agent (sinon le volet, s'il est ouvert, suit simplement la réponse en cours).
+    function montrerSources(message, numero = null, ouvrir = false) {
       sourcesDe = message
-      if (numero !== null) onglet = 'sources'
+      if (ouvrir) onglet = 'sources'
       dessinerPanneau(numero)
+      if (ouvrir) ouvrirTiroir()
     }
     const rappels = { envoyer, montrerSources }
 
@@ -259,10 +268,13 @@ export default {
       zone,
       h(
         'div',
-        { class: 'discussion' },
+        { class: 'discussion discussion-pleine' },
         h(
           'div',
           { class: 'fil' },
+          h('div', { class: 'haut-discussion' },
+            h('button', { class: 'discret petit', title: 'Aide de l’assistant', onclick: () => { onglet = 'aide'; dessinerPanneau(); ouvrirTiroir() } }, ic('aide', 14), 'Aide'),
+            h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation')),
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
           messages,
           h('div', { class: 'barre-machine' },
@@ -270,14 +282,8 @@ export default {
             zoneMachine),
           h('div', { class: 'saisie' }, h('div', { class: 'saisie-boite' }, saisie, boutonEnvoyer)),
         ),
-        h(
-          'div',
-          { class: 'carte panneau-assistant' },
-          h('div', { class: 'actions' }, h('button', { onclick: nouvelleConversation }, ic('plus', 16), 'Nouvelle conversation')),
-          boutonsOnglets,
-          panneau,
-        ),
       ),
+      tiroir,
     )
     montrerSources([...conversation].reverse().find((m) => m.role === 'assistant') || null)
     saisie.focus()
@@ -309,7 +315,7 @@ function dessinerMessage(message, { envoyer, montrerSources }, original = messag
   if (!message.contenu && message.enCours) texte.innerHTML = '<p class="discret">Recherche dans la base…</p>'
   texte.addEventListener('click', (e) => {
     const numero = e.target.dataset?.source
-    if (numero && message.sources?.some((s) => String(s.numero) === numero)) montrerSources(original, numero)
+    if (numero && message.sources?.some((s) => String(s.numero) === numero)) montrerSources(original, numero, true)
   })
 
   return h(
@@ -333,7 +339,7 @@ function dessinerMessage(message, { envoyer, montrerSources }, original = messag
         : null,
       !message.enCours && message.contenu
         ? h('div', { class: 'actions', style: { marginTop: '8px' } },
-          message.sources?.length ? h('button', { class: 'discret petit', title: 'Voir les sources de cette réponse, à droite', onclick: () => montrerSources(original) }, ic('document', 14), `${message.sources.length} source${message.sources.length > 1 ? 's' : ''}`) : null,
+          message.sources?.length ? h('button', { class: 'discret petit', title: 'Voir les sources de cette réponse', onclick: () => montrerSources(original, null, true) }, ic('document', 14), `${message.sources.length} source${message.sources.length > 1 ? 's' : ''}`) : null,
           h('button', { class: 'discret petit', onclick: () => navigator.clipboard.writeText(contenu).then(() => notifier('Réponse copiée')) }, 'Copier'))
         : null,
     ),

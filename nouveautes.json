@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.4.1",
+      "date": "2026-10-25",
+      "points": [
+        "La discussion prend toute la largeur ; les sources s'ouvrent dans un volet à droite, seulement à la demande"
+      ]
+    },
+    {
       "version": "0.4.0",
       "date": "2026-10-25",
       "points": [
