@@ -26,3 +26,18 @@
 /* Commentaires de la GMAO mis en forme */
 .texte-riche { white-space: pre-wrap; line-height: 1.5; }
 .texte-riche div, .texte-riche p { margin: 0 0 4px; }
+
+/* Le concombre masqué (taper « concombre » dans la recherche) */
+.pluie-concombres { position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden; }
+.pluie-concombres > img:not(.heros-concombre) { position: absolute; top: -90px; height: calc(54px * var(--taille, 1)); width: auto; animation-name: aitec-chute; animation-timing-function: cubic-bezier(.45, .05, .55, .95); animation-fill-mode: both; }
+@keyframes aitec-chute { to { transform: translateY(calc(100vh + 140px)) rotate(var(--tour, 360deg)); } }
+.heros-concombre { position: absolute; right: 4vw; bottom: 0; height: min(320px, 45vh); width: auto; transform: translateY(110%); animation: aitec-heros 7.4s ease-in-out forwards; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent)) drop-shadow(0 0 26px color-mix(in srgb, var(--accent) 30%, transparent)); }
+@keyframes aitec-heros {
+  0%, 8% { transform: translateY(110%); }
+  20% { transform: translateY(-4%); }
+  24%, 30%, 36% { transform: translateY(0) rotate(0); }
+  27%, 33% { transform: translateY(0) rotate(-4deg); }
+  82% { transform: translateY(0); }
+  100% { transform: translateY(110%); }
+}
+@media (prefers-reduced-motion: reduce) { .pluie-concombres { display: none; } }

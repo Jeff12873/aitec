@@ -3,6 +3,7 @@
 // s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
 
 import { h, ic } from '/socle/ui.js'
+import { estConcombre, concombreMasque } from './concombre.js'
 import tableauDeBord from '../blocs/tableau-de-bord/vue.js'
 import assistant from '../blocs/assistant/vue.js'
 import parc from '../blocs/parc/vue.js'
@@ -21,7 +22,12 @@ const champRecherche = h('input', {
   type: 'search',
   placeholder: 'Rechercher dans toute la base…',
   onkeydown: (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) location.hash = `#/recherche?q=${encodeURIComponent(e.target.value.trim())}`
+    if (e.key !== 'Enter' || !e.target.value.trim()) return
+    if (estConcombre(e.target.value)) {
+      e.target.value = ''
+      return concombreMasque()
+    }
+    location.hash = `#/recherche?q=${encodeURIComponent(e.target.value.trim())}`
   },
 })
 export const barre = () => h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)
