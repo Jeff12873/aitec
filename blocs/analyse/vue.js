@@ -8,6 +8,7 @@ import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
 
+const LOGO_MN1 = new URL('../../interface/mn1.webp', import.meta.url).href
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
 export default {
@@ -37,10 +38,12 @@ export default {
         tuile('historique', '', 'Dernière intervention', null, h('span', { class: 'texte-dernier' }, c.derniere ? `${dateFr(c.derniere)} · ${depuis(c.derniere)}` : '—'))),
 
       h('div', { class: 'grille grille-3' },
-        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
         carteResume(m.id, d.resume),
-        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('historique', 'Pannes connues', `${d.pannes.length} panne${d.pannes.length > 1 ? 's' : ''} qui reviennent`), listePannes(d.pannes)),
+        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
         h('div', { class: 'carte' }, entete('personne', 'Intervenants', '12 mois'), d.intervenants.length ? barresHorizontales(d.intervenants.map((i) => ({ etiquette: i.nom, valeur: i.nombre })), { couleur: COULEURS.bleu }) : h('div', { class: 'vide' }, 'Personne sur 12 mois.')),
+        d.pannes.length || !d.repetees.length
+          ? h('div', { class: 'carte pleine' }, entete('historique', 'Pannes connues', `${d.pannes.length} panne${d.pannes.length > 1 ? 's' : ''} qui reviennent`), listePannes(d.pannes))
+          : h('div', { class: 'carte pleine' }, entete('historique', 'Pannes qui reviennent', 'regroupées depuis les rapports'), listeRepetees(d.repetees)),
         h('div', { class: 'carte pleine' }, entete('cle', 'Dernières interventions'), listeInterventions(d.dernieres)),
       ),
     )
@@ -79,7 +82,46 @@ function listePannes(pannes) {
   if (!pannes.length) return h('div', { class: 'vide' }, 'Pas de panne connue : lancez l’analyse de sa ligne (écran « Pannes connues »).')
   return h('div', { class: 'pannes-analyse' }, pannes.slice(0, 8).map((p) => h('a', { class: 'panne-analyse', href: `#/pannes?id=${p.id}` },
     h('div', { class: 'tete-panne-analyse' }, h('b', {}, p.symptome), h('span', { class: 'cas-panne' }, `${p.nombre} cas`)),
+    h('div', { class: 'frequence-panne' }, ic('horloge', 12), p.frequence),
     p.causes[0] ? h('div', { class: 'texte-2' }, `${p.causes[0].cause} → ${p.causes[0].remede}`) : null)))
+}
+
+// Sans pannes connues : les rapports semblables regroupés par AITEC, avec leur fréquence.
+function listeRepetees(repetees) {
+  return h('div', { class: 'pannes-analyse' },
+    h('p', { class: 'discret', style: { margin: '0 0 4px', fontSize: '13px' } }, 'La ligne de cette machine n’a pas encore été analysée (écran « Pannes connues ») : voici les rapports semblables regroupés, sans les causes.'),
+    repetees.slice(0, 8).map((p) => h('div', { class: 'panne-analyse' },
+      h('div', { class: 'tete-panne-analyse' }, h('b', {}, p.symptome), h('span', { class: 'cas-panne' }, `${p.nombre} cas`)),
+      h('div', { class: 'frequence-panne' }, ic('horloge', 12), p.frequence),
+      p.actions[0] ? h('div', { class: 'texte-2' }, p.actions[0]) : null)))
+}
+
+// Les gestes de maintenance de niveau 1 : l'IA les écrit « [MN1 Production] … » ou « [MN1 Maintenance] … ».
+// On les sort du texte pour les montrer à part, en encadrés, avec le logo MN1.
+const LIGNE_MN1 = /^\s*(?:[-*•]|\d+\.)?\s*\**\[MN1\s+(Production|Maintenance)\]\**\s*:?\s*(.+)$/i
+function texteAvecMN1(texte) {
+  const gestes = []
+  const reste = String(texte || '').split('\n').filter((ligne) => {
+    const m = LIGNE_MN1.exec(ligne)
+    if (m) gestes.push({ pour: m[1].toLowerCase() === 'production' ? 'Production' : 'Maintenance', texte: m[2].trim() })
+    return !m
+  })
+  // Le titre « Maintenance de niveau 1 » de l'IA : les encadrés ont le leur.
+  const corps = reste.join('\n').replace(/\n?\**\s*Maintenance de niveau 1\s*\**\s*:?\s*$/im, '').trim()
+  const html = h('div', {})
+  html.innerHTML = texteIA(corps)
+  if (gestes.length) {
+    html.append(h('div', { class: 'bloc-mn1' },
+      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1')),
+      gestes.map((g) => {
+        const t = h('span', {})
+        t.innerHTML = texteIA(g.texte).replace(/^<p>|<\/p>$/g, '')
+        return h('div', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}` },
+          h('img', { src: LOGO_MN1, alt: '' }),
+          h('div', {}, h('span', { class: 'pour-mn1' }, g.pour), t))
+      })))
+  }
+  return html
 }
 
 function listeInterventions(liste) {
@@ -102,7 +144,7 @@ function carteResume(id, resume) {
   const date = h('span', { class: 'discret' })
   const bouton = h('button', { class: 'petit', onclick: analyser }, ic('rafraichir', 15), resume ? 'Actualiser' : 'Analyser')
   function montrer(r) {
-    corps.innerHTML = texteIA(r.texte)
+    vider(corps, texteAvecMN1(r.texte))
     date.textContent = ilYa(r.date)
   }
   async function analyser() {
@@ -116,7 +158,7 @@ function carteResume(id, resume) {
   if (resume) montrer(resume)
   else corps.append(h('p', { class: 'texte-2' }, 'L’IA résume l’état de la machine, les pannes qui reviennent, et propose quelques conseils (préventif, pièces, améliorations).'))
   const rouage = peutModifier() ? h('button', { class: 'discret icone-seule petit', title: 'Les consignes données à l’IA pour ce résumé', onclick: () => modifierConsignes(analyser) }, ic('reglages', 16)) : null
-  return h('div', { class: 'carte' },
+  return h('div', { class: 'carte pleine carte-resume' },
     h('div', { class: 'carte-entete' }, h('h2', {}, h('span', { class: 'pastille', style: { color: 'var(--accent)' } }, ic('etincelle', 18)), 'Résumé et conseils'), h('div', { class: 'actions' }, date, rouage)),
     corps,
     h('div', { class: 'actions', style: { marginTop: '12px' } }, bouton))

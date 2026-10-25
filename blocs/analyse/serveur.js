@@ -7,14 +7,39 @@ import { ErreurHttp } from 'ktec/http.js'
 import { etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { sansBalises } from '../recherche/passages.js'
+import { pannesDeLaMachine } from '../pannes/serveur.js'
 
-const CONSIGNES = `Tu es un technicien méthodes en maintenance industrielle. Tu reçois en JSON les données d'UNE machine : chiffres sur 12 mois, interventions par mois, pannes connues (symptôme, causes, remèdes, nombre de cas), dernières interventions.
+const CONSIGNES = `Tu es un technicien méthodes en maintenance industrielle. Tu reçois en JSON les données d'UNE machine : chiffres sur 12 mois (dont la fréquence des pannes), interventions par mois, pannes connues (symptôme, causes, remèdes, nombre de cas, fréquence déjà calculée) ou, à défaut, pannes répétées (rapports semblables regroupés, avec les actions notées et la fréquence), dernières interventions.
 Écris en français, phrases courtes, sans introduction :
 **En bref** : 2 phrases sur l'état de la machine (fréquence des pannes, tendance des derniers mois, part du préventif).
-**Pannes qui reviennent** : 2 à 4 puces, chacune avec le symptôme, le nombre de cas et la cause la plus fréquente.
+**Pannes qui reviennent** : 2 à 4 puces. Chacune : le symptôme, le nombre de cas, sa fréquence recopiée telle quelle du champ « frequence » (par exemple « environ toutes les 3 semaines »), et la cause la plus fréquente.
 **Conseils** : 3 à 5 puces concrètes, chacune appuyée sur une donnée : préventif à ajouter ou renforcer, pièce à garder en stock, modification ou amélioration, point de formation, contrôle à faire.
+**Maintenance de niveau 1** : seulement si un point relève du niveau 1 (gestes simples, sans démontage ni habilitation particulière : nettoyage, contrôle visuel, graissage, appoint, resserrage, réglage simple, signalement d'une anomalie). Une ligne par point, qui commence exactement par « [MN1 Production] » quand le geste revient au conducteur ou à la production, ou par « [MN1 Maintenance] » quand il revient au technicien de maintenance ; puis le geste, sa fréquence et la panne qu'il évite. Pas de point de niveau 1 : n'écris pas cette partie.
 N'invente rien qui ne soit pas dans les données. Si les données sont trop maigres, dis-le en une phrase.`
 const consignes = () => reglage('consignes_analyse_machine', '') || CONSIGNES
+
+// « environ toutes les 3 semaines » : l'intervalle moyen entre deux cas, en jours, semaines ou mois.
+// Calculé ici plutôt que par l'IA, qui se trompe volontiers sur les dates.
+function enClair(jours) {
+  if (!Number.isFinite(jours) || jours <= 0) return ''
+  if (jours < 1.5) return 'environ tous les jours'
+  if (jours < 13) return `environ tous les ${Math.round(jours)} jours`
+  if (jours < 60) return `environ toutes les ${Math.round(jours / 7)} semaines`
+  if (jours < 300) return `environ tous les ${Math.round(jours / 30.4)} mois`
+  return 'environ une fois par an ou moins'
+}
+const joursEntre = (a, b) => (new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`)) / 86_400_000
+
+// La fréquence d'une panne d'après les dates de ses cas : le rythme des 12 derniers mois s'il y a au moins
+// 2 cas (c'est lui qui compte pour agir), sinon l'écart moyen sur tout l'historique.
+function frequenceDe(dates, depuis) {
+  const triees = [...dates].filter(Boolean).sort()
+  const recents = triees.filter((d) => d >= depuis).length
+  if (recents >= 2) return `${enClair(365 / recents)} (${recents} cas ces 12 derniers mois)`
+  const ecart = triees.length > 1 ? joursEntre(triees[0], triees.at(-1)) / (triees.length - 1) : null
+  const historique = ecart ? `${enClair(ecart)} sur l'historique` : 'cas isolé'
+  return `${historique}, ${recents ? '1 cas' : 'aucun cas'} ces 12 derniers mois`
+}
 
 // Les résumés déjà écrits, par machine, tant que le fichier de connaissances n'a pas changé.
 const resumes = new Map()
@@ -37,6 +62,7 @@ function donnees(id) {
     interventionsTotal: compter('SELECT count(*) AS n FROM interventions WHERE machine_id = ?'),
     derniere: db().prepare('SELECT max(date) AS d FROM interventions WHERE machine_id = ?').get(id).d,
   }
+  chiffres.frequencePannes = chiffres.pannes12Mois ? `${enClair(365 / chiffres.pannes12Mois)} (${chiffres.pannes12Mois} pannes en 12 mois)` : 'aucune panne en 12 mois'
   const lignes = db()
     .prepare(`SELECT substr(date, 1, 7) AS mois, sum(type = 'Correctif') AS correctif, sum(type = 'Préventif') AS preventif, sum(type NOT IN ('Correctif', 'Préventif')) AS autre
               FROM interventions WHERE machine_id = ? AND date >= date('now', 'start of month', '-11 months') GROUP BY mois`)
@@ -49,7 +75,27 @@ function donnees(id) {
     const l = lignes.find((x) => x.mois === cle)
     parMois.push({ mois: cle, correctif: l?.correctif || 0, preventif: l?.preventif || 0, autre: l?.autre || 0 })
   }
-  const pannes = db().prepare('SELECT id, symptome, causes, nombre, derniere FROM pannes WHERE machine_id = ? ORDER BY nombre DESC').all(id).map((p) => ({ ...p, causes: JSON.parse(p.causes || '[]') }))
+  // La fréquence de chaque panne connue : l'écart moyen entre deux cas, et les cas des 12 derniers mois.
+  const ilYa12Mois = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10)
+  const dateDe = db().prepare('SELECT date FROM interventions WHERE id = ?')
+  const pannes = db().prepare('SELECT id, symptome, causes, nombre, premiere, derniere, exemples FROM pannes WHERE machine_id = ? ORDER BY nombre DESC').all(id).map((p) => {
+    const frequence = frequenceDe(JSON.parse(p.exemples || '[]').map((i) => dateDe.get(i)?.date), ilYa12Mois)
+    return { id: p.id, symptome: p.symptome, causes: JSON.parse(p.causes || '[]'), nombre: p.nombre, premiere: p.premiere, derniere: p.derniere, frequence }
+  })
+  // Sans pannes connues (ligne pas encore analysée) : les rapports semblables regroupés à la volée, avec leur
+  // fréquence, pour que l'IA ait quand même des pannes qui reviennent.
+  const plusFrequent = (valeurs) => [...valeurs.reduce((c, v) => c.set(v, (c.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+  const repetees = pannes.length ? [] : pannesDeLaMachine(id).map((g) => {
+    const dates = g.cas.map((c) => c.date).filter(Boolean).sort()
+    return {
+      symptome: plusFrequent(g.cas.map((c) => c.symptome)),
+      nombre: g.cas.length,
+      premiere: dates[0],
+      derniere: dates.at(-1),
+      frequence: frequenceDe(dates, ilYa12Mois),
+      actions: [...new Set(g.cas.map((c) => c.action.slice(0, 140)))].slice(0, 4),
+    }
+  })
   // Les intervenants des 12 derniers mois (« NOM, PRÉNOM » ; plusieurs personnes sur une même intervention comptent chacune).
   const compte = new Map()
   for (const { intervenant } of db().prepare("SELECT intervenant FROM interventions WHERE machine_id = ? AND date >= date('now', '-12 months')").all(id)) {
@@ -62,7 +108,7 @@ function donnees(id) {
     .prepare('SELECT id, date, numero, type, description, intervenant FROM interventions WHERE machine_id = ? ORDER BY date DESC, id DESC LIMIT 12')
     .all(id)
     .map((i) => ({ ...i, description: sansBalises(i.description).replace(/\s+/g, ' ').slice(0, 300) }))
-  return { machine, chiffres, parMois, pannes, intervenants, dernieres }
+  return { machine, chiffres, parMois, pannes, repetees, intervenants, dernieres }
 }
 
 export function routes(r) {
@@ -93,7 +139,8 @@ export function routes(r) {
       machine: { repere: d.machine.repere, designation: d.machine.designation, marque: d.machine.marque, modele: d.machine.modele, etat: d.machine.etat },
       chiffres: d.chiffres,
       interventionsParMois: d.parMois,
-      pannesConnues: d.pannes.slice(0, 8).map((p) => ({ symptome: p.symptome, cas: p.nombre, derniere: p.derniere, causes: p.causes })),
+      pannesConnues: d.pannes.slice(0, 8).map((p) => ({ symptome: p.symptome, cas: p.nombre, frequence: p.frequence, premiere: p.premiere, derniere: p.derniere, causes: p.causes })),
+      pannesRepetees: d.repetees.slice(0, 8).map((p) => ({ symptome: p.symptome, cas: p.nombre, frequence: p.frequence, premiere: p.premiere, derniere: p.derniere, actionsNotees: p.actions })),
       dernieresInterventions: d.dernieres.map((i) => ({ date: i.date, type: i.type, description: i.description.slice(0, 200) })),
     }
     const texte = await discuter([{ role: 'system', content: consignes() }, { role: 'user', content: JSON.stringify(pourIA) }], { temperature: 0.2, maxMots: 700 })

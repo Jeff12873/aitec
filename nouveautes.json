@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.4.6",
+      "date": "2026-10-25",
+      "points": [
+        "Fiche d'analyse : fréquence de chaque panne qui revient, calculée sur les 12 derniers mois",
+        "Gestes de maintenance de niveau 1 mis en avant (production ou maintenance), avec le logo MN1",
+        "Résumé et conseils sur toute la largeur"
+      ]
+    },
+    {
       "version": "0.4.5",
       "date": "2026-10-25",
       "points": [

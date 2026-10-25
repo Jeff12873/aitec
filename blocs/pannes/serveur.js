@@ -65,7 +65,7 @@ function decouperRapport(description) {
 }
 
 // Les pannes répétées d'une machine : les rapports (hors préventif, formation…) groupés par symptôme semblable.
-function pannesDeLaMachine(machineId) {
+export function pannesDeLaMachine(machineId) {
   const rapports = db()
     .prepare('SELECT id, date, numero, type, description, intervenant FROM interventions WHERE machine_id = ? ORDER BY date DESC')
     .all(machineId)
