@@ -248,3 +248,17 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .actions-fiche-mn1 a { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin-right: auto; }
 .barre-demandes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; }
 .liste-sans-fiche { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Maintenance de niveau 1 : charge des opérateurs, paramètres, fiche trop fréquente */
+.charge-mn1 { margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
+.tete-charge { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.tete-charge span { color: var(--texte-2); font-size: 14px; }
+.barre-charge { height: 10px; border-radius: 99px; background: var(--carte-2); overflow: hidden; }
+.barre-charge > div { height: 100%; border-radius: 99px; background: var(--accent); transition: width .6s; }
+.charge-mn1.depasse .barre-charge > div { background: #f87171; }
+.alerte-mn1 { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; color: #fca5a5; }
+.alerte-mn1 svg { flex: none; margin-top: 2px; }
+.fiches-mn1 .geste-mn1.trop-frequente { border-left-color: #f87171; }
+.parametres-mn1 { display: flex; flex-direction: column; gap: 8px; min-width: 360px; }
+.parametres-mn1 h3 { margin: 10px 0 2px; font-size: 14px; }
+.ligne-parametre { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

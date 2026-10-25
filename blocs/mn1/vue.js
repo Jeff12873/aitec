@@ -6,11 +6,11 @@ import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
-import { LOGO_MN1, FREQUENCES, carteFiche } from '../../interface/fiches-mn1.js'
+import { LOGO_MN1, FREQUENCES, carteFiche, carteCharge, definirParametres, lireParametres } from '../../interface/fiches-mn1.js'
 import { animer } from '../tableau-de-bord/vue.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-const filtres = { texte: '', pour: '', frequence: '' }
+const filtres = { texte: '', frequence: '' }
 let lignesDemandes = ''
 
 export default {
@@ -22,12 +22,14 @@ export default {
 
   async afficher(zone, { id }) {
     const onglet = id === 'demandes' ? 'demandes' : 'fiches'
+    definirParametres(await api('/api/mn1/parametres').catch(() => null))
     const contenu = h('div')
     vider(
       zone,
       h('div', { class: 'entete-page' },
         h('img', { class: 'logo-page-mn1', src: LOGO_MN1, alt: '' }),
-        h('div', { style: { flex: 1 } }, h('h1', {}, 'Maintenance de niveau 1'), h('p', { class: 'sous-titre' }, 'Les gestes simples qui évitent les pannes, et les demandes d’intervention de niveau 1'))),
+        h('div', { style: { flex: 1 } }, h('h1', {}, 'Maintenance de niveau 1'), h('p', { class: 'sous-titre' }, 'Les gestes simples que les opérateurs font pour éviter les pannes, et les demandes d’intervention de niveau 1')),
+        peutModifier() ? h('button', { class: 'discret icone-seule', title: 'Paramètres : fiches tirées par semaine, fiches par fréquence', onclick: reglerParametres }, ic('reglages', 18)) : null),
       h('div', { class: 'segments', style: { marginBottom: '18px' } },
         h('button', { class: onglet === 'fiches' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('document', 16), 'Fiches'),
         h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes de niveau 1')),
@@ -53,9 +55,9 @@ async function afficherFiches(zone) {
   const zoneFiltres = h('div', { class: 'filtres-mn1' })
 
   function dessiner() {
-    vider(zoneFiltres, recherche, pastilles('pour', ['Production', 'Maintenance']), pastilles('frequence', FREQUENCES.filter((f) => fiches.some((x) => x.frequence === f))))
+    vider(zoneFiltres, recherche, pastilles('frequence', FREQUENCES.filter((f) => fiches.some((x) => x.frequence === f))))
     const mots = filtres.texte.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    const visibles = fiches.filter((f) => (!filtres.pour || f.pour === filtres.pour) && (!filtres.frequence || f.frequence === filtres.frequence)
+    const visibles = fiches.filter((f) => (!filtres.frequence || f.frequence === filtres.frequence)
       && mots.every((m) => [f.action, f.evite, f.repere, f.designation, f.eth, f.ligne].join(' ').toLowerCase().includes(m)))
     // Ligne › ETH › machine
     const groupes = new Map()
@@ -68,7 +70,7 @@ async function afficherFiches(zone) {
       h('div', { class: 'fiches-mn1' }, groupe.map((f) => carteFiche(f, { enPlus: actionsFiche(f) }))))) : h('p', { class: 'discret' }, 'Aucune fiche ne correspond aux filtres.'))
   }
   recherche.addEventListener('input', () => { filtres.texte = recherche.value; dessiner() })
-  vider(zone, zoneFiltres, liste)
+  vider(zone, carteCharge(fiches), zoneFiltres, liste)
   dessiner()
 }
 
@@ -82,24 +84,49 @@ function actionsFiche(f) {
 }
 
 async function corrigerFiche(f) {
-  const pour = h('select', {}, ['Production', 'Maintenance'].map((p) => h('option', { value: p, selected: p === f.pour }, p)))
   const action = h('textarea', { rows: 3 }, f.action)
   const frequence = h('select', {}, h('option', { value: '' }, 'À préciser'), FREQUENCES.map((x) => h('option', { value: x, selected: x === f.frequence }, x)))
   const evite = h('input', { type: 'text', value: f.evite })
   const ok = await fenetre({
     titre: `Fiche de niveau 1 — ${f.repere}`,
     contenu: h('div', { class: 'grille', style: { gap: '10px' } },
-      h('label', { class: 'champ' }, h('span', {}, 'Pour'), pour),
       h('label', { class: 'champ' }, h('span', {}, 'Geste à réaliser'), action),
       h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
       h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite)),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
-      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { pour: pour.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { action: action.value, frequence: frequence.value, evite: evite.value } }); return true } },
     ],
   })
   if (ok) {
     notifier('Fiche enregistrée')
+    window.ktec.recharger()
+  }
+}
+
+// Le rouage : combien de fiches les opérateurs tirent par semaine, et combien de fiches imprimer par fréquence.
+async function reglerParametres() {
+  const p = await essayer(() => api('/api/mn1/parametres'))
+  if (!p) return
+  const nombre = (valeur) => h('input', { type: 'number', min: 1, max: 31, value: valeur, style: { width: '90px' } })
+  const parSemaine = h('input', { type: 'number', min: 1, max: 50, value: p.parSemaine, style: { width: '90px' } })
+  const champs = Object.fromEntries(Object.keys(p.fiches).map((f) => [f, nombre(p.fiches[f])]))
+  const periode = { Hebdomadaire: 'par mois (une par semaine)', Mensuelle: 'par mois', Trimestrielle: 'par trimestre', Semestrielle: 'par semestre', Annuelle: 'par an' }
+  const ok = await fenetre({
+    titre: 'Paramètres de la maintenance de niveau 1',
+    contenu: h('div', { class: 'parametres-mn1' },
+      h('label', { class: 'ligne-parametre' }, h('span', {}, 'Fiches tirées par les opérateurs, par semaine'), parSemaine),
+      h('h3', {}, 'Fiches à imprimer selon la fréquence préconisée'),
+      Object.entries(champs).map(([f, champ]) => h('label', { class: 'ligne-parametre' }, h('span', {}, `${f} `, h('small', { class: 'discret' }, periode[f] || '')), champ)),
+      h('p', { class: 'discret', style: { fontSize: '13px', marginBottom: 0 } }, 'Quotidienne : trop fréquent pour une fiche ; la fiche renvoie vers le responsable de production ou un focus maintenance.')),
+    boutons: [
+      { texte: 'Revenir aux valeurs d’origine', classe: 'discret', action: () => { parSemaine.value = p.origine.parSemaine; for (const [f, c] of Object.entries(champs)) c.value = p.origine.fiches[f]; return false } },
+      { texte: 'Annuler', classe: 'discret', valeur: null },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { definirParametres(await api('/api/mn1/parametres', { methode: 'POST', corps: { parSemaine: parSemaine.value, fiches: Object.fromEntries(Object.entries(champs).map(([f, c]) => [f, c.value])) } })); return true } },
+    ],
+  })
+  if (ok) {
+    notifier('Paramètres enregistrés')
     window.ktec.recharger()
   }
 }

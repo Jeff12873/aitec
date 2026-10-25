@@ -7,7 +7,7 @@ import { peutModifier } from '/socle/etat.js'
 import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
-import { LOGO_MN1, carteFiche, frequenceCalendaire } from '../../interface/fiches-mn1.js'
+import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres } from '../../interface/fiches-mn1.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
@@ -19,7 +19,8 @@ export default {
   aide: 'tableau-de-bord',
 
   async afficher(zone, { id }) {
-    const d = await api(`/api/analyse/${id}`)
+    const [d, parametres] = await Promise.all([api(`/api/analyse/${id}`), api('/api/mn1/parametres').catch(() => null)])
+    definirParametres(parametres)
     const m = d.machine
     const c = d.chiffres
     vider(
@@ -115,7 +116,9 @@ function decouperResume(texte) {
       // « geste | fréquence | panne évitée » (l'IA peut aussi tout écrire d'un bloc).
       const [action, frequence = '', evite = ''] = geste[2].split('|').map((x) => x.replace(/\*\*/g, '').trim())
       if (quoi === 'formation') formations.push(geste[2].replace(/\*\*/g, '').trim())
-      else gestes.push({ pour: quoi === 'production' ? 'Production' : 'Maintenance', action, frequence, evite })
+      // Le niveau 1 est fait par la production ; un geste de technicien repart dans les conseils.
+      else if (quoi === 'production') gestes.push({ pour: 'Production', action, frequence, evite })
+      else parties.conseils.push(`- **Maintenance** : ${action}${frequence ? ` (${frequence})` : ''}${evite ? ` — évite : ${evite}` : ''}`)
       continue
     }
     // Un titre « **En bref** : … » (ou « ### Conseils ») ouvre une partie ; ce qui suit sur la ligne lui appartient.

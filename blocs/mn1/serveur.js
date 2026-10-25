@@ -3,15 +3,23 @@
 // Les demandes sont lues en direct dans la base de la GMAO, avec la requête réglée dans « Données de la GMAO »
 // (colonnes : numero, date, machine, type, description, demandeur, etat, arret) ; rien n'est recopié.
 
-import { db, reglage, modifierReglage, noterModification } from '../../lib/base.js'
+import { db, reglage, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { exigerEcriture } from 'ktec/partage.js'
 import { executerRequete, etatConnexion } from 'ktec/mysql.js'
 import { lireArborescencesTableau } from '../../lib/arborescence.js'
 import { requetes } from '../import-gmao/synchronisation.js'
 
-const POUR = ['Production', 'Maintenance']
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
+
+// Les paramètres du rouage : combien de fiches les opérateurs tirent par semaine, et combien de fiches imprimer
+// par fréquence (hebdomadaire : une par semaine du mois, soit 5 ; mensuelle : 1…). Quotidienne : trop fréquent
+// pour une fiche, on renvoie vers le responsable de production ou un focus maintenance.
+const PARAMETRES = { parSemaine: 2, fiches: { Hebdomadaire: 5, Mensuelle: 1, Trimestrielle: 1, Semestrielle: 1, Annuelle: 1 } }
+function parametres() {
+  const p = reglageJson('mn1_parametres', {}) || {}
+  return { parSemaine: Number(p.parSemaine) > 0 ? Number(p.parSemaine) : PARAMETRES.parSemaine, fiches: { ...PARAMETRES.fiches, ...(p.fiches || {}) } }
+}
 
 function lireFiches(where = '', ...valeurs) {
   return db()
@@ -19,9 +27,10 @@ function lireFiches(where = '', ...valeurs) {
     .all(...valeurs)
 }
 
+// Les fiches de niveau 1 sont toujours pour la production (les opérateurs).
 function nettoyerFiche(f) {
   const propre = {
-    pour: POUR.includes(f.pour) ? f.pour : 'Maintenance',
+    pour: 'Production',
     action: String(f.action || '').trim().slice(0, 400),
     frequence: FREQUENCES.includes(f.frequence) ? f.frequence : '',
     evite: String(f.evite || '').trim().slice(0, 300),
@@ -142,6 +151,18 @@ async function tableau(lignesVoulues) {
 
 export function routes(r) {
   r.get('/api/mn1/fiches', () => lireFiches())
+
+  r.get('/api/mn1/parametres', () => ({ ...parametres(), origine: PARAMETRES }))
+
+  // { parSemaine, fiches: { Hebdomadaire: 5, … } } (administrateur)
+  r.post('/api/mn1/parametres', async (ctx) => {
+    exigerEcriture()
+    const { parSemaine, fiches = {} } = await ctx.json()
+    const propres = Object.fromEntries(Object.keys(PARAMETRES.fiches).map((f) => [f, Math.max(1, Math.min(31, Math.round(Number(fiches[f]) || PARAMETRES.fiches[f])))]))
+    modifierReglage('mn1_parametres', { parSemaine: Math.max(1, Math.min(50, Math.round(Number(parSemaine) || PARAMETRES.parSemaine))), fiches: propres })
+    noterModification()
+    return parametres()
+  })
 
   // { machine_id, pour, action, frequence, evite, eth, ligne } ; un même geste sur la même machine n'est gardé qu'une fois.
   r.post('/api/mn1/fiches', async (ctx) => {

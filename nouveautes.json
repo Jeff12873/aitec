@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.5.1",
+      "date": "2026-10-25",
+      "points": [
+        "Fiches de niveau 1 toujours pour la production (les gestes de technicien vont dans les conseils)",
+        "Rouage de paramétrage : fiches tirées par semaine, fiches à imprimer par fréquence (hebdomadaire : 5, mensuelle : 1…)",
+        "Charge des opérateurs ; contrôle quotidien signalé comme trop fréquent",
+        "Impression d'une fiche par période (Semaine 1 / 5…), avec un cadre de contrôle à remplir"
+      ]
+    },
+    {
       "version": "0.5.0",
       "date": "2026-10-25",
       "points": [
