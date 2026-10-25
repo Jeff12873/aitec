@@ -21,7 +21,9 @@ const PERIODE = 15 * 60_000
 const LIGNES_MAX = 2_000_000
 let enCours = null // promesse de la synchronisation en cours
 
-export const requetes = () => ({ machines: '', interventions: '', ...reglageJson('requetes_mysql', {}) })
+// demandes : les demandes d'intervention, lues en direct par le tableau de bord de la maintenance de niveau 1
+// (elles ne sont pas recopiées dans le fichier de connaissances).
+export const requetes = () => ({ machines: '', interventions: '', demandes: '', ...reglageJson('requetes_mysql', {}) })
 
 export function routes(r) {
   r.get('/api/gmao/synchronisation', () => ({
@@ -33,11 +35,11 @@ export function routes(r) {
 
   r.post('/api/gmao/requetes', async (ctx) => {
     ctx.exigerAdmin()
-    const { machines = '', interventions = '' } = await ctx.json()
-    for (const sql of [machines, interventions]) {
+    const { machines = '', interventions = '', demandes = requetes().demandes } = await ctx.json()
+    for (const sql of [machines, interventions, demandes]) {
       if (sql.trim() && !/^(\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)*(select|with)\b/i.test(sql)) throw new ErreurHttp(400, 'Chaque requête doit être une lecture (SELECT).')
     }
-    modifierReglage('requetes_mysql', { machines: machines.trim(), interventions: interventions.trim() })
+    modifierReglage('requetes_mysql', { machines: machines.trim(), interventions: interventions.trim(), demandes: demandes.trim() })
     noterModification()
     return requetes()
   })

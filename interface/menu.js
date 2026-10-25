@@ -1,5 +1,5 @@
 // Le menu d'AITEC, chargé par la coquille commune de KTEC (page /aitec/).
-// Seuls le tableau de bord, l'assistant, les pannes connues et l'administration sont au menu (menu: true) ; les autres écrans
+// Seuls le tableau de bord, l'assistant, les pannes connues, la maintenance de niveau 1 et l'administration sont au menu (menu: true) ; les autres écrans
 // s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
 
 import { h, ic } from '/socle/ui.js'
@@ -15,8 +15,9 @@ import aide from '../blocs/aide/vue.js'
 import recherche from '../blocs/recherche/vue.js'
 import pannes from '../blocs/pannes/vue.js'
 import analyse from '../blocs/analyse/vue.js'
+import mn1 from '../blocs/mn1/vue.js'
 
-export const blocs = [tableauDeBord, assistant, pannes, administration, parc, interventions, documents, importGmao, aide, recherche, analyse]
+export const blocs = [tableauDeBord, assistant, pannes, mn1, administration, parc, interventions, documents, importGmao, aide, recherche, analyse]
 export { assistant as accueil }
 
 // Le champ de recherche est créé une seule fois : redessiner la barre ne doit pas effacer ce qu'on tape.

@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.5.0",
+      "date": "2026-10-25",
+      "points": [
+        "Nouveau menu « Maintenance de niveau 1 » : les fiches gardées depuis l'analyse des machines, par ligne et ETH, à imprimer",
+        "Tableau de bord des demandes d'intervention de niveau 1 (type choisi à l'écran), lu en direct dans la GMAO",
+        "Fiches : fréquence préconisée calendaire (quotidienne à annuelle)"
+      ]
+    },
+    {
       "version": "0.4.9",
       "date": "2026-10-25",
       "points": [

@@ -132,6 +132,8 @@ async function carteSynchronisation() {
   const s = await api('/api/gmao/synchronisation')
   const machines = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS repere, … AS designation, … AS famille, … AS emplacement … FROM …' }, s.requetes.machines)
   const interventions = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS machine, … AS type, … AS description … FROM …' }, s.requetes.interventions)
+  const demandes = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS machine, … AS type, … AS description, … AS demandeur, … AS etat, … AS arret FROM …' }, s.requetes.demandes || '')
+  const corpsRequetes = () => ({ machines: machines.value, interventions: interventions.value, demandes: demandes.value })
   const bilan = h('div')
   const montrer = (b) => {
     if (!b) return vider(bilan, h('p', { class: 'discret' }, 'Pas encore de synchronisation.'))
@@ -141,8 +143,8 @@ async function carteSynchronisation() {
   montrer(s.derniere)
   async function synchroniser() {
     // Requêtes modifiées dans les cases mais pas encore enregistrées : on les enregistre d'abord.
-    if (machines.value.trim() !== (s.requetes.machines || '').trim() || interventions.value.trim() !== (s.requetes.interventions || '').trim()) {
-      const ok = await essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: { machines: machines.value, interventions: interventions.value } }))
+    if (machines.value.trim() !== (s.requetes.machines || '').trim() || interventions.value.trim() !== (s.requetes.interventions || '').trim() || demandes.value.trim() !== (s.requetes.demandes || '').trim()) {
+      const ok = await essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: corpsRequetes() }))
       if (!ok) return
       s.requetes = ok
     }
@@ -165,8 +167,9 @@ async function carteSynchronisation() {
       h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),
       h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), machines),
       h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), interventions),
+      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Demandes d’intervention (facultatif, pour le tableau de bord de la maintenance de niveau 1, lu en direct) — colonnes : numero, date, machine (repère), type, description, demandeur, etat, arret'), demandes),
       h('div', { class: 'actions', style: { marginTop: '10px' } },
-        h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: { machines: machines.value, interventions: interventions.value } }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
+        h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: corpsRequetes() }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
     ),
     h('div', { class: 'actions', style: { marginTop: '12px' } }, h('button', { class: 'principal', onclick: synchroniser, title: 'Enregistre les requêtes si elles ont changé, puis lit la base' }, ic('rafraichir', 16), 'Synchroniser maintenant')),
     bilan,

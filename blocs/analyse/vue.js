@@ -7,8 +7,8 @@ import { peutModifier } from '/socle/etat.js'
 import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
+import { LOGO_MN1, carteFiche, frequenceCalendaire } from '../../interface/fiches-mn1.js'
 
-const LOGO_MN1 = new URL('../../interface/mn1.webp', import.meta.url).href
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
 export default {
@@ -157,95 +157,26 @@ function rendreResume(texte, d) {
 }
 
 // L'encadré MN1 : en tête, la formation des opérateurs s'il y en a ; puis 3 fiches au plus, côte à côte.
-// Un clic sur une fiche ouvre sa version à imprimer (A5 paysage).
+// Un clic sur une fiche ouvre sa version à imprimer (A5 paysage) ; « Garder » la range dans le menu
+// « Maintenance de niveau 1 ».
 function blocMN1(gestes, formations, d) {
   if (!gestes.length && !formations.length) return null
-  const machine = `${d.machine.repere}${d.machine.designation ? ` — ${d.machine.designation}` : ''}`
+  const gardees = new Set((d.fichesMN1 || []).map((f) => f.action.toLowerCase()))
   return h('div', { class: 'bloc-mn1' },
     h('div', { class: 'tete-mn1' },
-      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1')),
+      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1'), h('a', { class: 'lien-mn1', href: '#/mn1' }, 'Toutes les fiches ›')),
       formations.map((f) => h('div', { class: 'formation-mn1' }, ic('personne', 15), h('b', {}, 'Formation des opérateurs'), h('span', {}, f)))),
-    gestes.length ? h('div', { class: 'fiches-mn1' }, gestes.slice(0, GESTES_MAX).map((g) =>
-      // Un bloc cliquable plutôt qu'un bouton : le contenu d'un bouton ne revient pas à la ligne partout.
-      h('div', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}`, role: 'button', tabindex: '0', title: 'Ouvrir la fiche à imprimer (A5 paysage)', onclick: () => imprimerFiche(g, d), onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), imprimerFiche(g, d)) },
-        h('div', { class: 'tete-geste' }, h('img', { src: LOGO_MN1, alt: '' }), h('span', { class: 'pour-mn1' }, g.pour), h('span', { class: 'imprimer-geste' }, ic('document', 13), 'Fiche')),
-        h('div', { class: 'action-mn1' }, g.action),
-        g.frequence ? h('div', { class: 'detail-mn1' }, h('b', {}, 'Fréquence'), g.frequence) : null,
-        g.evite ? h('div', { class: 'detail-mn1' }, h('b', {}, 'Évite'), g.evite) : null,
-        h('div', { class: 'lieu-mn1' },
-          d.place?.eth ? h('span', {}, h('b', {}, 'ETH'), d.place.eth) : null,
-          h('span', {}, h('b', {}, 'Machine'), machine))))) : null)
-}
-
-// La fiche de niveau 1 à imprimer : A5 paysage, sobre, avec le logo, la machine, le geste et un tableau de
-// contrôle à remplir à la main (date, poste, nom, conforme, observations, visa).
-function imprimerFiche(g, d) {
-  const e = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-  const m = d.machine
-  const aujourdhui = new Date().toLocaleDateString('fr-FR')
-  const ligne = (libelle, valeur) => (valeur ? `<tr><th>${libelle}</th><td>${e(valeur)}</td></tr>` : '')
-  const controles = Array.from({ length: 6 }, () => '<tr><td></td><td></td><td></td><td class="case">☐ Oui&nbsp;&nbsp;☐ Non</td><td></td><td></td></tr>').join('')
-  const page = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>MN1 — ${e(m.repere)} — ${e(g.action).slice(0, 60)}</title>
-<style>
-  @page { size: A5 landscape; margin: 7mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 9.5pt/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1b1f1d; background: #e9ecea; }
-  .feuille { width: 210mm; height: 148mm; margin: 12px auto; padding: 7mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: flex; flex-direction: column; gap: 3.2mm; }
-  header { display: flex; align-items: center; gap: 4mm; border-bottom: 1.2mm solid #d4d01c; padding-bottom: 2.5mm; }
-  header img { width: 15mm; height: 15mm; }
-  header h1 { margin: 0; font-size: 14pt; letter-spacing: .02em; }
-  header p { margin: 0; color: #5d6662; font-size: 8.5pt; }
-  .pour { margin-left: auto; padding: 1.2mm 3mm; border-radius: 99px; font-weight: 700; font-size: 8.5pt; letter-spacing: .06em; text-transform: uppercase; border: .3mm solid currentColor; color: ${g.pour === 'Production' ? '#1d5fbf' : '#7a7400'}; }
-  .haut { display: grid; grid-template-columns: 1fr 1.25fr; gap: 4mm; }
-  table { width: 100%; border-collapse: collapse; }
-  .infos th { text-align: left; width: 26mm; color: #5d6662; font-weight: 600; padding: .8mm 0; vertical-align: top; }
-  .infos td { padding: .8mm 0; font-weight: 600; }
-  .geste { border: .35mm solid #c9cec9; border-left: 1.2mm solid #d4d01c; border-radius: 2mm; padding: 2.5mm 3mm; }
-  .geste h2, .controle h2 { margin: 0 0 1.2mm; font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: #5d6662; }
-  .geste p { margin: 0; font-size: 11pt; font-weight: 600; }
-  .controle { flex: 1; display: flex; flex-direction: column; }
-  .controle table { flex: 1; }
-  .controle th { font-size: 7.5pt; text-align: left; color: #5d6662; border-bottom: .35mm solid #9aa29d; padding: .8mm 1.5mm; }
-  .controle td { border-bottom: .2mm solid #c9cec9; border-right: .2mm solid #e1e5e2; height: 6.3mm; padding: 0 1.5mm; font-size: 8pt; }
-  .controle td:last-child { border-right: 0; }
-  .case { white-space: nowrap; color: #5d6662; }
-  footer { display: flex; justify-content: space-between; font-size: 7pt; color: #8a938e; }
-  @media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; width: auto; height: auto; min-height: 134mm; padding: 0; } }
-</style></head><body>
-<div class="feuille">
-  <header>
-    <img src="${LOGO_MN1}" alt="MN1">
-    <div><h1>Maintenance de niveau 1</h1><p>Fiche de contrôle</p></div>
-    <span class="pour">${e(g.pour)}</span>
-  </header>
-  <div class="haut">
-    <table class="infos">
-      ${ligne('Machine', `${m.repere}${m.designation ? ` — ${m.designation}` : ''}`)}
-      ${ligne('ETH', d.place?.eth)}
-      ${ligne('Ligne', d.place?.ligne)}
-      ${ligne('Fréquence', g.frequence)}
-    </table>
-    <div class="geste"><h2>Geste à réaliser</h2><p>${e(g.action)}</p>${g.evite ? `<h2 style="margin-top:2mm">Panne évitée</h2><div>${e(g.evite)}</div>` : ''}</div>
-  </div>
-  <div class="controle">
-    <h2>Informations de contrôle</h2>
-    <table><thead><tr><th style="width:20mm">Date</th><th style="width:22mm">Heure / poste</th><th style="width:34mm">Nom</th><th style="width:28mm">Conforme</th><th>Observations</th><th style="width:18mm">Visa</th></tr></thead><tbody>${controles}</tbody></table>
-  </div>
-  <footer><span>Éditée par AITEC le ${aujourdhui}, d’après l’analyse de la machine</span><span>${e(m.repere)}</span></footer>
-</div></body></html>`
-  // L'aperçu par-dessus la page (pas de fenêtre surgissante, que les navigateurs bloquent souvent) ;
-  // « Imprimer » imprime la feuille seule.
-  const cadre = h('iframe', { class: 'cadre-fiche', title: 'Fiche de niveau 1', srcdoc: page })
-  const fermer = () => { voile.remove(); document.removeEventListener('keydown', surEchap) }
-  const surEchap = (ev) => ev.key === 'Escape' && fermer()
-  const voile = h('div', { class: 'apercu-fiche', onmousedown: (ev) => ev.target === voile && fermer() },
-    h('div', { class: 'outils-fiche' },
-      h('span', {}, ic('document', 16), 'Fiche de niveau 1 — A5 paysage'),
-      h('button', { class: 'principal', onclick: () => cadre.contentWindow?.print() }, ic('document', 15), 'Imprimer'),
-      h('button', { class: 'discret icone-seule', title: 'Fermer (Échap)', onclick: fermer }, ic('x', 16))),
-    cadre)
-  document.body.append(voile)
-  document.addEventListener('keydown', surEchap)
+    gestes.length ? h('div', { class: 'fiches-mn1' }, gestes.slice(0, GESTES_MAX).map((g) => {
+      const fiche = { ...g, frequence: frequenceCalendaire(g.frequence), repere: d.machine.repere, designation: d.machine.designation, eth: d.place?.eth || '', ligne: d.place?.ligne || '' }
+      const etat = h('div', { class: 'garder-mn1' })
+      const dessinerEtat = () => vider(etat, gardees.has(g.action.toLowerCase())
+        ? h('span', { class: 'gardee-mn1' }, ic('coche', 13), 'Dans les fiches MN1')
+        : peutModifier() ? h('button', { class: 'petit', onclick: async () => {
+          if (await essayer(() => api('/api/mn1/fiches', { methode: 'POST', corps: { machine_id: d.machine.id, pour: fiche.pour, action: fiche.action, frequence: fiche.frequence, evite: fiche.evite, eth: fiche.eth, ligne: fiche.ligne } }), 'Fiche gardée dans « Maintenance de niveau 1 »')) { gardees.add(g.action.toLowerCase()); dessinerEtat() }
+        } }, ic('plus', 13), 'Garder dans les fiches MN1') : null)
+      dessinerEtat()
+      return carteFiche(fiche, { enPlus: etat })
+    })) : null)
 }
 
 function listeInterventions(liste) {

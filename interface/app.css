@@ -229,3 +229,22 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .outils-fiche { display: flex; align-items: center; gap: 10px; width: min(860px, 100%); color: var(--texte); }
 .outils-fiche > span { display: inline-flex; align-items: center; gap: 8px; flex: 1; font-weight: 600; }
 .cadre-fiche { width: min(860px, 100%); height: min(620px, calc(100vh - 100px)); border: 0; border-radius: 10px; background: #e9ecea; }
+
+/* Fiches MN1 : garder une fiche, lien vers le menu */
+.enplus-mn1 { margin-top: 4px; }
+.garder-mn1 .petit { font-size: 12px; padding: 4px 9px; }
+.gardee-mn1 { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--accent); }
+.lien-mn1 { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--texte-2); }
+.titre-mn1 { width: 100%; }
+
+/* Maintenance de niveau 1 : menu */
+.logo-page-mn1 { width: 44px; height: 44px; }
+.filtres-mn1 { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+.filtres-mn1 input[type=search] { max-width: 320px; }
+.pastilles-filtre { display: flex; flex-wrap: wrap; gap: 6px; }
+.groupe-fiches-mn1 { margin-bottom: 22px; }
+.groupe-fiches-mn1 > h2 { font-size: 17px; margin: 0 0 10px; }
+.actions-fiche-mn1 { display: flex; align-items: center; gap: 4px; }
+.actions-fiche-mn1 a { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin-right: auto; }
+.barre-demandes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; }
+.liste-sans-fiche { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -28,7 +28,7 @@ const CONSIGNES = `Tu es un technicien méthodes en maintenance industrielle. Tu
 **En bref** : 2 phrases sur l'état de la machine (fréquence des pannes, tendance des derniers mois, part du préventif).
 **Pannes qui reviennent** : 2 à 4 puces. Chacune : le symptôme, le nombre de cas, sa fréquence recopiée telle quelle du champ « frequence » (par exemple « environ toutes les 3 semaines »), et la cause la plus fréquente.
 **Conseils** : 3 à 5 puces concrètes, chacune appuyée sur une donnée : préventif à ajouter ou renforcer, pièce à garder en stock, modification ou amélioration, formation des techniciens de maintenance, contrôle à faire.
-**Maintenance de niveau 1** : cherche, pour les pannes qui reviennent, les gestes simples qui les éviteraient (sans démontage ni habilitation particulière : nettoyage, contrôle visuel, graissage, appoint, resserrage, réglage simple, signalement d'une anomalie) ; c'est souvent possible. Propose 1 à 3 gestes, les plus utiles. Une ligne par geste, qui commence exactement par « [MN1 Production] » quand le geste revient au conducteur ou à la production, ou par « [MN1 Maintenance] » quand il revient au technicien de maintenance ; puis trois parties séparées par « | » : le geste | sa fréquence | la panne qu'il évite. Exemple : [MN1 Production] Nettoyer la goulotte de sortie | à chaque prise de poste | surcharge du convoyeur
+**Maintenance de niveau 1** : cherche, pour les pannes qui reviennent, les gestes simples qui les éviteraient (sans démontage ni habilitation particulière : nettoyage, contrôle visuel, graissage, appoint, resserrage, réglage simple, signalement d'une anomalie) ; c'est souvent possible. Propose 1 à 3 gestes, les plus utiles. Une ligne par geste, qui commence exactement par « [MN1 Production] » quand le geste revient au conducteur ou à la production, ou par « [MN1 Maintenance] » quand il revient au technicien de maintenance ; puis trois parties séparées par « | » : le geste | sa fréquence préconisée, calendaire, un seul mot parmi quotidienne, hebdomadaire, mensuelle, trimestrielle, semestrielle, annuelle | la panne qu'il évite. Exemple : [MN1 Production] Nettoyer la goulotte de sortie | quotidienne | surcharge du convoyeur
 Formation des opérateurs (conducteurs) : si les données montrent qu'ils doivent apprendre ou revoir quelque chose, écris-le sur une seule ligne qui commence exactement par « [MN1 Formation] », et pas dans les Conseils. Sinon, n'écris pas cette ligne.
 Aucun geste de niveau 1 possible et pas de formation des opérateurs : n'écris pas cette partie.
 N'invente rien qui ne soit pas dans les données. Si les données sont trop maigres, dis-le en une phrase.`
@@ -144,7 +144,8 @@ export function routes(r) {
   r.get('/api/analyse/:id', async (ctx) => {
     const d = donnees(Number(ctx.params.id))
     const resume = resumes.get(d.machine.id)
-    return { ...d, place: await placeDe(d.machine.id), resume: resume?.version === etatPartage().version ? resume : null }
+    const fichesMN1 = db().prepare('SELECT id, action FROM fiches_mn1 WHERE machine_id = ?').all(d.machine.id)
+    return { ...d, place: await placeDe(d.machine.id), fichesMN1, resume: resume?.version === etatPartage().version ? resume : null }
   })
 
   // Le résumé de l'IA : en bref, pannes qui reviennent, conseils.
