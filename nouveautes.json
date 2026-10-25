@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.3.2",
+      "date": "2026-10-25",
+      "points": [
+        "Préventif fait ces dernières 48 h sur la machine ou le sous-ensemble visé : signalé en tête de la réponse",
+        "Nom de l'intervenant sur chaque ligne qui s'appuie sur une intervention, et dans les sources"
+      ]
+    },
+    {
       "version": "0.3.1",
       "date": "2026-10-25",
       "points": [

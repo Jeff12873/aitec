@@ -13,6 +13,7 @@ import { installation } from 'ktec/installation.js'
 import { glossaire } from '../../lib/glossaire.js'
 import fs from 'node:fs'
 import { chercher } from '../recherche/recherche.js'
+import { sansBalises } from '../recherche/passages.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
 import { lireInfo } from 'ktec/ktec.js'
 import { executerRequete, etatConnexion } from 'ktec/mysql.js'
@@ -32,6 +33,8 @@ Forme des réponses (toujours) :
 - Jamais de cause vague (« commande défaillante », « problème électrique », « paramétrage incorrect ») : nomme le composant et sa panne (bobine coupée, contact collé, fusible fondu, fil desserré, capteur déréglé ou encrassé, joint usé, distributeur grippé, sortie d'automate HS…).
 - Une panne identique déjà réparée dans les interventions est la cause la plus probable : dis ce qui avait été fait et quand.
 - Une cause hors du domaine coché : précède-la de son domaine (« Côté hydraulique : … »).
+- Chaque ligne (cause ou vérification) qui s'appuie sur une intervention donne le nom de l'intervenant, tel qu'écrit dans la source : « … le 14/03/2024 par DUPONT, JEAN [2] ».
+- Ligne PRÉVENTIF RÉCENT présente : un préventif vient d'être fait sur ces machines (l'agent le voit déjà en bandeau). Ce qui a été touché ce jour-là est une cause possible : cite-la parmi les causes si elle peut expliquer le symptôme.
 - Pour une question d'information (une valeur, une référence, une date d'intervention) : la réponse en une ou deux lignes, avec la source. Rien d'autre.
 - Pour une procédure demandée (démontage, réglage) : étapes numérotées, sans commentaire entre les étapes.
 - Valeurs exactes avec leur unité (24 V DC, 6 bar, 35 N·m), repères tels qu'écrits sur les schémas.
@@ -141,6 +144,8 @@ export function routes(r) {
     try {
       // Une machine, ou toutes celles d'une ligne / d'un sous-ensemble de l'arborescence.
       const filtre = machineIds?.length ? machineIds : machineId
+      const recents = preventifRecent(machineIds?.length ? machineIds : machineId ? [machineId] : [])
+      flux.envoyer('preventif', recents)
       const passages = await chercher(texteDeRecherche(question, historique), { machineId: filtre, limite: 8 })
       flux.envoyer('sources', passages.map((p, i) => ({ numero: i + 1, titre: p.titre, lien: p.lien, source: p.source, extrait: p.texte.slice(0, 400) })))
 
@@ -151,7 +156,7 @@ export function routes(r) {
         return flux.envoyer('fin', {})
       }
 
-      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null, precisions), {
+      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null, precisions, recents), {
         surMorceau: (morceau) => flux.envoyer('texte', morceau),
         signal: arret.signal,
         // Réponses courtes et régulières : une limite de longueur, peu de fantaisie.
@@ -174,7 +179,7 @@ function texteDeRecherche(question, historique) {
   return [question, ...precedents.reverse()].join('\n')
 }
 
-function construireMessages(question, historique, passages, machineId, groupe = null, precisions = []) {
+function construireMessages(question, historique, passages, machineId, groupe = null, precisions = [], recents = []) {
   const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
     .replace('{glossaire}', glossaire())
@@ -186,6 +191,7 @@ function construireMessages(question, historique, passages, machineId, groupe = 
   } else if (groupe) {
     contexte += `La question porte sur ${groupe.nom || 'un ensemble de machines'} (${groupe.nombre} machine${groupe.nombre > 1 ? 's' : ''} de l'arborescence).\n\n`
   }
+  if (recents.length) contexte += `PRÉVENTIF RÉCENT (48 dernières heures) :\n${recents.map((r) => `- ${r.dateFr}, ${r.repere || 'machine ?'}, ${r.numero || 'sans n°'}, par ${r.intervenant || 'intervenant inconnu'} : ${r.description}`).join('\n')}\n\n`
   if (Array.isArray(precisions) && precisions.length) contexte += `PRÉCISIONS (cochées par l'agent, sûres) : ${precisions.map(String).join(' ; ')}.\n\n`
   contexte += passages.length
     ? 'SOURCES :\n\n' + passages.map((p, i) => `[${i + 1}] ${p.titre}\n${p.texte}`).join('\n\n')
@@ -210,6 +216,32 @@ function construireMessages(question, historique, passages, machineId, groupe = 
         : texte,
     },
   ]
+}
+
+// Les interventions préventives des 48 dernières heures sur les machines visées (une machine, ou toutes celles
+// de la ligne ou du sous-ensemble choisi). Les dates n'ont pas d'heure : on prend aujourd'hui et les deux jours
+// d'avant. Un type est « préventif » s'il contient le mot , quelle que soit sa forme, accents ignorés.
+function preventifRecent(ids) {
+  ids = (ids || []).map(Number).filter(Boolean)
+  if (!ids.length) return []
+  const d = new Date(Date.now() - 48 * 3600 * 1000)
+  const depuis = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return db()
+    .prepare(`SELECT i.id, i.date, i.numero, i.type, i.description, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id
+              WHERE i.date >= ? AND i.machine_id IN (${ids.map(() => '?').join(',')}) ORDER BY i.date DESC, i.id DESC`)
+    .all(depuis, ...ids)
+    .filter((i) => sansAccents(i.type).includes('preventif'))
+    .slice(0, 8)
+    .map((i) => ({
+      id: i.id,
+      date: i.date,
+      dateFr: i.date.split('-').reverse().join('/'),
+      numero: i.numero,
+      repere: i.repere,
+      intervenant: i.intervenant,
+      description: sansBalises(i.description).replace(/\s+/g, ' ').slice(0, 160),
+    }))
 }
 
 const IMAGES_MAX = 2

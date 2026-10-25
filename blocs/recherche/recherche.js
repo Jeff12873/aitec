@@ -154,9 +154,9 @@ export function decrirePassage(id) {
     lien = `#/parc/${p.source_id}`
   } else if (p.source === 'intervention') {
     const i = db()
-      .prepare('SELECT i.date, i.numero, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE i.id = ?')
+      .prepare('SELECT i.date, i.numero, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE i.id = ?')
       .get(p.source_id)
-    titre = `Intervention ${i?.numero || ''} du ${dateFr(i?.date)}${i?.repere ? ' — ' + i.repere : ''}`
+    titre = `Intervention ${i?.numero || ''} du ${dateFr(i?.date)}${i?.repere ? ' — ' + i.repere : ''}${i?.intervenant ? ' — ' + i.intervenant : ''}`
     lien = `#/interventions/${p.source_id}`
   }
   return { id: p.id, source: p.source, sourceId: p.source_id, page: p.page, titre, lien, texte: p.texte }

@@ -223,6 +223,7 @@ export default {
       try {
         await flux('/api/assistant', { question, historique, precisions, ...filtre }, (type, donnees) => {
           if (type === 'sources') { reponse.sources = donnees; montrerSources(reponse) }
+          if (type === 'preventif') reponse.preventif = donnees
           if (type === 'texte') reponse.contenu += donnees
           if (type === 'erreur') reponse.contenu += `\n\n⚠ ${donnees.message}`
           remplacer()
@@ -318,6 +319,14 @@ function dessinerMessage(message, { envoyer, montrerSources }, original = messag
     h(
       'div',
       { class: 'corps' },
+      // Préventif fait ces 48 dernières heures sur les machines visées : à savoir avant de chercher plus loin.
+      message.preventif?.length
+        ? h('div', { class: 'bandeau-preventif' },
+          h('div', { class: 'titre-preventif' }, ic('horloge', 15), `Préventif dans les dernières 48 h (${message.preventif.length})`),
+          message.preventif.map((p) => h('a', { class: 'ligne-preventif', href: `#/interventions/${p.id}` },
+            h('b', {}, p.dateFr), ` — ${p.repere || '?'} — `, h('span', { class: 'intervenant' }, p.intervenant || 'intervenant inconnu'),
+            p.description ? h('span', { class: 'texte-3' }, ` — ${p.description}`) : null)))
+        : null,
       texte,
       !message.enCours && choix.length && message.dernier
         ? h('div', { class: 'suggestions', style: { marginTop: '10px' } }, choix.map((c) => h('button', { onclick: () => envoyer(c) }, c)))
