@@ -2,6 +2,7 @@
 // La conversation est gardée sur ce poste (pas dans le fichier partagé).
 
 import { h, vider, ic, notifier } from '/socle/ui.js'
+import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api, flux } from '/socle/api.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { etat } from '/socle/etat.js'
@@ -29,7 +30,8 @@ export default {
   rafraichir: false, // ne pas recharger l'écran pendant une discussion
 
   async afficher(zone, { query }) {
-    const [machines, arbre] = await Promise.all([api('/api/machines'), api('/api/arborescence').catch(() => null)])
+    const [machines, arborescence] = await Promise.all([api('/api/machines'), api('/api/arborescence').catch(() => null)])
+    const arbre = arborescence?.lignes || null
     if (query.machine) { machineChoisie = query.machine; ligneChoisie = ''; ensembleChoisi = '' }
 
     const messages = h('div', { class: 'messages' })
@@ -52,23 +54,35 @@ export default {
     const zoneMachine = h('div', { class: 'choix-arbre' })
     function dessinerChoix() {
       if (!arbre?.length) {
-        return vider(zoneMachine, h('select', { onchange: (e) => (machineChoisie = e.target.value) },
-          h('option', { value: '' }, 'Toute la base'),
-          machines.map((m) => h('option', { value: m.id, selected: String(m.id) === String(machineChoisie) }, `${m.repere} — ${m.designation}`))))
+        return vider(zoneMachine, menuDeroulant({
+          choix: [{ valeur: '', libelle: 'Toute la base' }, ...machines.map((m) => ({ valeur: String(m.id), libelle: `${m.repere} — ${m.designation}` }))],
+          valeur: String(machineChoisie || ''),
+          surChoix: (v) => { machineChoisie = v; dessinerChoix() },
+          haut: true,
+        }))
       }
       const ligne = arbre.find((n) => n.id === ligneChoisie)
       const machine = machineChoisie ? machines.find((m) => String(m.id) === String(machineChoisie)) : null
+      // Une machine précise venue d'un autre écran (« Demander à l'assistant » depuis le parc).
+      if (machine) {
+        return vider(zoneMachine, h('div', { class: 'machine-precise' }, h('span', {}, `${machine.repere} — ${machine.designation}`), h('button', { class: 'discret icone-seule', title: 'Revenir à l’arborescence', onclick: () => { machineChoisie = ''; dessinerChoix() } }, ic('x', 14))))
+      }
       vider(zoneMachine,
-        // Une machine précise venue d'un autre écran (« Demander à l'assistant » depuis le parc).
-        machine ? h('div', { class: 'machine-precise' }, h('span', {}, `${machine.repere} — ${machine.designation}`), h('button', { class: 'discret icone-seule', title: 'Revenir à l’arborescence', onclick: () => { machineChoisie = ''; dessinerChoix() } }, ic('x', 14))) : null,
-        machine ? null : h('label', { class: 'champ' }, h('span', {}, 'Ligne'),
-          h('select', { onchange: (e) => { ligneChoisie = e.target.value; ensembleChoisi = ''; dessinerChoix() } },
-            h('option', { value: '' }, 'Toute la base'),
-            arbre.map((n) => h('option', { value: n.id, selected: n.id === ligneChoisie }, `${n.libelle} · ${n.machines.length}`)))),
-        !machine && ligne?.enfants.length ? h('label', { class: 'champ cascade' }, h('span', {}, '└ Sous-ensemble'),
-          h('select', { onchange: (e) => { ensembleChoisi = e.target.value; dessinerChoix() } },
-            h('option', { value: '' }, `Toute la ligne ${ligne.libelle.split(' ')[0]}`),
-            ligne.enfants.map((e) => h('option', { value: e.id, selected: e.id === ensembleChoisi }, `${e.libelle} · ${e.machines.length}`)))) : null)
+        menuDeroulant({
+          choix: [{ valeur: '', libelle: 'Toute la base' }, ...arbre.map((n) => ({ valeur: n.id, libelle: n.libelle, nombre: n.machines.length }))],
+          valeur: ligneChoisie,
+          surChoix: (v) => { ligneChoisie = v; ensembleChoisi = ''; dessinerChoix() },
+          haut: true,
+        }),
+        ligne?.enfants.length ? [
+          h('span', { class: 'separateur-arbre' }, '›'),
+          menuDeroulant({
+            choix: [{ valeur: '', libelle: `Toute la ligne ${ligne.libelle.split(' ')[0]}` }, ...ligne.enfants.map((e) => ({ valeur: e.id, libelle: e.libelle, nombre: e.machines.length }))],
+            valeur: ensembleChoisi,
+            surChoix: (v) => { ensembleChoisi = v; dessinerChoix() },
+            haut: true,
+          }),
+        ] : null)
     }
     // Le filtre envoyé à l'assistant : une machine, ou toutes celles du nœud choisi.
     function filtreMachines() {
@@ -163,15 +177,15 @@ export default {
           { class: 'fil' },
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
           messages,
+          h('div', { class: 'barre-machine' },
+            h('span', { class: 'titre-barre-machine', title: arbre?.length ? 'Choisir une ligne ou un sous-ensemble limite la recherche aux documents, fiches et interventions de ses machines.' : 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.' }, ic('usine', 15), 'Machine concernée'),
+            zoneMachine),
           h('div', { class: 'saisie' }, h('div', { class: 'saisie-boite' }, saisie, boutonEnvoyer)),
         ),
         h(
           'div',
           { class: 'carte', style: { position: 'sticky', top: '86px' } },
-          h('h3', { style: { marginBottom: '10px' } }, 'Machine concernée'),
-          zoneMachine,
-          h('p', { class: 'discret', style: { fontSize: '13px', marginTop: '8px' } }, arbre?.length ? 'Choisir une ligne ou un sous-ensemble limite la recherche aux documents, fiches et interventions de ses machines.' : 'Choisir une machine limite la recherche à ses documents, sa fiche et ses interventions.'),
-          h('div', { class: 'actions', style: { marginTop: '16px' } }, h('button', { onclick: nouvelleConversation }, ic('plus', 16), 'Nouvelle conversation')),
+          h('div', { class: 'actions' }, h('button', { onclick: nouvelleConversation }, ic('plus', 16), 'Nouvelle conversation')),
           h('h3', { style: { margin: '22px 0 8px' } }, 'Bon à savoir'),
           h('ul', { class: 'texte-2', style: { paddingLeft: '18px', fontSize: '14px', margin: 0 } },
             h('li', {}, 'Les numéros [1], [2]… renvoient aux sources : cliquez pour les ouvrir.'),

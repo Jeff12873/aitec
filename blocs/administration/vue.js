@@ -3,6 +3,7 @@
 // Le fichier .ktec lui-même (ouverture, mot de passe, sauvegardes) se règle dans les Réglages de KTEC.
 
 import { h, vider, ic, essayer, notifier, confirmer, tailleFr, nombreFr } from '/socle/ui.js'
+import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api } from '/socle/api.js'
 import { peutModifier, actualiserEtat } from '/socle/etat.js'
 import { ouvrirModeAdmin } from '/socle/fichier.js'
@@ -52,7 +53,7 @@ async function afficherReglages(zone) {
       carteContenu(infos),
       carteModele(),
       peutModifier()
-        ? [carteGlossaire(), carteAtelier(infos), carteIndex(infos), carteReprise(infos)]
+        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteIndex(infos), carteReprise(infos)]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )
@@ -146,6 +147,26 @@ function carteGlossaire() {
       h('button', { class: 'discret', onclick: async () => { if (await confirmer('Revenir au glossaire d’origine ?')) { await essayer(() => api('/api/admin/glossaire', { methode: 'POST', corps: { texte: '' } })); texte.value = (await api('/api/glossaire')).texte } } }, 'Revenir à l’original'),
     ),
   )
+}
+
+// ---------------------------------------------------------------- arborescence des machines
+
+// La GMAO peut tenir plusieurs arborescences : on choisit celle qui sert à désigner la machine dans l'assistant.
+function carteArborescence() {
+  const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture de l’arborescence…'))
+  const charger = () => api('/api/arborescence').then((a) => {
+    if (!a) return vider(corps, h('p', { class: 'texte-2' }, 'Pas d’arborescence : réglez sa requête dans PDRTec › Paramètres (et connectez-vous à la base de la GMAO).'))
+    if (!a.arbres.length) return vider(corps, h('p', { class: 'texte-2' }, `${a.lignes.length} lignes, toutes arborescences confondues. Pour n’en garder qu’une (celle de la maintenance, par exemple), ajoutez à la requête de l’arborescence, dans PDRTec › Paramètres, une colonne « arbre » qui donne le nom de l’arborescence de chaque nœud.`))
+    vider(corps,
+      h('p', { class: 'texte-2' }, 'Celle qui sert à choisir la machine dans l’assistant (ligne, puis sous-ensemble).'),
+      menuDeroulant({
+        choix: a.arbres.map((x) => ({ valeur: x.nom, libelle: x.nom || '(sans nom)', nombre: x.machines })),
+        valeur: a.arbre,
+        surChoix: async (arbre) => { await essayer(() => api('/api/arborescence/choix', { methode: 'POST', corps: { arbre } }), 'Arborescence enregistrée'); charger() },
+      }))
+  }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, `Arborescence illisible : ${e.message}`)))
+  charger()
+  return carte('reseau', 'Arborescence des machines', corps)
 }
 
 // ---------------------------------------------------------------- nom de l'atelier

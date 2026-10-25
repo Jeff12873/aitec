@@ -1,10 +1,27 @@
 /* Styles propres à AITEC (le thème commun est celui de KTEC). */
 
-/* Machine concernée : ligne, puis sous-ensemble (deux premiers niveaux de l'arborescence) */
-.choix-arbre { display: grid; gap: 8px; }
-.choix-arbre .cascade { margin-left: 18px; }
-.machine-precise { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent-doux); color: var(--accent); font-weight: 600; font-size: 14px; }
+/* Machine concernée : au centre, au-dessus de la saisie ; ligne › sous-ensemble (deux premiers niveaux) */
+.barre-machine { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin: 0 0 10px; }
+.titre-barre-machine { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texte-2); cursor: help; }
+.choix-arbre { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.separateur-arbre { color: var(--texte-3); font-size: 18px; line-height: 1; }
+.machine-precise { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent-doux); color: var(--accent); font-weight: 600; font-size: 14px; }
 .machine-precise span { flex: 1; }
+
+/* Menu déroulant aux couleurs du thème (tous navigateurs) */
+.menu-theme { position: relative; }
+.menu-theme-bouton { max-width: 340px; padding: 7px 34px 7px 12px; border-radius: 10px; font-size: 14px; text-align: left; background-color: var(--carte); background-image: linear-gradient(45deg, transparent 50%, var(--texte-2) 50%), linear-gradient(135deg, var(--texte-2) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.menu-theme-bouton span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-theme-liste { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 100%; width: max-content; max-width: min(460px, 90vw); background: var(--carte); border: 1px solid var(--bord-fort); border-radius: 12px; padding: 4px; box-shadow: 0 12px 30px rgba(0, 0, 0, .45); }
+.menu-theme.haut .menu-theme-liste { top: auto; bottom: calc(100% + 6px); }
+.menu-theme-filtre { width: 100%; margin-bottom: 4px; padding: 6px 10px; font-size: 13px; }
+.menu-theme-options { max-height: min(360px, 50vh); overflow: auto; }
+.menu-theme-choix { display: flex; align-items: baseline; gap: 10px; padding: 6px 10px; border-radius: 8px; font-size: 14px; color: var(--texte); cursor: pointer; }
+.menu-theme-choix span { flex: 1; }
+.menu-theme-choix small { color: var(--texte-3); font-variant-numeric: tabular-nums; }
+.menu-theme-choix:hover, .menu-theme-choix.vise { background: var(--carte-2); }
+.menu-theme-choix.on { background: var(--accent-doux); color: var(--accent); font-weight: 600; }
+.menu-theme-choix.on small { color: var(--accent); }
 
 /* Commentaires de la GMAO mis en forme */
 .texte-riche { white-space: pre-wrap; line-height: 1.5; }

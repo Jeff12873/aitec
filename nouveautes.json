@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.2.8",
+      "date": "2026-10-25",
+      "points": [
+        "Machine concernée au centre, au-dessus de la question",
+        "Menus aux couleurs du thème, sur tous les navigateurs",
+        "Une seule arborescence proposée (la plus fournie par défaut), au choix dans Administration"
+      ]
+    },
+    {
       "version": "0.2.7",
       "date": "2026-10-25",
       "points": [
