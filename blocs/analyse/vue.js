@@ -166,7 +166,8 @@ function blocMN1(gestes, formations, d) {
       h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1')),
       formations.map((f) => h('div', { class: 'formation-mn1' }, ic('personne', 15), h('b', {}, 'Formation des opérateurs'), h('span', {}, f)))),
     gestes.length ? h('div', { class: 'fiches-mn1' }, gestes.slice(0, GESTES_MAX).map((g) =>
-      h('button', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}`, title: 'Ouvrir la fiche à imprimer (A5 paysage)', onclick: () => imprimerFiche(g, d) },
+      // Un bloc cliquable plutôt qu'un bouton : le contenu d'un bouton ne revient pas à la ligne partout.
+      h('div', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}`, role: 'button', tabindex: '0', title: 'Ouvrir la fiche à imprimer (A5 paysage)', onclick: () => imprimerFiche(g, d), onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), imprimerFiche(g, d)) },
         h('div', { class: 'tete-geste' }, h('img', { src: LOGO_MN1, alt: '' }), h('span', { class: 'pour-mn1' }, g.pour), h('span', { class: 'imprimer-geste' }, ic('document', 13), 'Fiche')),
         h('div', { class: 'action-mn1' }, g.action),
         g.frequence ? h('div', { class: 'detail-mn1' }, h('b', {}, 'Fréquence'), g.frequence) : null,

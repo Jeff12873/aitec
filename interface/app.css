@@ -211,9 +211,11 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .formation-mn1 svg { align-self: center; color: #93c5fd; }
 .fiches-mn1 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 900px) { .fiches-mn1 { grid-template-columns: 1fr; } }
-button.geste-mn1 { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; white-space: normal; text-align: left; font: inherit; font-weight: 400; color: var(--texte); cursor: pointer; height: auto; }
-button.geste-mn1:hover { box-shadow: 0 0 0 1px #e9e54a; }
-button.geste-mn1.production:hover { box-shadow: 0 0 0 1px #60a5fa; }
+.fiches-mn1 .geste-mn1 { display: flex; flex-direction: column; gap: 6px; min-width: 0; white-space: normal; overflow-wrap: anywhere; color: var(--texte); cursor: pointer; }
+.fiches-mn1 .geste-mn1 > * { min-width: 0; }
+.fiches-mn1 .geste-mn1:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fiches-mn1 .geste-mn1:hover { box-shadow: 0 0 0 1px #e9e54a; }
+.fiches-mn1 .geste-mn1.production:hover { box-shadow: 0 0 0 1px #60a5fa; }
 .tete-geste { display: flex; align-items: center; gap: 8px; }
 .tete-geste img { width: 22px; height: 22px; }
 .tete-geste .pour-mn1 { margin: 0; }
