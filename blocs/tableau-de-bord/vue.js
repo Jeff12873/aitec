@@ -1,7 +1,8 @@
 // Tableau de bord : tuiles chiffrées, graphiques, remarques de l'IA.
 
-import { h, vider, ic, dateFr, nombreFr, ilYa, essayer } from '/socle/ui.js'
+import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier } from '/socle/ui.js'
 import { api } from '/socle/api.js'
+import { peutModifier } from '/socle/etat.js'
 import { barres, anneau, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { etat } from '/socle/etat.js'
@@ -12,6 +13,21 @@ const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août'
 const COULEURS_TYPES = { Correctif: COULEURS.violet, Préventif: COULEURS.bleu }
 const AUTRES_COULEURS = [COULEURS.turquoise, COULEURS.orange, COULEURS.gris, COULEURS.rouge]
 
+// Les lignes choisies en haut du tableau de bord, gardées sur ce poste (aucune : toutes).
+const CLE_LIGNES = 'aitec-tableau-lignes'
+function lireSelection() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_LIGNES) || '[]')
+  } catch {
+    return []
+  }
+}
+function garderSelection(selection) {
+  try {
+    localStorage.setItem(CLE_LIGNES, JSON.stringify(selection))
+  } catch {}
+}
+
 export default {
   chemin: 'tableau-de-bord',
   titre: 'Tableau de bord',
@@ -20,35 +36,91 @@ export default {
   aide: 'tableau-de-bord',
 
   async afficher(zone) {
-    const d = await api('/api/tableau-de-bord')
-    const t = d.tuiles
-    const ecart = t.interventions30j - t.interventions30jAvant
-
-    vider(
-      zone,
-      h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
-
-      t.machines === 0 ? bandeauDemarrage() : null,
-
-      h(
-        'div',
-        { class: 'grille grille-3', style: { marginBottom: '16px' } },
-        tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, null),
-        tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, null),
-        tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
-      ),
-
-      h(
-        'div',
-        { class: 'grille grille-3' },
-        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
-        carteRemarques(d.remarques),
-        h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois'), graphiqueTypes(d.parType)),
-        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois'), graphiquePannes(d.machinesEnPanne)),
-        h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions'), listeInterventions(d.dernieresInterventions)),
-      ),
-    )
+    let selection = lireSelection()
+    const dessiner = async () => {
+      const d = await api(`/api/tableau-de-bord${selection.length ? `?lignes=${encodeURIComponent(selection.join(','))}` : ''}`)
+      selection = d.perimetre.selection
+      const choisir = (nouvelle) => {
+        selection = nouvelle
+        garderSelection(selection)
+        dessiner()
+      }
+      afficherTableau(zone, d, selection, choisir)
+      animer(zone)
+    }
+    await dessiner()
   },
+}
+
+function afficherTableau(zone, d, selection, choisir) {
+  const t = d.tuiles
+  const ecart = t.interventions30j - t.interventions30jAvant
+
+  vider(
+    zone,
+    h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
+
+    t.machines === 0 ? bandeauDemarrage() : null,
+
+    h(
+      'div',
+      { class: 'grille grille-3', style: { marginBottom: '16px' } },
+      tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, null),
+      tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, null),
+      tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
+    ),
+
+    barrePerimetre(d.perimetre, selection, choisir),
+
+    h(
+      'div',
+      { class: 'grille grille-3' },
+      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
+      carteRemarques(d.remarques, selection),
+      h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois'), graphiqueTypes(d.parType)),
+      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois'), graphiquePannes(d.machinesEnPanne)),
+      h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions'), listeInterventions(d.dernieresInterventions)),
+    ),
+  )
+}
+
+// Les lignes (plus haut niveau de l'arborescence) à compter : aucune cochée = toutes. Une pastille par ligne,
+// rangées par arborescence quand il y en a plusieurs.
+function barrePerimetre(perimetre, selection, choisir) {
+  if (!perimetre?.lignes?.length) return null
+  const basculer = (id) => choisir(selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id])
+  const pastille = (l) => h('button', { class: `pastille-ligne${selection.includes(l.id) ? ' choisie' : ''}`, title: `${l.libelle} — ${nombreFr(l.machines)} machines${l.arbre ? ` (${l.arbre})` : ''}`, onclick: () => basculer(l.id) }, l.code || l.libelle)
+  const parArbre = new Map()
+  for (const l of perimetre.lignes) (parArbre.get(l.arbre) || parArbre.set(l.arbre, []).get(l.arbre)).push(l)
+  return h('div', { class: 'perimetre-tableau' },
+    h('button', { class: `pastille-ligne toutes${selection.length ? '' : ' choisie'}`, title: 'Toutes les lignes des arborescences choisies dans Administration', onclick: () => choisir([]) }, 'Toutes'),
+    [...parArbre].map(([arbre, lignes]) => h('div', { class: 'groupe-lignes' },
+      parArbre.size > 1 && arbre ? h('span', { class: 'titre-groupe-lignes' }, arbre) : null,
+      lignes.map(pastille))),
+    perimetre.machines !== null ? h('span', { class: 'discret compte-perimetre' }, `${nombreFr(perimetre.machines)} machines comptées`) : null)
+}
+
+// Les chiffres défilent jusqu'à leur valeur, les barres montent, l'anneau se dessine.
+function animer(zone) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  zone.classList.remove('tableau-anime')
+  void zone.offsetWidth // relance les animations CSS
+  zone.classList.add('tableau-anime')
+  zone.querySelectorAll('svg.graphique path').forEach((p, i) => (p.style.animationDelay = `${(i % 12) * 35 + Math.floor(i / 12) * 60}ms`))
+  zone.querySelectorAll('.barres-horizontales .piste > span').forEach((b, i) => (b.style.animationDelay = `${i * 70}ms`))
+  zone.querySelectorAll('.tuile .valeur').forEach((v) => {
+    const texte = v.firstChild
+    if (texte?.nodeType !== Node.TEXT_NODE) return
+    const fin = Number(texte.textContent.replace(/\D/g, ''))
+    if (!fin) return
+    const debut = performance.now()
+    const pas = (instant) => {
+      const t = Math.min(1, (instant - debut) / 900)
+      texte.textContent = nombreFr(Math.round(fin * (1 - (1 - t) ** 3)))
+      if (t < 1 && texte.isConnected) requestAnimationFrame(pas)
+    }
+    requestAnimationFrame(pas)
+  })
 }
 
 function tuile(icone, couleur, libelle, valeur, detail, lien) {
@@ -123,7 +195,7 @@ function listeInterventions(liste) {
 }
 
 // « Ce que l'IA remarque »
-function carteRemarques(remarques) {
+function carteRemarques(remarques, selection) {
   const corps = h('div', { class: 'texte-ia' })
   const date = h('span', { class: 'discret' })
   const bouton = h('button', { class: 'petit', onclick: analyser }, ic('rafraichir', 15), remarques ? 'Actualiser' : 'Analyser')
@@ -135,7 +207,7 @@ function carteRemarques(remarques) {
   async function analyser() {
     bouton.disabled = true
     corps.innerHTML = '<p class="discret curseur">L’IA lit les chiffres de la base</p>'
-    const r = await essayer(() => api('/api/tableau-de-bord/remarques', { methode: 'POST' }))
+    const r = await essayer(() => api('/api/tableau-de-bord/remarques', { methode: 'POST', corps: { lignes: selection } }))
     bouton.disabled = false
     if (r) montrer(r)
     else corps.textContent = ''
@@ -144,5 +216,29 @@ function carteRemarques(remarques) {
   if (remarques) montrer(remarques)
   else corps.append(h('p', { class: 'texte-2' }, 'L’IA peut relever les points qui demandent votre attention : pannes en hausse, pannes récurrentes, machines sans documentation…'))
 
-  return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, h('span', { class: 'pastille', style: { color: 'var(--accent)' } }, ic('etincelle', 18)), 'Ce que l’IA remarque'), date), corps, h('div', { class: 'actions', style: { marginTop: '12px' } }, bouton, h('a', { class: 'bouton petit', href: '#/assistant' }, ic('etincelle', 14), 'Poser une question')))
+  const rouage = peutModifier() ? h('button', { class: 'discret icone-seule petit', title: 'Les consignes données à l’IA pour ces remarques', onclick: () => modifierConsignes(analyser) }, ic('reglages', 16)) : null
+  return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, h('span', { class: 'pastille', style: { color: 'var(--accent)' } }, ic('etincelle', 18)), 'Ce que l’IA remarque'), h('div', { class: 'actions' }, date, rouage)), corps, h('div', { class: 'actions', style: { marginTop: '12px' } }, bouton, h('a', { class: 'bouton petit', href: '#/assistant' }, ic('etincelle', 14), 'Poser une question')))
+}
+
+// Le rouage : les consignes que suit l'IA pour écrire ses remarques (administrateur).
+async function modifierConsignes(analyser) {
+  const c = await essayer(() => api('/api/tableau-de-bord/consignes'))
+  if (!c) return
+  const texte = h('textarea', { rows: 10 }, c.texte)
+  const enregistrees = await fenetre({
+    titre: 'Consignes de « Ce que l’IA remarque »',
+    large: true,
+    contenu: h('div', {},
+      h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Ce que l’IA doit relever en lisant les chiffres du tableau de bord : sujets à mettre en avant, forme, longueur. Elle reçoit les chiffres du périmètre affiché.'),
+      texte),
+    boutons: [
+      { texte: 'Revenir à l’original', classe: 'discret', action: () => { texte.value = c.origine; return false } },
+      { texte: 'Annuler', classe: 'discret', valeur: null },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api('/api/tableau-de-bord/consignes', { methode: 'POST', corps: { texte: texte.value } }); return true } },
+    ],
+  })
+  if (enregistrees) {
+    notifier('Consignes enregistrées')
+    analyser()
+  }
 }

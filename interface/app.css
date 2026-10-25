@@ -114,3 +114,34 @@
 .pastille-panne span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pastille-panne b { font-size: 11px; color: var(--accent); }
 .pastille-panne small { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* Tableau de bord : les lignes comptées */
+.perimetre-tableau { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--carte); }
+.groupe-lignes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.titre-groupe-lignes { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texte-3); margin-right: 2px; }
+.pastille-ligne { padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--texte-2); background: var(--carte-2); border: 1px solid var(--bord); }
+.pastille-ligne:hover { color: var(--texte); border-color: var(--bord-fort); }
+.pastille-ligne.choisie { color: var(--accent); background: var(--accent-doux); border-color: var(--accent); }
+.compte-perimetre { margin-left: auto; font-size: 12px; }
+
+/* Tableau de bord : animations à l'affichage */
+.tableau-anime .tuile, .tableau-anime .grille > .carte { animation: tableau-apparait .5s ease-out both; }
+.tableau-anime .grille > :nth-child(2) { animation-delay: 60ms; }
+.tableau-anime .grille > :nth-child(3) { animation-delay: 120ms; }
+.tableau-anime .grille > :nth-child(4) { animation-delay: 180ms; }
+.tableau-anime .grille > :nth-child(5) { animation-delay: 240ms; }
+.tableau-anime .grille > :nth-child(6) { animation-delay: 300ms; }
+@keyframes tableau-apparait { from { opacity: 0; transform: translateY(8px); } }
+.tableau-anime svg.graphique path { transform-box: fill-box; transform-origin: 50% 100%; animation: tableau-monte .7s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes tableau-monte { from { transform: scaleY(0); } }
+.tableau-anime svg.graphique circle[stroke-dashoffset] { animation: tableau-anneau 1s ease-out both .2s; }
+@keyframes tableau-anneau { from { stroke-dasharray: 0 1000; } }
+.tableau-anime .barres-horizontales .piste > span { transform-origin: left center; animation: tableau-elargit .8s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes tableau-elargit { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .tableau-anime * { animation: none !important; } }
+
+/* Administration : arborescences du tableau de bord */
+.cases-arbres { display: flex; flex-direction: column; gap: 6px; }
+.case-arbre { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.case-arbre input { width: auto; flex: none; accent-color: var(--accent); }
+.case-arbre small { margin-left: auto; }

@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.4.3",
+      "date": "2026-10-25",
+      "points": [
+        "Tableau de bord limité aux arborescences choisies dans Administration (plusieurs possibles)",
+        "Choix des lignes en haut du tableau de bord",
+        "Animations à l'affichage des chiffres et graphiques",
+        "Rouage dans « Ce que l'IA remarque » pour modifier ses consignes"
+      ]
+    },
+    {
       "version": "0.4.2",
       "date": "2026-10-25",
       "points": [

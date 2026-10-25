@@ -53,7 +53,7 @@ async function afficherReglages(zone) {
       carteContenu(infos),
       carteModele(),
       peutModifier()
-        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteIndex(infos), carteReprise(infos)]
+        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteArborescencesTableau(), carteIndex(infos), carteReprise(infos)]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )
@@ -167,6 +167,24 @@ function carteArborescence() {
   }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, `Arborescence illisible : ${e.message}`)))
   charger()
   return carte('reseau', 'Arborescence des machines', corps)
+}
+
+// Les arborescences comptées par le tableau de bord (plusieurs possibles : production et maintenance…).
+function carteArborescencesTableau() {
+  const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture de l’arborescence…'))
+  const charger = () => api('/api/tableau-de-bord/arborescences').then((a) => {
+    if (!a?.arbres?.length) return vider(corps, h('p', { class: 'texte-2' }, 'Une seule arborescence (ou aucune) : le tableau de bord compte toutes ses machines. Voir la carte « Arborescence des machines ».'))
+    const cases = a.arbres.map((x) => ({ nom: x.nom, c: h('input', { type: 'checkbox', checked: a.choisies.includes(x.nom) }), machines: x.machines }))
+    vider(corps,
+      h('p', { class: 'texte-2' }, 'Les machines comptées dans les chiffres, graphiques et remarques du tableau de bord.'),
+      h('div', { class: 'cases-arbres' }, cases.map((x) => h('label', { class: 'case-arbre' }, x.c, h('span', {}, x.nom), h('small', { class: 'discret' }, `${nombreFr(x.machines)} machines`)))),
+      h('div', { class: 'actions', style: { marginTop: '10px' } }, h('button', { class: 'principal', onclick: async () => {
+        const arbres = cases.filter((x) => x.c.checked).map((x) => x.nom)
+        if (await essayer(() => api('/api/tableau-de-bord/arborescences', { methode: 'POST', corps: { arbres } }), 'Arborescences du tableau de bord enregistrées')) charger()
+      } }, 'Enregistrer')))
+  }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, `Arborescence illisible : ${e.message}`)))
+  charger()
+  return carte('tableau', 'Tableau de bord', corps)
 }
 
 // ---------------------------------------------------------------- nom de l'atelier
