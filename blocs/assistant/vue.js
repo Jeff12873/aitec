@@ -341,7 +341,7 @@ function dessinerMessage(message, { envoyer, montrerSources }, original = messag
 }
 
 function icone(source) {
-  return { document: 'document', machine: 'usine', intervention: 'cle' }[source] || 'document'
+  return { document: 'document', machine: 'usine', intervention: 'cle', panne: 'historique' }[source] || 'document'
 }
 
 function ouvrirSource(source) {

@@ -3,7 +3,7 @@
 import { h, vider, ic } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 
-const ICONES = { document: 'document', machine: 'usine', intervention: 'cle' }
+const ICONES = { document: 'document', machine: 'usine', intervention: 'cle', panne: 'historique' }
 
 export default {
   chemin: 'recherche',

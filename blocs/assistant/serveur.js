@@ -12,11 +12,11 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { installation } from 'ktec/installation.js'
 import { glossaire } from '../../lib/glossaire.js'
 import fs from 'node:fs'
-import { chercher } from '../recherche/recherche.js'
+import { chercher, decrirePassage } from '../recherche/recherche.js'
 import { sansBalises } from '../recherche/passages.js'
+import { pannesProches } from '../pannes/serveur.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
-import { lireInfo } from 'ktec/ktec.js'
-import { executerRequete, etatConnexion } from 'ktec/mysql.js'
+import { lireArborescence } from '../../lib/arborescence.js'
 
 const CONSIGNES = `Tu es AITEC, l'assistant de dépannage des agents de maintenance de l'atelier « {atelier} ». Tu réponds comme un technicien d'assistance expérimenté au téléphone avec un collègue devant la machine : court, précis, dans l'ordre où on vérifie.
 
@@ -32,6 +32,7 @@ Forme des réponses (toujours) :
   **Sécurité** : une seule ligne, seulement si l'intervention présente un risque.
 - Jamais de cause vague (« commande défaillante », « problème électrique », « paramétrage incorrect ») : nomme le composant et sa panne (bobine coupée, contact collé, fusible fondu, fil desserré, capteur déréglé ou encrassé, joint usé, distributeur grippé, sortie d'automate HS…).
 - Une panne identique déjà réparée dans les interventions est la cause la plus probable : dis ce qui avait été fait et quand.
+- Une source « Panne connue » résume une panne déjà vue plusieurs fois sur la machine (causes, remèdes, nombre de cas) : si elle correspond au symptôme, ses causes passent en premier, avec leur nombre de cas.
 - Une cause hors du domaine coché : précède-la de son domaine (« Côté hydraulique : … »).
 - Chaque ligne (cause ou vérification) qui s'appuie sur une intervention donne le nom de l'intervenant, tel qu'écrit dans la source : « … le 14/03/2024 par DUPONT, JEAN [2] ».
 - Ligne PRÉVENTIF RÉCENT présente : un préventif vient d'être fait sur ces machines (l'agent le voit déjà en bandeau). Ce qui a été touché ce jour-là est une cause possible : cite-la parmi les causes si elle peut expliquer le symptôme.
@@ -68,40 +69,8 @@ Poser des questions pour affiner :
 - Si les sources permettent de répondre : réponds directement, sans ligne CHOIX. Au plus une question finale si elle fait avancer le dépannage (« Le défaut revient-il à chaque cycle ? »).`
 
 export function routes(r) {
-  // Les deux premiers niveaux de l'arborescence des machines (ligne › sous-ensemble), avec les machines d'AITEC
-  // rangées dessous. L'arbre vient de la requête réglée dans PDRTec (même fichier de connaissances) ; sans elle,
-  // ou sans connexion à la base : null (on garde la simple liste des machines).
-  // La GMAO peut tenir plusieurs arborescences (maintenance, bâtiments…) : si la requête donne une colonne
-  // « arbre » (le nom de l'arborescence), on n'en garde qu'une, choisie dans Administration ; par défaut celle
-  // qui range le plus de machines d'AITEC.
-  r.get('/api/arborescence', async () => {
-    const sql = lireInfo('pdrtec.arborescence', null)?.arbre
-    if (!sql || !etatConnexion().ouverte) return null
-    const r2 = await executerRequete(sql.replace(/--[^\n]*/g, ''), 1_000_000)
-    const i = (nom) => r2.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
-    const [iN, iP, iC, iD, iO, iA] = ['noeud', 'parent', 'code', 'designation', 'ordre', 'arbre'].map(i)
-    if (iN < 0 || iP < 0 || iC < 0) return null
-    const noeuds = new Map(r2.lignes.map((l) => [String(l[iN]), { id: String(l[iN]), parent: String(l[iP] ?? ''), code: String(l[iC] ?? '').trim(), desi: String(l[iD] ?? '').trim(), ordre: Number(l[iO]) || 0, arbre: iA < 0 ? '' : String(l[iA] ?? '').trim(), enfants: [] }]))
-    for (const n of noeuds.values()) noeuds.get(n.parent)?.enfants.push(n)
-    const parRepere = new Map(db().prepare('SELECT id, repere FROM machines').all().map((m) => [String(m.repere).trim(), m.id]))
-    // Toutes les machines d'AITEC sous un nœud (lui compris).
-    const sous = (n, acc = new Set()) => { const id = parRepere.get(n.code); if (id) acc.add(id); n.enfants.forEach((e) => sous(e, acc)); return acc }
-    const libelle = (n) => (n.desi && n.desi !== n.code ? `${n.code} (${n.desi})` : n.code)
-    const tri = (a, b) => a.ordre - b.ordre || a.code.localeCompare(b.code, 'fr', { numeric: true })
-    // Les lignes : les vraies racines (sans parent) ; une machine dont le parent n'est plus actif n'en est pas une.
-    const racines = [...noeuds.values()].filter((n) => !n.parent || n.parent === '0' || n.parent === 'null')
-    const lignesDe = (liste) => liste.sort(tri)
-      .map((n) => ({ id: n.id, libelle: libelle(n), machines: [...sous(n)], enfants: n.enfants.sort(tri).map((e) => ({ id: e.id, libelle: libelle(e), machines: [...sous(e)] })).filter((e) => e.machines.length) }))
-      .filter((n) => n.machines.length)
-    if (iA < 0) return { arbres: [], arbre: '', lignes: lignesDe(racines) }
-    // Un nœud sans arborescence (racine orpheline) n'est proposé dans aucune.
-    const parArbre = new Map()
-    for (const n of racines) parArbre.set(n.arbre, [...(parArbre.get(n.arbre) || []), n])
-    const arbres = [...parArbre].map(([nom, liste]) => ({ nom, machines: new Set(liste.flatMap((n) => [...sous(n)])).size })).filter((a) => a.nom && a.machines).sort((a, b) => b.machines - a.machines)
-    const voulu = reglage('arborescence_machines', '')
-    const arbre = voulu && arbres.some((a) => a.nom === voulu) ? voulu : arbres[0]?.nom || ''
-    return { arbres, arbre, lignes: lignesDe(parArbre.get(arbre) || []) }
-  })
+  // Les deux premiers niveaux de l'arborescence des machines (voir lib/arborescence.js).
+  r.get('/api/arborescence', () => lireArborescence())
 
   // L'arborescence gardée pour choisir la machine (administrateur).
   r.post('/api/arborescence/choix', async (ctx) => {
@@ -146,7 +115,10 @@ export function routes(r) {
       const filtre = machineIds?.length ? machineIds : machineId
       const recents = preventifRecent(machineIds?.length ? machineIds : machineId ? [machineId] : [])
       flux.envoyer('preventif', recents)
-      const passages = await chercher(texteDeRecherche(question, historique), { machineId: filtre, limite: 8 })
+      // Les pannes connues des machines visées qui ressemblent à la question passent en tête des sources.
+      const proches = pannesProches(question, machineIds?.length ? machineIds : machineId ? [machineId] : []).map(decrirePassage).filter(Boolean)
+      const trouves = await chercher(texteDeRecherche(question, historique), { machineId: filtre, limite: 8 })
+      const passages = [...proches, ...trouves.filter((p) => !proches.some((x) => x.id === p.id))].slice(0, 8)
       flux.envoyer('sources', passages.map((p, i) => ({ numero: i + 1, titre: p.titre, lien: p.lien, source: p.source, extrait: p.texte.slice(0, 400) })))
 
       if (!iaInstallee()) {

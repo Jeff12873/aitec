@@ -158,6 +158,10 @@ export function decrirePassage(id) {
       .get(p.source_id)
     titre = `Intervention ${i?.numero || ''} du ${dateFr(i?.date)}${i?.repere ? ' — ' + i.repere : ''}${i?.intervenant ? ' — ' + i.intervenant : ''}`
     lien = `#/interventions/${p.source_id}`
+  } else if (p.source === 'panne') {
+    const f = db().prepare('SELECT p.symptome, p.nombre, m.repere FROM pannes p LEFT JOIN machines m ON m.id = p.machine_id WHERE p.id = ?').get(p.source_id)
+    titre = `Panne connue${f?.repere ? ' — ' + f.repere : ''} : ${f?.symptome || '?'} (${f?.nombre || 0} cas)`
+    lien = `#/pannes?id=${p.source_id}`
   }
   return { id: p.id, source: p.source, sourceId: p.source_id, page: p.page, titre, lien, texte: p.texte }
 }

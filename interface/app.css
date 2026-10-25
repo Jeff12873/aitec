@@ -76,3 +76,30 @@
 .ligne-preventif { display: block; padding: 2px 0; color: var(--texte-2); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ligne-preventif:hover { color: var(--texte); }
 .ligne-preventif .intervenant { color: var(--texte); font-weight: 600; }
+
+/* Pannes connues */
+.carte-analyse { margin-bottom: 20px; }
+.carte-analyse .actions { flex-wrap: wrap; }
+.barre-progression { height: 8px; border-radius: 99px; background: var(--carte-2); overflow: hidden; margin: 8px 0; }
+.barre-progression > div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.ensemble-pannes { margin-bottom: 26px; }
+.ensemble-pannes > h2 { font-size: 18px; margin: 0 0 10px; }
+.machine-pannes { margin-bottom: 12px; padding: 14px 16px; }
+.titre-machine-pannes { margin-bottom: 8px; font-size: 15px; }
+.fiche-panne { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 2.2fr); gap: 6px 18px; padding: 10px 0; border-top: 1px solid var(--bord); }
+.fiche-panne.visee { border: 1px solid var(--accent); border-radius: 10px; padding: 10px; box-shadow: 0 0 0 3px var(--accent-doux); }
+.texte-symptome { font-weight: 600; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.meta-panne { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--texte-3); margin-top: 3px; }
+.actions-panne { display: flex; gap: 2px; margin-top: 6px; }
+.causes-panne { display: flex; flex-direction: column; gap: 6px; }
+.cause-panne { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 6px 10px; border-radius: 8px; background: var(--carte-2); font-size: 14px; }
+.libelle-panne { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texte-3); }
+.cas-panne { font-size: 12px; color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rapports-panne { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 2px; font-size: 13px; padding: 6px 10px; border-left: 2px solid var(--bord-fort); }
+.rapports-panne[hidden] { display: none; }
+.rapports-panne a { color: var(--texte-2); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rapports-panne a:hover { color: var(--texte); }
+.rapports-panne .intervenant { color: var(--texte); font-weight: 600; }
+.case-relue { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; }
+.case-relue input { width: auto; flex: none; }
+@media (max-width: 900px) { .fiche-panne { grid-template-columns: 1fr; } .cause-panne { grid-template-columns: 1fr; gap: 4px; } }
