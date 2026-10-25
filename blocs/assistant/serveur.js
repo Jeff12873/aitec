@@ -99,6 +99,26 @@ export function routes(r) {
     return { arbre }
   })
 
+  // Avant de réfléchir : les machines dont parlent les meilleurs résultats de la recherche. S'il y en a plusieurs,
+  // l'assistant propose de cocher la bonne (sans IA, donc tout de suite).
+  r.post('/api/assistant/precisions', async (ctx) => {
+    const { question = '', machineId = null, machineIds = null } = await ctx.json()
+    if (!String(question).trim()) return { machines: [] }
+    const trouves = await chercher(String(question), { machineId: machineIds?.length ? machineIds : machineId, limite: 15 })
+    const compte = new Map()
+    const lire = db().prepare('SELECT machine_id FROM passages WHERE id = ?')
+    for (const p of trouves) {
+      const id = lire.get(p.id)?.machine_id
+      if (id) compte.set(id, (compte.get(id) || 0) + 1)
+    }
+    if (compte.size < 2) return { machines: [] }
+    const decrire = db().prepare('SELECT id, repere, designation FROM machines WHERE id = ?')
+    const machines = [...compte].sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([id, nombre]) => ({ ...decrire.get(id), nombre })).filter((m) => m.id)
+      .map((m) => ({ id: m.id, libelle: m.designation && m.designation !== m.repere ? `${m.repere} — ${m.designation}` : m.repere, nombre: m.nombre }))
+    return { machines }
+  })
+
   // POST /api/assistant { question, historique: [{ role, contenu }], machineId }
   // Réponse en flux : « sources », puis des « texte » successifs, puis « fin » (ou « erreur »).
   r.post('/api/assistant', async (ctx) => {

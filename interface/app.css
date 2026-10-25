@@ -41,3 +41,31 @@
   100% { transform: translateY(110%); }
 }
 @media (prefers-reduced-motion: reduce) { .pluie-concombres { display: none; } }
+
+/* Précisions avant de chercher : des cases à cocher, toutes facultatives */
+.carte-precisions { background: var(--carte); border: 1px solid var(--bord); border-radius: var(--rayon); padding: 14px 16px; }
+.carte-precisions > p { margin: 0 0 10px; font-size: 14px; }
+.groupe-precisions { margin-top: 10px; }
+.titre-precisions { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--texte-3); margin-bottom: 6px; }
+.coches-precisions { display: flex; flex-wrap: wrap; gap: 6px; }
+.coche-precision { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 9px; border-radius: 99px; border: 1px solid var(--bord); background: var(--carte-2); font-size: 14px; color: var(--texte-2); cursor: pointer; user-select: none; }
+.coche-precision:hover { border-color: var(--bord-fort); color: var(--texte); }
+.coche-precision input { width: auto; flex: none; padding: 0; accent-color: var(--accent); margin: 0; }
+.coche-precision span { white-space: nowrap; }
+.coche-precision:has(input:checked) { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+
+/* Panneau de droite : sources de la réponse, ou aide */
+.panneau-assistant { position: sticky; top: 86px; max-height: calc(100vh - 110px); display: flex; flex-direction: column; gap: 12px; }
+.onglets-panneau { align-self: flex-start; }
+.contenu-panneau { overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.source-panneau { display: block; width: 100%; text-align: left; padding: 9px 11px; border-radius: 10px; background: var(--carte-2); border: 1px solid var(--bord); color: var(--texte-2); font-weight: 400; cursor: pointer; }
+.source-panneau:hover { border-color: var(--bord-fort); color: var(--texte); }
+.source-panneau.surlignee { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux); }
+.titre-source { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--texte); }
+.titre-source b { color: var(--accent); }
+.titre-source span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.extrait-source { margin-top: 5px; font-size: 12px; line-height: 1.45; color: var(--texte-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Un panneau de droite un peu plus large pour lire les titres des sources */
+.discussion { grid-template-columns: minmax(0, 1fr) 380px; }
+@media (max-width: 1100px) { .discussion { grid-template-columns: minmax(0, 1fr); } }

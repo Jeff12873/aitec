@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.3.0",
+      "date": "2026-10-25",
+      "points": [
+        "Question courte ou machine incertaine : des cases à cocher pour préciser avant la réponse (machine, domaine, symptôme, fréquence)",
+        "Sources de la réponse dans un onglet à droite ; un clic sur [1], [2]… les surligne"
+      ]
+    },
+    {
       "version": "0.2.9",
       "date": "2026-10-25",
       "points": [
