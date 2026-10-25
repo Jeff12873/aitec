@@ -163,3 +163,17 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .case-arbre { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .case-arbre input { width: auto; flex: none; accent-color: var(--accent); }
 .case-arbre small { margin-left: auto; }
+
+/* Tableau de bord : anneau des types et machines cliquables */
+.part-anneau, .legende-cliquable, .barre-cliquable { cursor: pointer; transition: opacity .2s; }
+.part-anneau.eteinte, .legende-cliquable.eteinte { opacity: .18; }
+.legende-cliquable:hover, .barre-cliquable:hover { color: var(--texte); }
+.barre-cliquable:hover .etiquette-barre { text-decoration: underline; }
+
+/* Fiche d'analyse d'une machine */
+.texte-dernier { font-size: 16px; font-weight: 600; }
+.pannes-analyse { display: flex; flex-direction: column; gap: 6px; }
+.panne-analyse { display: block; padding: 8px 10px; border-radius: 8px; background: var(--carte-2); color: inherit; text-decoration: none; font-size: 14px; }
+.panne-analyse:hover { outline: 1px solid var(--accent); }
+.tete-panne-analyse { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+.entete-page h1 .mono { font-size: inherit; }

@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.4.5",
+      "date": "2026-10-25",
+      "points": [
+        "Tableau de bord en tête du menu",
+        "Anneau des types cliquable : la liste des dernières interventions suit le type choisi",
+        "Machines les plus en panne cliquables : fiche d'analyse avec résumé et conseils de l'IA (consignes derrière un rouage)"
+      ]
+    },
+    {
       "version": "0.4.4",
       "date": "2026-10-25",
       "points": [

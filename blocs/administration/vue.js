@@ -155,8 +155,8 @@ function carteGlossaire() {
 function carteArborescence() {
   const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture de l’arborescence…'))
   const charger = () => api('/api/arborescence').then((a) => {
-    if (!a) return vider(corps, h('p', { class: 'texte-2' }, 'Pas d’arborescence : réglez sa requête dans PDRTec › Paramètres (et connectez-vous à la base de la GMAO).'))
-    if (!a.arbres.length) return vider(corps, h('p', { class: 'texte-2' }, `${a.lignes.length} lignes, toutes arborescences confondues. Pour n’en garder qu’une (celle de la maintenance, par exemple), ajoutez à la requête de l’arborescence, dans PDRTec › Paramètres, une colonne « arbre » qui donne le nom de l’arborescence de chaque nœud.`))
+    if (!a) return vider(corps, h('p', { class: 'texte-2' }, 'Pas d’arborescence : réglez sa requête dans PDRTEC › Paramètres (et connectez-vous à la base de la GMAO).'))
+    if (!a.arbres.length) return vider(corps, h('p', { class: 'texte-2' }, `${a.lignes.length} lignes, toutes arborescences confondues. Pour n’en garder qu’une (celle de la maintenance, par exemple), ajoutez à la requête de l’arborescence, dans PDRTEC › Paramètres, une colonne « arbre » qui donne le nom de l’arborescence de chaque nœud.`))
     vider(corps,
       h('p', { class: 'texte-2' }, 'Celle qui sert à choisir la machine dans l’assistant (ligne, puis sous-ensemble).'),
       menuDeroulant({

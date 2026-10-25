@@ -45,12 +45,13 @@ export function routes(r) {
         .prepare(`SELECT type, count(*) AS nombre FROM interventions WHERE date >= date('now', '-12 months') AND ${dans(p, 'machine_id')} GROUP BY type ORDER BY nombre DESC`)
         .all(),
       machinesEnPanne: machinesLesPlusEnPanne(p, 6),
-      dernieresInterventions: db()
-        .prepare(`SELECT i.id, i.date, i.type, i.description, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE ${dans(p, 'i.machine_id')} ORDER BY i.date DESC, i.id DESC LIMIT 8`)
-        .all(),
+      dernieresInterventions: dernieresInterventions(p),
       remarques: remarquesEnMemoire.version === etatPartage().version && remarquesEnMemoire.cle === cle ? remarquesEnMemoire : null,
     }
   })
+
+  // Les dernières interventions d'un type (clic sur une part de l'anneau des types) : ?lignes=…&type=…
+  r.get('/api/tableau-de-bord/interventions', async (ctx) => dernieresInterventions(await perimetre(lignesDemandees(ctx.query.lignes)), ctx.query.type || ''))
 
   r.get('/api/tableau-de-bord/consignes', () => ({ texte: consignesRemarques(), origine: CONSIGNES_REMARQUES, modifiees: Boolean(reglage('consignes_remarques', '')) }))
 
@@ -121,6 +122,13 @@ function tuiles(p = TOUT) {
     documents: compter(`SELECT count(*) AS n FROM documents WHERE ${document}`),
     documentsLus: compter(`SELECT count(*) AS n FROM documents WHERE ${document} AND etat = 'lu'`),
   }
+}
+
+function dernieresInterventions(p, type = '') {
+  return db()
+    .prepare(`SELECT i.id, i.date, i.type, i.description, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id
+              WHERE ${dans(p, 'i.machine_id')} ${type ? 'AND i.type = ?' : ''} ORDER BY i.date DESC, i.id DESC LIMIT 8`)
+    .all(...(type ? [type] : []))
 }
 
 // Les 12 derniers mois, même ceux sans intervention.

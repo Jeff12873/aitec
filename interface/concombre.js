@@ -1,4 +1,4 @@
-// Le concombre masqué (une surprise partagée avec PDRTec et BiRTEC) : taper « concombre » dans la recherche
+// Le concombre masqué (une surprise partagée avec PDRTEC et BiRTEC) : taper « concombre » dans la recherche
 // fait pleuvoir des concombres sur la page, et le héros passe saluer en bas de l'écran.
 
 const IMAGE = new URL('concombre-masque.webp', import.meta.url).href

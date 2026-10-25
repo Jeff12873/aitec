@@ -68,7 +68,7 @@ function carteAnalyse(etatAnalyse) {
       return
     }
     const arbre = await api('/api/arborescence').catch(() => null)
-    if (!arbre?.lignes?.length) return vider(corps, h('p', { class: 'texte-2' }, 'Pas d’arborescence : réglez sa requête dans PDRTec › Paramètres et connectez-vous à la base de la GMAO.'))
+    if (!arbre?.lignes?.length) return vider(corps, h('p', { class: 'texte-2' }, 'Pas d’arborescence : réglez sa requête dans PDRTEC › Paramètres et connectez-vous à la base de la GMAO.'))
     let choix = arbre.lignes.find((l) => l.libelle === ligneChoisie)?.id || arbre.lignes[0].id
     vider(corps,
       h('p', { class: 'texte-2' }, 'AITEC regroupe, machine par machine, les rapports qui décrivent le même symptôme (3 fois au moins), puis l’IA en tire les causes et les remèdes. Les fiches relues sont gardées ; les autres sont refaites.'),

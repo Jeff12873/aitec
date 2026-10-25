@@ -56,6 +56,20 @@ function afficherTableau(zone, d, selection, choisir) {
   const t = d.tuiles
   const ecart = t.interventions30j - t.interventions30jAvant
 
+  // Un clic sur une part de l'anneau : les autres s'assombrissent et la liste du dessous ne montre que ce type ;
+  // un nouveau clic sur la même part revient à tous les types.
+  const zoneListe = h('div', {}, listeInterventions(d.dernieresInterventions))
+  const typeAffiche = h('span', {})
+  let typeChoisi = ''
+  const choisirType = async (type) => {
+    typeChoisi = typeChoisi === type ? '' : type
+    anneauTypes.marquer(typeChoisi)
+    typeAffiche.textContent = typeChoisi ? `type : ${typeChoisi}` : ''
+    const liste = await essayer(() => api(`/api/tableau-de-bord/interventions?type=${encodeURIComponent(typeChoisi)}${selection.length ? `&lignes=${encodeURIComponent(selection.join(','))}` : ''}`))
+    if (liste) vider(zoneListe, listeInterventions(liste))
+  }
+  const anneauTypes = graphiqueTypes(d.parType, choisirType)
+
   vider(
     zone,
     h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
@@ -77,9 +91,9 @@ function afficherTableau(zone, d, selection, choisir) {
       { class: 'grille grille-3' },
       h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
       carteRemarques(d.remarques, selection),
-      h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois'), graphiqueTypes(d.parType)),
-      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois'), graphiquePannes(d.machinesEnPanne)),
-      h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions'), listeInterventions(d.dernieresInterventions)),
+      h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois · cliquer pour filtrer'), anneauTypes),
+      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois · cliquer pour l’analyse'), graphiquePannes(d.machinesEnPanne)),
+      h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions', typeAffiche), zoneListe),
     ),
   )
 }
@@ -119,7 +133,7 @@ function rangerParPaires(lignes, arbres) {
 }
 
 // Les chiffres défilent jusqu'à leur valeur, les barres montent, l'anneau se dessine.
-function animer(zone) {
+export function animer(zone) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   zone.classList.remove('tableau-anime')
   void zone.offsetWidth // relance les animations CSS
@@ -178,22 +192,33 @@ function graphiqueMois(parMois) {
   )
 }
 
-function graphiqueTypes(parType) {
-  if (!parType.length) return h('div', { class: 'vide' }, 'Aucune intervention sur 12 mois.')
+function graphiqueTypes(parType, surChoix) {
+  if (!parType.length) return Object.assign(h('div', { class: 'vide' }, 'Aucune intervention sur 12 mois.'), { marquer: () => {} })
   const total = parType.reduce((s, t) => s + t.nombre, 0)
   let autre = 0
   const segments = parType.slice(0, 6).map((t) => ({ nom: t.type, valeur: t.nombre, couleur: COULEURS_TYPES[t.type] || AUTRES_COULEURS[autre++ % AUTRES_COULEURS.length] }))
-  return h(
-    'div',
-    { class: 'anneau-et-legende' },
-    anneau(segments),
-    h('div', { class: 'legende' }, segments.map((s) => h('div', {}, h('span', { class: 'point', style: { color: s.couleur } }), h('b', {}, `${Math.round((s.valeur / total) * 100)} %`), s.nom))),
-  )
+  const legendes = segments.map((s) => h('div', { class: 'legende-cliquable', onclick: () => surChoix(s.nom) }, h('span', { class: 'point', style: { color: s.couleur } }), h('b', {}, `${Math.round((s.valeur / total) * 100)} %`), s.nom))
+  const dessin = anneau(segments)
+  const parts = [...dessin.querySelectorAll('circle[stroke-dashoffset]')]
+  parts.forEach((p, i) => { p.classList.add('part-anneau'); p.addEventListener('click', () => surChoix(segments[i].nom)) })
+  return Object.assign(h('div', { class: 'anneau-et-legende' }, dessin, h('div', { class: 'legende' }, legendes)), {
+    marquer: (nom) => {
+      parts.forEach((p, i) => p.classList.toggle('eteinte', Boolean(nom) && segments[i].nom !== nom))
+      legendes.forEach((l, i) => l.classList.toggle('eteinte', Boolean(nom) && segments[i].nom !== nom))
+    },
+  })
 }
 
 function graphiquePannes(machines) {
   if (!machines.length) return h('div', { class: 'vide' }, 'Aucune panne enregistrée sur 12 mois.')
-  return barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere} · ${m.designation}`, valeur: m.pannes })))
+  const barres = barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere} · ${m.designation}`, valeur: m.pannes })))
+  // Chaque machine mène à sa fiche d'analyse.
+  ;[...barres.children].forEach((ligne, i) => {
+    ligne.classList.add('barre-cliquable')
+    ligne.title = `${machines[i].repere} : ${machines[i].pannes} pannes — voir la fiche d’analyse`
+    ligne.addEventListener('click', () => (location.hash = `#/analyse/${machines[i].id}`))
+  })
+  return barres
 }
 
 function listeInterventions(liste) {

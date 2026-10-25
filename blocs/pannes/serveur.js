@@ -276,7 +276,7 @@ export function routes(r) {
     if (analyse.enCours) throw new ErreurHttp(409, `Analyse déjà en cours (${analyse.ligne}).`)
     const { ligne: id } = await ctx.json()
     const arbre = await lireArborescence()
-    if (!arbre) throw new ErreurHttp(409, 'Pas d’arborescence : réglez sa requête dans PDRTec › Paramètres et connectez-vous à la base de la GMAO.')
+    if (!arbre) throw new ErreurHttp(409, 'Pas d’arborescence : réglez sa requête dans PDRTEC › Paramètres et connectez-vous à la base de la GMAO.')
     const ligne = arbre.lignes.find((l) => l.id === String(id))
     if (!ligne) throw new ErreurHttp(404, 'Ligne introuvable dans l’arborescence')
     analyserLigne(ligne)
