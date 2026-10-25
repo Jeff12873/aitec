@@ -178,10 +178,14 @@ export default {
         const choisies = avecPrecisions ? coches.filter((x) => x.c.checked) : []
         const machinesCochees = choisies.filter((x) => x.titre === 'Machine').map((x) => x.o)
         const autres = choisies.filter((x) => x.titre !== 'Machine')
+        // Les précisions partent à part (l'IA les sait sûres) ; la recherche garde la question telle quelle.
+        const precisions = autres.map((x) => `${x.titre.toLowerCase()} : ${x.o.toLowerCase()}`)
         const textes = [...autres.map((x) => x.o.toLowerCase()), ...machinesCochees.map((m) => `machine ${m.libelle}`)]
-        const complete = textes.length ? `${question} (précisions : ${textes.join(', ')})` : question
-        const filtre = machinesCochees.length ? { machineIds: machinesCochees.map((m) => m.id), groupe: machinesCochees.map((m) => m.libelle).join(', ') } : filtreMachines()
-        repondre(complete, filtre)
+        const affiche = textes.length ? `${question} (précisions : ${textes.join(', ')})` : question
+        const filtre = machinesCochees.length === 1
+          ? { machineId: machinesCochees[0].id } // une seule machine : sa fiche est donnée à l'IA
+          : machinesCochees.length ? { machineIds: machinesCochees.map((m) => m.id), groupe: machinesCochees.map((m) => m.libelle).join(', ') } : filtreMachines()
+        repondre(question, filtre, { precisions, affiche })
       }
       vider(messages)
       messages.append(
@@ -198,9 +202,9 @@ export default {
       messages.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
-    async function repondre(question, filtre) {
+    async function repondre(question, filtre, { precisions = [], affiche = question } = {}) {
       const historique = conversation.map((m) => ({ role: m.role, contenu: m.contenu }))
-      conversation.push({ role: 'agent', contenu: question })
+      conversation.push({ role: 'agent', contenu: affiche })
       const reponse = { role: 'assistant', contenu: '', sources: [], enCours: true }
       conversation.push(reponse)
       dessinerMessages()
@@ -217,7 +221,7 @@ export default {
       vider(boutonEnvoyer, ic('stop', 18))
       boutonEnvoyer.title = 'Arrêter'
       try {
-        await flux('/api/assistant', { question, historique, ...filtre }, (type, donnees) => {
+        await flux('/api/assistant', { question, historique, precisions, ...filtre }, (type, donnees) => {
           if (type === 'sources') { reponse.sources = donnees; montrerSources(reponse) }
           if (type === 'texte') reponse.contenu += donnees
           if (type === 'erreur') reponse.contenu += `\n\n⚠ ${donnees.message}`

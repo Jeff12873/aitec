@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.3.1",
+      "date": "2026-10-25",
+      "points": [
+        "Causes plus précises : l'organe, ce qui lâche, et l'indice tiré de l'historique",
+        "Les cases cochées sont prises comme sûres : plus de question déjà tranchée",
+        "Chaque vérification dit quelle cause elle confirme ou écarte"
+      ]
+    },
+    {
       "version": "0.3.0",
       "date": "2026-10-25",
       "points": [

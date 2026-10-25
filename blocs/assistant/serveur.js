@@ -23,9 +23,15 @@ Forme des réponses (toujours) :
 - Pas d'introduction, pas de reformulation de la question, pas de conclusion, pas de politesse.
 - Phrases courtes (20 mots au plus), une information par ligne. Pas de longs paragraphes.
 - Structure d'une réponse de dépannage :
-  **Cause probable** : une phrase. S'il y en a plusieurs, 3 au plus, de la plus probable à la moins probable.
-  **À vérifier** : étapes numérotées, 3 à 6, de la plus simple et rapide à la plus longue. Chaque étape : une action (verbe à l'infinitif), le repère du composant, la valeur ou l'état attendu, la source [n].
+  **Causes probables** : 2 à 4, numérotées, de la plus probable à la moins probable. Une ligne par cause, en trois parties :
+    l'organe précis (repère ou nom exact lu dans les sources) — ce qui lâche et pourquoi cela donne le symptôme — l'indice qui la rend probable (panne identique le JJ/MM/AAAA, réglage modifié, pièce d'usure, intervention récente) [n].
+    Exemple de forme (machine fictive) : 1. Électrovanne de descente — bobine coupée, le vérin ne reçoit plus d'air en descente — même panne le 14/03/2024, bobine remplacée [4].
+    Repère seulement s'il est écrit tel quel dans les sources ; sinon nomme l'organe sans repère. N'invente jamais une lettre ou un numéro de repère.
+  **À vérifier** : étapes numérotées, 3 à 6, de la plus rapide à la plus longue. Chaque étape : une action (verbe à l'infinitif), le repère, la valeur ou l'état attendu, la cause qu'elle confirme ou écarte (→ cause 2), la source [n].
   **Sécurité** : une seule ligne, seulement si l'intervention présente un risque.
+- Jamais de cause vague (« commande défaillante », « problème électrique », « paramétrage incorrect ») : nomme le composant et sa panne (bobine coupée, contact collé, fusible fondu, fil desserré, capteur déréglé ou encrassé, joint usé, distributeur grippé, sortie d'automate HS…).
+- Une panne identique déjà réparée dans les interventions est la cause la plus probable : dis ce qui avait été fait et quand.
+- Une cause hors du domaine coché : précède-la de son domaine (« Côté hydraulique : … »).
 - Pour une question d'information (une valeur, une référence, une date d'intervention) : la réponse en une ou deux lignes, avec la source. Rien d'autre.
 - Pour une procédure demandée (démontage, réglage) : étapes numérotées, sans commentaire entre les étapes.
 - Valeurs exactes avec leur unité (24 V DC, 6 bar, 35 N·m), repères tels qu'écrits sur les schémas.
@@ -47,6 +53,11 @@ Schémas et plans :
 - Repère, valeur ou liaison illisible sur l'image : dis-le, n'invente pas.
 - Glossaire des repères de l'atelier :
 {glossaire}
+
+Précisions cochées par l'agent (ligne PRÉCISIONS) :
+- Elles sont sûres : tiens-en compte et ne repose jamais une question qu'elles tranchent déjà.
+- Domaine coché : causes de ce domaine d'abord. Une cause d'un autre domaine seulement si les sources la désignent, et dis-le (« côté pneumatique : … »).
+- Fréquence cochée : « à chaque cycle » oriente vers une panne franche (organe HS, coupure) ; « de temps en temps » vers un faux contact, un capteur limite, une usure ; « depuis une intervention » vers ce qui a été touché ce jour-là.
 
 Poser des questions pour affiner :
 - Demande trop vague pour répondre de façon fiable (machine non précisée, symptôme flou, code défaut ou message d'écran manquant, sources qui divergent) : ne devine pas, pose 1 à 3 questions courtes.
@@ -122,7 +133,7 @@ export function routes(r) {
   // POST /api/assistant { question, historique: [{ role, contenu }], machineId }
   // Réponse en flux : « sources », puis des « texte » successifs, puis « fin » (ou « erreur »).
   r.post('/api/assistant', async (ctx) => {
-    const { question, historique = [], machineId = null, machineIds = null, groupe = '' } = await ctx.json()
+    const { question, historique = [], machineId = null, machineIds = null, groupe = '', precisions = [] } = await ctx.json()
     const flux = ouvrirFlux(ctx.res)
     const arret = new AbortController()
     ctx.res.on('close', () => arret.abort()) // l'agent a fermé la page ou cliqué « Arrêter »
@@ -140,7 +151,7 @@ export function routes(r) {
         return flux.envoyer('fin', {})
       }
 
-      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null), {
+      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null, precisions), {
         surMorceau: (morceau) => flux.envoyer('texte', morceau),
         signal: arret.signal,
         // Réponses courtes et régulières : une limite de longueur, peu de fantaisie.
@@ -163,7 +174,7 @@ function texteDeRecherche(question, historique) {
   return [question, ...precedents.reverse()].join('\n')
 }
 
-function construireMessages(question, historique, passages, machineId, groupe = null) {
+function construireMessages(question, historique, passages, machineId, groupe = null, precisions = []) {
   const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
     .replace('{glossaire}', glossaire())
@@ -175,6 +186,7 @@ function construireMessages(question, historique, passages, machineId, groupe = 
   } else if (groupe) {
     contexte += `La question porte sur ${groupe.nom || 'un ensemble de machines'} (${groupe.nombre} machine${groupe.nombre > 1 ? 's' : ''} de l'arborescence).\n\n`
   }
+  if (Array.isArray(precisions) && precisions.length) contexte += `PRÉCISIONS (cochées par l'agent, sûres) : ${precisions.map(String).join(' ; ')}.\n\n`
   contexte += passages.length
     ? 'SOURCES :\n\n' + passages.map((p, i) => `[${i + 1}] ${p.titre}\n${p.texte}`).join('\n\n')
     : 'SOURCES : aucune source trouvée dans la base pour cette question.'
