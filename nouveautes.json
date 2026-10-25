@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.4.4",
+      "date": "2026-10-25",
+      "points": [
+        "Tableau de bord : chaque ligne de production rangée sous son équivalent maintenance",
+        "Dernières interventions en tableau, avec les intervenants"
+      ]
+    },
+    {
       "version": "0.4.3",
       "date": "2026-10-25",
       "points": [

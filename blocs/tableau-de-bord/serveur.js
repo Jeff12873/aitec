@@ -46,7 +46,7 @@ export function routes(r) {
         .all(),
       machinesEnPanne: machinesLesPlusEnPanne(p, 6),
       dernieresInterventions: db()
-        .prepare(`SELECT i.id, i.date, i.type, i.description, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE ${dans(p, 'i.machine_id')} ORDER BY i.date DESC, i.id DESC LIMIT 6`)
+        .prepare(`SELECT i.id, i.date, i.type, i.description, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE ${dans(p, 'i.machine_id')} ORDER BY i.date DESC, i.id DESC LIMIT 8`)
         .all(),
       remarques: remarquesEnMemoire.version === etatPartage().version && remarquesEnMemoire.cle === cle ? remarquesEnMemoire : null,
     }

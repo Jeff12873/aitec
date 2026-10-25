@@ -1,6 +1,6 @@
 // Tableau de bord : tuiles chiffrées, graphiques, remarques de l'IA.
 
-import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier } from '/socle/ui.js'
+import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier, tableau } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { barres, anneau, barresHorizontales, COULEURS } from '/socle/graphiques.js'
@@ -84,20 +84,38 @@ function afficherTableau(zone, d, selection, choisir) {
   )
 }
 
-// Les lignes (plus haut niveau de l'arborescence) à compter : aucune cochée = toutes. Une pastille par ligne,
-// rangées par arborescence quand il y en a plusieurs.
+// Les lignes (plus haut niveau de l'arborescence) à compter : aucune cochée = toutes. Avec plusieurs
+// arborescences, chaque ligne de la deuxième se range sous son équivalent de la première (même désignation,
+// ou même code une fois le préfixe ôté : « X_DISQUE » sous « DISQUE ») ; les autres suivent, seules.
 function barrePerimetre(perimetre, selection, choisir) {
   if (!perimetre?.lignes?.length) return null
   const basculer = (id) => choisir(selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id])
   const pastille = (l) => h('button', { class: `pastille-ligne${selection.includes(l.id) ? ' choisie' : ''}`, title: `${l.libelle} — ${nombreFr(l.machines)} machines${l.arbre ? ` (${l.arbre})` : ''}`, onclick: () => basculer(l.id) }, l.code || l.libelle)
-  const parArbre = new Map()
-  for (const l of perimetre.lignes) (parArbre.get(l.arbre) || parArbre.set(l.arbre, []).get(l.arbre)).push(l)
+  const arbres = [...new Set(perimetre.lignes.map((l) => l.arbre))]
+  const piles = rangerParPaires(perimetre.lignes, arbres)
   return h('div', { class: 'perimetre-tableau' },
-    h('button', { class: `pastille-ligne toutes${selection.length ? '' : ' choisie'}`, title: 'Toutes les lignes des arborescences choisies dans Administration', onclick: () => choisir([]) }, 'Toutes'),
-    [...parArbre].map(([arbre, lignes]) => h('div', { class: 'groupe-lignes' },
-      parArbre.size > 1 && arbre ? h('span', { class: 'titre-groupe-lignes' }, arbre) : null,
-      lignes.map(pastille))),
-    perimetre.machines !== null ? h('span', { class: 'discret compte-perimetre' }, `${nombreFr(perimetre.machines)} machines comptées`) : null)
+    h('div', { class: 'tete-perimetre' },
+      h('button', { class: `pastille-ligne toutes${selection.length ? '' : ' choisie'}`, title: 'Toutes les lignes des arborescences choisies dans Administration', onclick: () => choisir([]) }, 'Toutes'),
+      arbres.length > 1 ? h('div', { class: 'legende-arbres' }, arbres.map((a, i) => h('span', {}, h('i', { class: `rang-${i}` }), a || 'sans arborescence'))) : null,
+      perimetre.machines !== null ? h('span', { class: 'discret compte-perimetre' }, `${nombreFr(perimetre.machines)} machines comptées`) : null),
+    h('div', { class: 'piles-lignes' }, piles.map((pile) => h('div', { class: 'pile-ligne' }, pile.map((l, i) => (l ? h('div', { class: `etage rang-${arbres.indexOf(l.arbre)}` }, pastille(l)) : h('div', { class: 'etage vide' })))))))
+}
+
+// [[ligne de l'arbre 1, ligne de l'arbre 2, …], …] : une pile par ligne de la première arborescence.
+function rangerParPaires(lignes, arbres) {
+  const cle = (texte) => String(texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+  const designation = (l) => cle(/\((.*)\)$/.exec(l.libelle)?.[1] || '')
+  const sansPrefixe = (code) => cle(String(code).replace(/^[^_]{1,3}_/, ''))
+  const parArbre = arbres.map((a) => lignes.filter((l) => l.arbre === a))
+  const piles = parArbre[0].map((l) => [l])
+  for (let rang = 1; rang < parArbre.length; rang++) {
+    for (const l of parArbre[rang]) {
+      const pile = piles.find((p) => !p[rang] && p[0] && (sansPrefixe(l.code) === cle(p[0].code) || (designation(l) && designation(l) === designation(p[0]))))
+      if (pile) pile[rang] = l
+      else { const seule = Array(rang).fill(null); seule[rang] = l; piles.push(seule) }
+    }
+  }
+  return piles.map((p) => Array.from({ length: arbres.length }, (_, i) => p[i] || null))
 }
 
 // Les chiffres défilent jusqu'à leur valeur, les barres montent, l'anneau se dessine.
@@ -179,19 +197,18 @@ function graphiquePannes(machines) {
 }
 
 function listeInterventions(liste) {
-  if (!liste.length) return h('div', { class: 'vide' }, 'Aucune intervention.')
-  return h(
-    'div',
-    { class: 'legende' },
-    liste.map((i) =>
-      h('a', { href: `#/interventions/${i.id}`, style: { display: 'flex', gap: '12px', color: 'inherit', alignItems: 'center' } },
-        h('span', { class: 'discret', style: { minWidth: '84px' } }, dateFr(i.date)),
-        h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type),
-        h('b', { class: 'mono' }, i.repere || ''),
-        h('span', { class: 'texte-2', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, texteSeul(i.description)),
-      ),
-    ),
-  )
+  return tableau({
+    lignes: liste,
+    vide: 'Aucune intervention.',
+    surClic: (i) => (location.hash = `#/interventions/${i.id}`),
+    colonnes: [
+      { titre: 'Date', classe: 'col-date', valeur: (i) => h('span', { class: 'discret' }, dateFr(i.date)) },
+      { titre: 'Type', valeur: (i) => h('span', { class: `etiquette ${i.type === 'Correctif' ? 'violet' : ''}` }, i.type) },
+      { titre: 'Machine', valeur: (i) => h('b', { class: 'mono' }, i.repere || '') },
+      { titre: 'Description', classe: 'col-description', valeur: (i) => h('span', { class: 'texte-2', title: texteSeul(i.description) }, texteSeul(i.description)) },
+      { titre: 'Intervenant(s)', classe: 'col-intervenants', valeur: (i) => h('span', { title: i.intervenant || '' }, i.intervenant || '—') },
+    ],
+  })
 }
 
 // « Ce que l'IA remarque »

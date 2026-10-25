@@ -115,14 +115,32 @@
 .pastille-panne b { font-size: 11px; color: var(--accent); }
 .pastille-panne small { color: var(--accent); font-variant-numeric: tabular-nums; }
 
-/* Tableau de bord : les lignes comptées */
-.perimetre-tableau { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--carte); }
-.groupe-lignes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.titre-groupe-lignes { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texte-3); margin-right: 2px; }
-.pastille-ligne { padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--texte-2); background: var(--carte-2); border: 1px solid var(--bord); }
+/* Tableau de bord : les lignes comptées, par piles (maintenance au-dessus, son équivalent production dessous) */
+.perimetre-tableau { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--carte); }
+.tete-perimetre { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 10px; }
+.legende-arbres { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--texte-3); }
+.legende-arbres span { display: inline-flex; align-items: center; gap: 6px; }
+.legende-arbres i { width: 10px; height: 10px; border-radius: 3px; }
+.legende-arbres i.rang-0 { background: var(--accent); }
+.legende-arbres i.rang-1 { background: #a78bfa; }
+.legende-arbres i.rang-2 { background: #f59e0b; }
+.piles-lignes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.pile-ligne { display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 12px; background: var(--carte-2); }
+.pile-ligne .etage { display: flex; }
+.pile-ligne .etage.vide { min-height: 27px; }
+.pile-ligne .pastille-ligne { flex: 1; text-align: center; }
+.etage.rang-0 .pastille-ligne { border-left: 3px solid var(--accent); }
+.etage.rang-1 .pastille-ligne { border-left: 3px solid #a78bfa; }
+.etage.rang-2 .pastille-ligne { border-left: 3px solid #f59e0b; }
+.pastille-ligne { padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--texte-2); background: var(--carte); border: 1px solid var(--bord); }
 .pastille-ligne:hover { color: var(--texte); border-color: var(--bord-fort); }
 .pastille-ligne.choisie { color: var(--accent); background: var(--accent-doux); border-color: var(--accent); }
 .compte-perimetre { margin-left: auto; font-size: 12px; }
+
+/* Tableau de bord : dernières interventions */
+td.col-date { white-space: nowrap; }
+td.col-description { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 
 /* Tableau de bord : animations à l'affichage */
 .tableau-anime .tuile, .tableau-anime .grille > .carte { animation: tableau-apparait .5s ease-out both; }
