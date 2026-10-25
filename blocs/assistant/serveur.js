@@ -220,7 +220,7 @@ function construireMessages(question, historique, passages, machineId, groupe = 
 
 // Les interventions préventives des 48 dernières heures sur les machines visées (une machine, ou toutes celles
 // de la ligne ou du sous-ensemble choisi). Les dates n'ont pas d'heure : on prend aujourd'hui et les deux jours
-// d'avant. Un type est « préventif » s'il contient le mot , quelle que soit sa forme, accents ignorés.
+// d'avant. Un type est « préventif » s'il contient le mot, quelle que soit sa forme, accents ignorés.
 function preventifRecent(ids) {
   ids = (ids || []).map(Number).filter(Boolean)
   if (!ids.length) return []
