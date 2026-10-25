@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.2.7",
+      "date": "2026-10-25",
+      "points": [
+        "L'IA lit les commentaires de la GMAO sans leurs balises HTML"
+      ]
+    },
+    {
       "version": "0.2.6",
       "date": "2026-10-24",
       "points": [

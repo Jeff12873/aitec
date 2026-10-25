@@ -32,6 +32,22 @@ export function decouper(texte) {
   return morceaux.filter(Boolean)
 }
 
+// Les commentaires de la GMAO arrivent souvent en HTML (« <div>…</div> », « <br> ») : l'IA n'en lit que le texte,
+// une ligne par paragraphe.
+const ENTITES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+export function sansBalises(texte) {
+  const brut = String(texte || '')
+  if (!/<[a-z!/]/i.test(brut)) return brut
+  return brut
+    .replace(/<br\s*\/?>|<\/?(div|p|tr|h\d)\b[^>]*>|<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/<[a-z!/][^>\n]*$/gim, '') // commentaire tronqué par la GMAO au milieu d'une balise
+    .replace(/&(#\d+|#x[0-9a-f]+|\w+);/gi, (tout, e) => (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENTITES[e.toLowerCase()] ?? tout))
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+}
+
 export function nettoyerTexte(texte) {
   return String(texte || '')
     .replace(/\r\n?/g, '\n')

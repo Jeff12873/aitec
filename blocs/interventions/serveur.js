@@ -2,7 +2,9 @@
 
 import { db } from '../../lib/base.js'
 import { creerTable, routesTable } from '../../lib/tables.js'
-import { remplacerPassages, supprimerPassages } from '../recherche/passages.js'
+import { remplacerPassages, supprimerPassages, sansBalises } from '../recherche/passages.js'
+import { journal } from 'ktec/installation.js'
+import { exigerEcriture, noterModification, transaction } from 'ktec/partage.js'
 
 export const interventions = creerTable({
   table: 'interventions',
@@ -29,8 +31,8 @@ export function indexerIntervention(id) {
   if (!i) return supprimerPassages('intervention', id)
   const lignes = [
     `Intervention ${i.type.toLowerCase()}${i.numero ? ' n° ' + i.numero : ''} du ${i.date}${i.repere ? ` sur la machine ${i.repere} (${i.machine})` : ''}.`,
-    `Description : ${i.description}`,
-    i.cause && `Cause : ${i.cause}`,
+    `Description : ${sansBalises(i.description)}`,
+    i.cause && `Cause : ${sansBalises(i.cause)}`,
     i.intervenant && `Intervenant : ${i.intervenant}.`,
     i.duree_h !== null && `Durée : ${i.duree_h} h.`,
     i.statut && `Statut : ${i.statut}.`,
@@ -38,7 +40,28 @@ export function indexerIntervention(id) {
   remplacerPassages('intervention', id, i.machine_id, [{ page: null, texte: lignes.filter(Boolean).join('\n') }])
 }
 
+// Une fois : les passages d'interventions écrits avec leurs balises HTML sont réécrits en texte seul. Les
+// vecteurs sont gardés (le sens ne change pas), pour ne pas tout recalculer.
+function nettoyerPassagesHtml() {
+  const lignes = db().prepare("SELECT id, texte FROM passages WHERE source = 'intervention' AND (texte LIKE '%<div%' OR texte LIKE '%<br%' OR texte LIKE '%<p>%' OR texte LIKE '%<span%')").all()
+  if (!lignes.length) return
+  exigerEcriture() // rouvre le fichier en écriture
+  transaction((base) => {
+    const ecrire = base.prepare('UPDATE passages SET texte = ? WHERE id = ?')
+    for (const l of lignes) ecrire.run(sansBalises(l.texte), l.id)
+  })
+  noterModification()
+  journal(`AITEC : ${lignes.length} passages d'interventions remis en texte seul`)
+}
+
 export function routes(r) {
+  setTimeout(() => {
+    try {
+      nettoyerPassagesHtml()
+    } catch (erreur) {
+      journal(`AITEC : passages d'interventions non nettoyés (${erreur.message}), nouvel essai au prochain démarrage`)
+    }
+  }, 5000)
   routesTable(r, 'interventions', interventions, {
     lister: (query) => {
       const conditions = []
