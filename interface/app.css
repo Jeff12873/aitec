@@ -189,7 +189,18 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .geste-mn1.production { border-left-color: #60a5fa; }
 .geste-mn1.production .pour-mn1 { color: #93c5fd; background: color-mix(in srgb, #60a5fa 18%, transparent); }
 .geste-mn1.maintenance .pour-mn1 { color: #e9e54a; background: color-mix(in srgb, #e9e54a 16%, transparent); }
-/* Le résumé sur toute la largeur : texte en colonnes lisibles, encadrés MN1 côte à côte */
-.carte-resume .texte-ia { max-width: 1100px; }
-.carte-resume .bloc-mn1 { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+/* Le résumé : compact à côté du graphique, puis déployé sur toute la largeur, en tête */
+.carte-resume { view-transition-name: carte-resume; }
+.carte-resume.deployee { grid-column: 1 / -1; order: -1; border-color: color-mix(in srgb, var(--accent) 35%, var(--bord)); }
+::view-transition-group(carte-resume) { animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+.analyse-deployee { display: flex; flex-direction: column; gap: 16px; }
+.bref-analyse { padding: 14px 16px; border-radius: 12px; background: var(--accent-doux); border-left: 4px solid var(--accent); font-size: 16px; line-height: 1.55; }
+.bref-analyse .texte-ia p { margin: 0; }
+.titre-bref { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-bottom: 6px; }
+.colonnes-analyse { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.section-analyse { padding: 12px 14px; border-radius: 12px; background: var(--carte-2); border: 1px solid var(--bord); }
+.section-analyse h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 15px; }
+.carte-resume .bloc-mn1 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
 .carte-resume .titre-mn1 { grid-column: 1 / -1; }
+.lieu-mn1 { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 12px; color: var(--texte-2); }
+.lieu-mn1 b { margin-right: 5px; font-size: 10px; letter-spacing: .06em; color: var(--texte-3); }

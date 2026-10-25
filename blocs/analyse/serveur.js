@@ -8,6 +8,20 @@ import { etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { sansBalises } from '../recherche/passages.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
+import { lireArborescencesTableau, lireArborescence } from '../../lib/arborescence.js'
+
+// La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau : F.LT3, J.LT3…).
+async function placeDe(machineId) {
+  for (const lire of [lireArborescencesTableau, lireArborescence]) {
+    const a = await lire().catch(() => null)
+    for (const ligne of a?.lignes || []) {
+      if (!ligne.machines.includes(machineId)) continue
+      const eth = ligne.enfants.find((e) => e.machines.includes(machineId))
+      return { ligne: ligne.libelle, eth: eth?.libelle || '' }
+    }
+  }
+  return null
+}
 
 const CONSIGNES = `Tu es un technicien méthodes en maintenance industrielle. Tu reçois en JSON les données d'UNE machine : chiffres sur 12 mois (dont la fréquence des pannes), interventions par mois, pannes connues (symptôme, causes, remèdes, nombre de cas, fréquence déjà calculée) ou, à défaut, pannes répétées (rapports semblables regroupés, avec les actions notées et la fréquence), dernières interventions.
 Écris en français, phrases courtes, sans introduction :
@@ -125,10 +139,10 @@ export function routes(r) {
     return { texte: consignes() }
   })
 
-  r.get('/api/analyse/:id', (ctx) => {
+  r.get('/api/analyse/:id', async (ctx) => {
     const d = donnees(Number(ctx.params.id))
     const resume = resumes.get(d.machine.id)
-    return { ...d, resume: resume?.version === etatPartage().version ? resume : null }
+    return { ...d, place: await placeDe(d.machine.id), resume: resume?.version === etatPartage().version ? resume : null }
   })
 
   // Le résumé de l'IA : en bref, pannes qui reviennent, conseils.

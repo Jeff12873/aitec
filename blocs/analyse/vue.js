@@ -38,8 +38,8 @@ export default {
         tuile('historique', '', 'Dernière intervention', null, h('span', { class: 'texte-dernier' }, c.derniere ? `${dateFr(c.derniere)} · ${depuis(c.derniere)}` : '—'))),
 
       h('div', { class: 'grille grille-3' },
-        carteResume(m.id, d.resume),
         h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
+        carteResume(d),
         h('div', { class: 'carte' }, entete('personne', 'Intervenants', '12 mois'), d.intervenants.length ? barresHorizontales(d.intervenants.map((i) => ({ etiquette: i.nom, valeur: i.nombre })), { couleur: COULEURS.bleu }) : h('div', { class: 'vide' }, 'Personne sur 12 mois.')),
         d.pannes.length || !d.repetees.length
           ? h('div', { class: 'carte pleine' }, entete('historique', 'Pannes connues', `${d.pannes.length} panne${d.pannes.length > 1 ? 's' : ''} qui reviennent`), listePannes(d.pannes))
@@ -96,32 +96,70 @@ function listeRepetees(repetees) {
       p.actions[0] ? h('div', { class: 'texte-2' }, p.actions[0]) : null)))
 }
 
-// Les gestes de maintenance de niveau 1 : l'IA les écrit « [MN1 Production] … » ou « [MN1 Maintenance] … ».
-// On les sort du texte pour les montrer à part, en encadrés, avec le logo MN1.
+// Le résumé de l'IA mis en forme : « En bref » en bandeau, « Pannes qui reviennent » et « Conseils » côte à
+// côte, puis les gestes de maintenance de niveau 1 en encadrés (avec l'ETH et la machine). L'IA écrit chaque
+// geste « [MN1 Production] … » ou « [MN1 Maintenance] … » : on les sort du texte pour les montrer à part.
 const LIGNE_MN1 = /^\s*(?:[-*•]|\d+\.)?\s*\**\[MN1\s+(Production|Maintenance)\]\**\s*:?\s*(.+)$/i
-function texteAvecMN1(texte) {
+const TITRES = [['bref', /^en bref/i], ['pannes', /^pannes qui reviennent/i], ['conseils', /^conseils/i], ['mn1', /^maintenance de niveau 1/i]]
+
+function decouperResume(texte) {
+  const parties = { avant: [], bref: [], pannes: [], conseils: [], mn1: [] }
   const gestes = []
-  const reste = String(texte || '').split('\n').filter((ligne) => {
-    const m = LIGNE_MN1.exec(ligne)
-    if (m) gestes.push({ pour: m[1].toLowerCase() === 'production' ? 'Production' : 'Maintenance', texte: m[2].trim() })
-    return !m
-  })
-  // Le titre « Maintenance de niveau 1 » de l'IA : les encadrés ont le leur.
-  const corps = reste.join('\n').replace(/\n?\**\s*Maintenance de niveau 1\s*\**\s*:?\s*$/im, '').trim()
-  const html = h('div', {})
-  html.innerHTML = texteIA(corps)
-  if (gestes.length) {
-    html.append(h('div', { class: 'bloc-mn1' },
-      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1')),
-      gestes.map((g) => {
-        const t = h('span', {})
-        t.innerHTML = texteIA(g.texte).replace(/^<p>|<\/p>$/g, '')
-        return h('div', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}` },
-          h('img', { src: LOGO_MN1, alt: '' }),
-          h('div', {}, h('span', { class: 'pour-mn1' }, g.pour), t))
-      })))
+  let partie = 'avant'
+  for (const ligne of String(texte || '').split('\n')) {
+    const geste = LIGNE_MN1.exec(ligne)
+    if (geste) {
+      gestes.push({ pour: geste[1].toLowerCase() === 'production' ? 'Production' : 'Maintenance', texte: geste[2].trim() })
+      continue
+    }
+    // Un titre « **En bref** : … » (ou « ### Conseils ») ouvre une partie ; ce qui suit sur la ligne lui appartient.
+    const nu = ligne.replace(/^[#\s]*\**\s*/, '')
+    const titre = TITRES.find(([, motif]) => motif.test(nu))
+    if (titre) {
+      partie = titre[0]
+      const reste = nu.replace(titre[1], '').replace(/^\s*\**\s*:?\s*\**\s*/, '')
+      if (reste) parties[partie].push(reste)
+      continue
+    }
+    parties[partie].push(ligne)
   }
-  return html
+  return { parties, gestes }
+}
+
+function rendreResume(texte, d) {
+  const { parties, gestes } = decouperResume(texte)
+  const html = (lignes) => { const e = h('div', { class: 'texte-ia' }); e.innerHTML = texteIA(lignes.join('\n').trim()); return e }
+  const vide = (lignes) => !lignes.join('').trim()
+  const section = (titre, icone, lignes) => (vide(lignes) ? null : h('section', { class: 'section-analyse' }, h('h3', {}, ic(icone, 16), titre), html(lignes)))
+  // Rien de reconnu (consignes changées) : le texte tel quel.
+  if (vide(parties.bref) && vide(parties.pannes) && vide(parties.conseils)) return h('div', {}, html([...parties.avant, ...parties.mn1]), blocMN1(gestes, d))
+  return h('div', { class: 'analyse-deployee' },
+    vide(parties.avant) ? null : html(parties.avant),
+    vide(parties.bref) ? null : h('div', { class: 'bref-analyse' }, h('div', { class: 'titre-bref' }, ic('etincelle', 15), 'En bref'), html(parties.bref)),
+    h('div', { class: 'colonnes-analyse' },
+      section('Pannes qui reviennent', 'alerte', parties.pannes),
+      section('Conseils', 'coche', parties.conseils)),
+    vide(parties.mn1) ? null : html(parties.mn1),
+    blocMN1(gestes, d))
+}
+
+function blocMN1(gestes, d) {
+  if (!gestes.length) return null
+  const machine = `${d.machine.repere}${d.machine.designation ? ` — ${d.machine.designation}` : ''}`
+  return h('div', { class: 'bloc-mn1' },
+    h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1')),
+    gestes.map((g) => {
+      const t = h('span', {})
+      t.innerHTML = texteIA(g.texte).replace(/^<p>|<\/p>$/g, '')
+      return h('div', { class: `geste-mn1 ${g.pour === 'Production' ? 'production' : 'maintenance'}` },
+        h('img', { src: LOGO_MN1, alt: '' }),
+        h('div', {},
+          h('span', { class: 'pour-mn1' }, g.pour),
+          t,
+          h('div', { class: 'lieu-mn1' },
+            d.place?.eth ? h('span', {}, h('b', {}, 'ETH'), d.place.eth) : null,
+            h('span', {}, h('b', {}, 'Machine'), machine))))
+    }))
 }
 
 function listeInterventions(liste) {
@@ -138,27 +176,37 @@ function listeInterventions(liste) {
   })
 }
 
-// Le résumé de l'IA, avec le rouage de ses consignes (administrateur).
-function carteResume(id, resume) {
-  const corps = h('div', { class: 'texte-ia' })
+// Le résumé de l'IA, avec le rouage de ses consignes (administrateur). Compact tant qu'il n'est pas écrit ;
+// une fois chargé, il s'agrandit sur toute la largeur et passe en tête.
+function carteResume(d) {
+  const corps = h('div', {})
   const date = h('span', { class: 'discret' })
-  const bouton = h('button', { class: 'petit', onclick: analyser }, ic('rafraichir', 15), resume ? 'Actualiser' : 'Analyser')
-  function montrer(r) {
-    vider(corps, texteAvecMN1(r.texte))
-    date.textContent = ilYa(r.date)
+  const bouton = h('button', { class: 'petit', onclick: analyser }, ic('rafraichir', 15), d.resume ? 'Actualiser' : 'Analyser')
+  const carte = h('div', { class: 'carte carte-resume' })
+  function montrer(r, avecEffet) {
+    const deployer = () => {
+      vider(corps, rendreResume(r.texte, d))
+      date.textContent = ilYa(r.date)
+      carte.classList.add('deployee')
+      bouton.textContent = 'Actualiser'
+    }
+    if (avecEffet && document.startViewTransition && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(deployer)
+    else deployer()
   }
   async function analyser() {
     bouton.disabled = true
-    corps.innerHTML = '<p class="discret curseur">L’IA lit l’historique de la machine</p>'
-    const r = await essayer(() => api(`/api/analyse/${id}/resume`, { methode: 'POST' }))
+    vider(corps, h('p', { class: 'discret curseur' }, 'L’IA lit l’historique de la machine'))
+    const r = await essayer(() => api(`/api/analyse/${d.machine.id}/resume`, { methode: 'POST' }))
     bouton.disabled = false
-    if (r) montrer(r)
-    else corps.textContent = ''
+    if (r) {
+      montrer(r, true)
+      if (carte.classList.contains('deployee')) setTimeout(() => carte.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350)
+    } else vider(corps)
   }
-  if (resume) montrer(resume)
-  else corps.append(h('p', { class: 'texte-2' }, 'L’IA résume l’état de la machine, les pannes qui reviennent, et propose quelques conseils (préventif, pièces, améliorations).'))
+  if (d.resume) montrer(d.resume, false)
+  else corps.append(h('p', { class: 'texte-2' }, 'L’IA résume l’état de la machine, les pannes qui reviennent avec leur fréquence, et propose des conseils, dont les gestes de maintenance de niveau 1.'))
   const rouage = peutModifier() ? h('button', { class: 'discret icone-seule petit', title: 'Les consignes données à l’IA pour ce résumé', onclick: () => modifierConsignes(analyser) }, ic('reglages', 16)) : null
-  return h('div', { class: 'carte pleine carte-resume' },
+  return vider(carte,
     h('div', { class: 'carte-entete' }, h('h2', {}, h('span', { class: 'pastille', style: { color: 'var(--accent)' } }, ic('etincelle', 18)), 'Résumé et conseils'), h('div', { class: 'actions' }, date, rouage)),
     corps,
     h('div', { class: 'actions', style: { marginTop: '12px' } }, bouton))

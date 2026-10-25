@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.4.7",
+      "date": "2026-10-25",
+      "points": [
+        "Résumé d'une machine : une fois écrit, il s'agrandit en grand encart d'analyse (en bref, pannes qui reviennent, conseils)",
+        "Gestes de maintenance de niveau 1 avec l'ETH et la machine"
+      ]
+    },
+    {
       "version": "0.4.6",
       "date": "2026-10-25",
       "points": [
