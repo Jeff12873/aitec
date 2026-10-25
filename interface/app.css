@@ -190,9 +190,10 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .geste-mn1.production .pour-mn1 { color: #93c5fd; background: color-mix(in srgb, #60a5fa 18%, transparent); }
 .geste-mn1.maintenance .pour-mn1 { color: #e9e54a; background: color-mix(in srgb, #e9e54a 16%, transparent); }
 /* Le résumé : compact à côté du graphique, puis déployé sur toute la largeur, en tête */
-.carte-resume { view-transition-name: carte-resume; }
 .carte-resume.deployee { grid-column: 1 / -1; order: -1; border-color: color-mix(in srgb, var(--accent) 35%, var(--bord)); }
-::view-transition-group(carte-resume) { animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+.carte-resume.vient-de-deployer { animation: resume-deploie .5s cubic-bezier(.2, .8, .2, 1); transform-origin: top center; }
+@keyframes resume-deploie { from { opacity: .3; transform: scale(.96) translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .carte-resume.vient-de-deployer { animation: none; } }
 .analyse-deployee { display: flex; flex-direction: column; gap: 16px; }
 .bref-analyse { padding: 14px 16px; border-radius: 12px; background: var(--accent-doux); border-left: 4px solid var(--accent); font-size: 16px; line-height: 1.55; }
 .bref-analyse .texte-ia p { margin: 0; }
@@ -200,7 +201,29 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .colonnes-analyse { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
 .section-analyse { padding: 12px 14px; border-radius: 12px; background: var(--carte-2); border: 1px solid var(--bord); }
 .section-analyse h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 15px; }
-.carte-resume .bloc-mn1 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-.carte-resume .titre-mn1 { grid-column: 1 / -1; }
 .lieu-mn1 { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 12px; color: var(--texte-2); }
 .lieu-mn1 b { margin-right: 5px; font-size: 10px; letter-spacing: .06em; color: var(--texte-3); }
+
+/* Encadré MN1 : en-tête (titre, formation des opérateurs), puis 3 fiches au plus côte à côte, cliquables */
+.tete-mn1 { display: flex; flex-direction: column; gap: 8px; }
+.formation-mn1 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, #60a5fa 10%, transparent); border: 1px solid color-mix(in srgb, #60a5fa 35%, transparent); font-size: 14px; }
+.formation-mn1 b { color: #93c5fd; white-space: nowrap; }
+.formation-mn1 svg { align-self: center; color: #93c5fd; }
+.fiches-mn1 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .fiches-mn1 { grid-template-columns: 1fr; } }
+button.geste-mn1 { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; white-space: normal; text-align: left; font: inherit; font-weight: 400; color: var(--texte); cursor: pointer; height: auto; }
+button.geste-mn1:hover { box-shadow: 0 0 0 1px #e9e54a; }
+button.geste-mn1.production:hover { box-shadow: 0 0 0 1px #60a5fa; }
+.tete-geste { display: flex; align-items: center; gap: 8px; }
+.tete-geste img { width: 22px; height: 22px; }
+.tete-geste .pour-mn1 { margin: 0; }
+.imprimer-geste { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--texte-3); }
+.action-mn1 { font-weight: 600; font-size: 14px; line-height: 1.4; }
+.detail-mn1 { font-size: 13px; color: var(--texte-2); }
+.detail-mn1 b { margin-right: 6px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--texte-3); }
+
+/* Aperçu de la fiche de niveau 1 à imprimer */
+.apercu-fiche { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .6); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; }
+.outils-fiche { display: flex; align-items: center; gap: 10px; width: min(860px, 100%); color: var(--texte); }
+.outils-fiche > span { display: inline-flex; align-items: center; gap: 8px; flex: 1; font-weight: 600; }
+.cadre-fiche { width: min(860px, 100%); height: min(620px, calc(100vh - 100px)); border: 0; border-radius: 10px; background: #e9ecea; }

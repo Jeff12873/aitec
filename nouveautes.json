@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.4.8",
+      "date": "2026-10-25",
+      "points": [
+        "Maintenance de niveau 1 : formation des opérateurs en tête, 3 fiches au plus côte à côte (geste, fréquence, panne évitée)",
+        "Un clic sur une fiche : fiche de contrôle imprimable A5 paysage, avec le logo"
+      ]
+    },
+    {
       "version": "0.4.7",
       "date": "2026-10-25",
       "points": [
