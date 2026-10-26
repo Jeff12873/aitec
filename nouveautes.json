@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.5.3",
+      "date": "2026-10-26",
+      "points": [
+        "Maintenance de niveau 1 : bouton « Créer la FI dans la GMAO » par machine (simulation, puis création ; SQL du site réglé dans le menu)",
+        "Charge des opérateurs par secteur et par ETH (2 fiches par semaine et par ETH)"
+      ]
+    },
+    {
       "version": "0.5.2",
       "date": "2026-10-26",
       "points": [

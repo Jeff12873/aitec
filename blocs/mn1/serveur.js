@@ -10,6 +10,7 @@ import { executerRequete, etatConnexion } from 'ktec/mysql.js'
 import { lireArborescencesTableau } from '../../lib/arborescence.js'
 import { requetes } from '../import-gmao/synchronisation.js'
 import { lireTableur } from '../../lib/tableurs.js'
+import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir } from './gmao.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
@@ -254,6 +255,32 @@ export function routes(r) {
     })
     noterModification()
     return { creees, modifiees, total: fiches.length }
+  })
+
+  // ---- Création dans la GMAO (administrateur)
+
+  r.get('/api/mn1/gmao/reglages', () => reglagesGmao())
+
+  r.post('/api/mn1/gmao/reglages', async (ctx) => {
+    ctx.exigerAdmin()
+    return enregistrerReglagesGmao(await ctx.json())
+  })
+
+  // Les équipements d'une ligne (pour choisir l'ID de l'équipement de la FI) : ?ligne=…
+  r.get('/api/mn1/gmao/equipements', (ctx) => equipementsDeLaLigne(ctx.query.ligne))
+
+  // Ce que la fenêtre de création propose : numéro, titre (d'après les modèles des réglages).
+  r.post('/api/mn1/gmao/proposition', async (ctx) => {
+    const { ligne = '', eth = '', machine = '', repere = '', nn = 1 } = await ctx.json()
+    const r2 = reglagesGmao()
+    const v = { ligne, eth, machine, repere, nn: String(nn).padStart(2, '0') }
+    return { numero: remplir(r2.numero, v), titre: remplir(r2.titre, v) }
+  })
+
+  // { ids, numero, titre, parc, dateDeb, valider } : simule (valider absent) ou crée la FI.
+  r.post('/api/mn1/gmao/creer', async (ctx) => {
+    ctx.exigerAdmin()
+    return creerFi(await ctx.json())
   })
 
   r.delete('/api/mn1/fiches/:id', (ctx) => {

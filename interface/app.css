@@ -280,3 +280,22 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .barre-import-mn1 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
 .barre-import-mn1 label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .origine-mn1 { font-size: 11px; color: var(--texte-3); margin-right: auto; }
+
+/* Création de la FI dans la GMAO */
+.fi-gmao { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--accent); padding: 3px 9px; border-radius: 99px; background: var(--accent-doux); }
+.creation-gmao .resultat-gmao { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.resultat-gmao h3 { margin: 0; font-size: 15px; }
+.controles-gmao { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 14px; }
+.controle-gmao { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.controle-gmao span { color: var(--texte-2); }
+.controle-gmao.ok svg { color: var(--accent); }
+.controle-gmao.ko svg, .controle-gmao.ko b { color: #f87171; }
+
+/* Charge des opérateurs par secteur et ETH */
+.secteur-charge { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px solid var(--bord); }
+.ligne-charge { display: grid; grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) 150px; gap: 10px; align-items: center; font-size: 13px; }
+.ligne-charge.total { font-weight: 700; font-size: 14px; }
+.ligne-charge.eth .nom-charge { padding-left: 16px; color: var(--texte-2); }
+.ligne-charge .barre-charge { height: 8px; }
+.ligne-charge.depasse .barre-charge > div { background: #f87171; }
+.chiffres-charge { text-align: right; font-variant-numeric: tabular-nums; color: var(--texte-2); }

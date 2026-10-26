@@ -178,17 +178,38 @@ export function imprimerFiches(fiches) {
   document.addEventListener('keydown', surEchap)
 }
 
-// Le cadre de la charge des opérateurs (menu « Maintenance de niveau 1 »).
+// Le cadre de la charge des opérateurs, par secteur (ligne) puis par ETH : chaque ETH tire parSemaine fiches par
+// semaine (un secteur de 3 ETH en tire donc 3 × parSemaine). Fiches à tirer par mois / ce que l'ETH peut tirer.
 export function carteCharge(fiches) {
-  const c = charge(fiches)
-  const part = c.capacite ? Math.min(100, Math.round((100 * c.parMois) / c.capacite)) : 0
-  const depasse = c.parMois > c.capacite
-  return h('div', { class: `carte charge-mn1${depasse ? ' depasse' : ''}` },
+  const parSecteur = new Map()
+  for (const f of fiches) {
+    const secteur = f.ligne || 'Sans secteur'
+    if (!parSecteur.has(secteur)) parSecteur.set(secteur, new Map())
+    const eths = parSecteur.get(secteur)
+    const eth = f.eth || 'Sans ETH'
+    eths.set(eth, [...(eths.get(eth) || []), f])
+  }
+  const ligneCharge = (titre, c, classe = '') => {
+    const part = c.capacite ? Math.min(100, Math.round((100 * c.parMois) / c.capacite)) : 0
+    return h('div', { class: `ligne-charge ${classe}${c.parMois > c.capacite ? ' depasse' : ''}` },
+      h('span', { class: 'nom-charge' }, titre),
+      h('div', { class: 'barre-charge' }, h('div', { style: { width: `${part}%` } })),
+      h('span', { class: 'chiffres-charge' }, `${nombreFr(c.parMois, 1)} / ${nombreFr(c.capacite, 1)} par mois`))
+  }
+  const secteurs = [...parSecteur].map(([secteur, eths]) => {
+    const parEth = [...eths].map(([eth, liste]) => ({ eth, c: charge(liste) }))
+    const total = { parMois: parEth.reduce((s, x) => s + x.c.parMois, 0), capacite: parEth.reduce((s, x) => s + x.c.capacite, 0) }
+    return { secteur, parEth, total }
+  })
+  const tout = charge(fiches)
+  return h('div', { class: 'carte charge-mn1' },
     h('div', { class: 'tete-charge' },
       h('b', {}, 'Charge des opérateurs'),
-      h('span', {}, `${nombreFr(c.parMois, 1)} fiche${c.parMois > 1 ? 's' : ''} par mois pour ${nombreFr(c.capacite, 1)} possibles (${parametres.parSemaine} par semaine)`)),
-    h('div', { class: 'barre-charge' }, h('div', { style: { width: `${part}%` } })),
-    depasse ? h('div', { class: 'alerte-mn1' }, ic('alerte', 14), 'Plus de fiches que les opérateurs ne peuvent en tirer : espacer certains contrôles, ou en discuter avec le responsable de production.') : null,
-    c.tropFrequentes ? h('div', { class: 'alerte-mn1' }, ic('alerte', 14), `${c.tropFrequentes} fiche${c.tropFrequentes > 1 ? 's' : ''} quotidienne${c.tropFrequentes > 1 ? 's' : ''} : ${TROP_FREQUENT}`) : null,
-    c.aPreciser ? h('div', { class: 'discret', style: { fontSize: '13px' } }, `${c.aPreciser} fiche${c.aPreciser > 1 ? 's' : ''} sans fréquence préconisée : à préciser (crayon).`) : null)
+      h('span', {}, `${parametres.parSemaine} fiches par semaine et par ETH (${nombreFr((parametres.parSemaine * 52) / 12, 1)} par mois)`)),
+    secteurs.map(({ secteur, parEth, total }) => h('div', { class: 'secteur-charge' },
+      ligneCharge(`${secteur} · ${parEth.length} ETH`, total, 'total'),
+      parEth.map(({ eth, c }) => ligneCharge(eth, c, 'eth')))),
+    secteurs.some(({ parEth }) => parEth.some(({ c }) => c.parMois > c.capacite)) ? h('div', { class: 'alerte-mn1' }, ic('alerte', 14), 'Un ETH a plus de fiches que ses opérateurs ne peuvent en tirer : espacer certains contrôles, ou en discuter avec le responsable de production.') : null,
+    tout.tropFrequentes ? h('div', { class: 'alerte-mn1' }, ic('alerte', 14), `${tout.tropFrequentes} fiche${tout.tropFrequentes > 1 ? 's' : ''} quotidienne${tout.tropFrequentes > 1 ? 's' : ''} : ${TROP_FREQUENT}`) : null,
+    tout.aPreciser ? h('div', { class: 'discret', style: { fontSize: '13px' } }, `${tout.aPreciser} fiche${tout.aPreciser > 1 ? 's' : ''} sans fréquence préconisée : à préciser (crayon).`) : null)
 }
