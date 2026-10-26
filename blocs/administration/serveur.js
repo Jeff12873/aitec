@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { db, reglage, modifierReglage, transaction } from '../../lib/base.js'
+import { typesPresents, familleParDefaut, FAMILLES } from '../../lib/types.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { arreterIA } from 'ktec/ia.js'
 import { dossierInstallationParDefaut, lireJson, reglagesPoste, journal } from 'ktec/installation.js'
@@ -34,6 +35,19 @@ export function routes(r) {
     db().exec('UPDATE passages SET vecteur = NULL')
     noterModification()
     relancerIndexeur()
+  })
+
+  // Les types d'intervention et leur famille (Correctif, Préventif, Autre).
+  r.get('/api/admin/types', () => typesPresents())
+
+  // { familles: { type: famille } } : seules celles qui diffèrent du rangement par défaut sont gardées.
+  r.post('/api/admin/types', async (ctx) => {
+    ctx.exigerAdmin()
+    const { familles = {} } = await ctx.json()
+    const gardees = Object.fromEntries(Object.entries(familles).filter(([type, famille]) => FAMILLES.includes(famille) && famille !== familleParDefaut(type)))
+    modifierReglage('familles_types', gardees)
+    noterModification()
+    return typesPresents()
   })
 
   r.get('/api/admin/infos', () => {

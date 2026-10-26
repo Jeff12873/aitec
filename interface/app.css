@@ -262,3 +262,21 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .parametres-mn1 { display: flex; flex-direction: column; gap: 8px; min-width: 360px; }
 .parametres-mn1 h3 { margin: 10px 0 2px; font-size: 14px; }
 .ligne-parametre { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Administration : familles des types d'intervention */
+.liste-types { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow: auto; padding-right: 4px; }
+.ligne-type { display: grid; grid-template-columns: minmax(0, 1fr) auto 130px; gap: 10px; align-items: center; font-size: 14px; }
+.nom-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ligne-type select { padding-top: 4px; padding-bottom: 4px; }
+
+/* Fiches MN1 par étiquette : code, zone, points ; import ; impression d'un groupe */
+.code-etiquette { font-weight: 800; font-size: 13px; padding: 1px 8px; border-radius: 6px; background: #92d050; color: #102006; }
+.zone-mn1 { font-weight: 700; font-size: 13px; letter-spacing: .02em; text-transform: uppercase; }
+.points-mn1 { margin: 0; padding-left: 18px; font-size: 13px; color: var(--texte-2); line-height: 1.4; }
+.points-mn1 li { margin: 1px 0; }
+.points-mn1 .titre-point { list-style: none; margin-left: -18px; font-weight: 600; color: var(--texte); }
+.tete-groupe-mn1 { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.tete-groupe-mn1 h2 { margin: 0; font-size: 17px; flex: 1; }
+.barre-import-mn1 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+.barre-import-mn1 label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.origine-mn1 { font-size: 11px; color: var(--texte-3); margin-right: auto; }

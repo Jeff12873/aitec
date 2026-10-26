@@ -17,6 +17,7 @@ import { sansBalises } from '../recherche/passages.js'
 import { pannesProches } from '../pannes/serveur.js'
 import { resumeChiffres } from '../tableau-de-bord/serveur.js'
 import { lireArborescence } from '../../lib/arborescence.js'
+import { familleDe } from '../../lib/types.js'
 
 const CONSIGNES = `Tu es AITEC, l'assistant de dépannage des agents de maintenance de l'atelier « {atelier} ». Tu réponds comme un technicien d'assistance expérimenté au téléphone avec un collègue devant la machine : court, précis, dans l'ordre où on vérifie.
 
@@ -192,18 +193,17 @@ function construireMessages(question, historique, passages, machineId, groupe = 
 
 // Les interventions préventives des 48 dernières heures sur les machines visées (une machine, ou toutes celles
 // de la ligne ou du sous-ensemble choisi). Les dates n'ont pas d'heure : on prend aujourd'hui et les deux jours
-// d'avant. Un type est « préventif » s'il contient le mot, quelle que soit sa forme, accents ignorés.
+// d'avant. Un type compte comme préventif selon sa famille (lib/types.js).
 function preventifRecent(ids) {
   ids = (ids || []).map(Number).filter(Boolean)
   if (!ids.length) return []
   const d = new Date(Date.now() - 48 * 3600 * 1000)
   const depuis = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   return db()
     .prepare(`SELECT i.id, i.date, i.numero, i.type, i.description, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id
               WHERE i.date >= ? AND i.machine_id IN (${ids.map(() => '?').join(',')}) ORDER BY i.date DESC, i.id DESC`)
     .all(depuis, ...ids)
-    .filter((i) => sansAccents(i.type).includes('preventif'))
+    .filter((i) => familleDe(i.type) === 'Préventif')
     .slice(0, 8)
     .map((i) => ({
       id: i.id,

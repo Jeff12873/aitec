@@ -6,6 +6,7 @@ import { db, reglage, modifierReglage, noterModification } from '../../lib/base.
 import { etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { lireArborescencesTableau } from '../../lib/arborescence.js'
+import { sqlFamille } from '../../lib/types.js'
 
 // Le périmètre : { ids } (null = toute la base) et ce qu'il faut pour le choisir à l'écran.
 const TOUT = { ids: null }
@@ -136,8 +137,8 @@ function interventionsParMois(p = TOUT) {
   const lignes = db()
     .prepare(
       `SELECT substr(date, 1, 7) AS mois,
-              sum(type = 'Correctif') AS correctif, sum(type = 'Préventif') AS preventif,
-              sum(type NOT IN ('Correctif', 'Préventif')) AS autre
+              sum(${sqlFamille('Correctif')}) AS correctif, sum(${sqlFamille('Préventif')}) AS preventif,
+              sum(${sqlFamille('Autre')}) AS autre
        FROM interventions WHERE ${dans(p, 'machine_id')} AND date >= date('now', 'start of month', '-11 months') GROUP BY mois`,
     )
     .all()
@@ -157,7 +158,7 @@ function machinesLesPlusEnPanne(p, nombre) {
     .prepare(
       `SELECT m.id, m.repere, m.designation, count(*) AS pannes
        FROM interventions i JOIN machines m ON m.id = i.machine_id
-       WHERE ${dans(p, 'm.id')} AND i.type = 'Correctif' AND i.date >= date('now', '-12 months')
+       WHERE ${dans(p, 'm.id')} AND ${sqlFamille('Correctif', 'i.type')} AND i.date >= date('now', '-12 months')
        GROUP BY m.id ORDER BY pannes DESC LIMIT ?`,
     )
     .all(nombre)
@@ -171,7 +172,7 @@ function machinesEnHausse(p) {
               sum(i.date >= date('now', '-3 months')) AS pannes_3_derniers_mois,
               round(sum(i.date < date('now', '-3 months')) / 3.0, 1) AS moyenne_par_trimestre_avant
        FROM interventions i JOIN machines m ON m.id = i.machine_id
-       WHERE ${dans(p, 'm.id')} AND i.type = 'Correctif' AND i.date >= date('now', '-12 months')
+       WHERE ${dans(p, 'm.id')} AND ${sqlFamille('Correctif', 'i.type')} AND i.date >= date('now', '-12 months')
        GROUP BY m.id HAVING pannes_3_derniers_mois > moyenne_par_trimestre_avant AND pannes_3_derniers_mois >= 2
        ORDER BY pannes_3_derniers_mois DESC LIMIT 10`,
     )

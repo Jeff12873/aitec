@@ -53,7 +53,7 @@ async function afficherReglages(zone) {
       carteContenu(infos),
       carteModele(),
       peutModifier()
-        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteArborescencesTableau(), carteIndex(infos), carteReprise(infos)]
+        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteArborescencesTableau(), carteTypes(), carteIndex(infos), carteReprise(infos)]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )
@@ -185,6 +185,26 @@ function carteArborescencesTableau() {
   }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, `Arborescence illisible : ${e.message}`)))
   charger()
   return carte('tableau', 'Tableau de bord', corps)
+}
+
+// Les types d'intervention de la GMAO, rangés en familles : c'est ce qui fait compter une intervention comme
+// une panne (Correctif) ou comme du préventif dans les chiffres, les graphiques et les pannes connues.
+function carteTypes() {
+  const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture des types…'))
+  const charger = () => api('/api/admin/types').then((types) => {
+    const choix = types.map((t) => ({ t, menu: h('select', { class: 'fin' }, ['Correctif', 'Préventif', 'Autre'].map((f) => h('option', { value: f, selected: f === t.famille }, f))) }))
+    vider(corps,
+      h('p', { class: 'texte-2' }, 'Correctif : compte comme une panne. Préventif : compte dans la part du préventif. Autre : ni l’un ni l’autre (formation, amélioration…). Les types sont rangés d’après leur nom ; corrigez ceux qui sont mal rangés (un simple code, par exemple).'),
+      h('div', { class: 'liste-types' }, choix.map(({ t, menu }) => h('label', { class: 'ligne-type' },
+        h('span', { class: 'nom-type', title: t.type }, t.type || '(sans type)'),
+        h('small', { class: 'discret' }, nombreFr(t.nombre)),
+        menu))),
+      h('div', { class: 'actions', style: { marginTop: '10px' } }, h('button', { class: 'principal', onclick: async () => {
+        if (await essayer(() => api('/api/admin/types', { methode: 'POST', corps: { familles: Object.fromEntries(choix.map(({ t, menu }) => [t.type, menu.value])) } }), 'Familles des types enregistrées')) charger()
+      } }, 'Enregistrer')))
+  }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, e.message)))
+  charger()
+  return carte('cle', 'Types d’intervention', corps)
 }
 
 // ---------------------------------------------------------------- nom de l'atelier

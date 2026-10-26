@@ -3,12 +3,13 @@
 // Les demandes sont lues en direct dans la base de la GMAO, avec la requête réglée dans « Données de la GMAO »
 // (colonnes : numero, date, machine, type, description, demandeur, etat, arret) ; rien n'est recopié.
 
-import { db, reglage, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
+import { db, reglage, reglageJson, modifierReglage, noterModification, transaction } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { exigerEcriture } from 'ktec/partage.js'
 import { executerRequete, etatConnexion } from 'ktec/mysql.js'
 import { lireArborescencesTableau } from '../../lib/arborescence.js'
 import { requetes } from '../import-gmao/synchronisation.js'
+import { lireTableur } from '../../lib/tableurs.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
@@ -23,7 +24,7 @@ function parametres() {
 
 function lireFiches(where = '', ...valeurs) {
   return db()
-    .prepare(`SELECT f.*, m.repere, m.designation FROM fiches_mn1 f LEFT JOIN machines m ON m.id = f.machine_id ${where} ORDER BY f.ligne, f.eth, m.repere, f.id`)
+    .prepare(`SELECT f.*, m.repere, m.designation FROM fiches_mn1 f LEFT JOIN machines m ON m.id = f.machine_id ${where} ORDER BY f.ligne, f.eth, coalesce(m.repere, f.machine_nom), f.etiquette, f.id`)
     .all(...valeurs)
 }
 
@@ -31,12 +32,51 @@ function lireFiches(where = '', ...valeurs) {
 function nettoyerFiche(f) {
   const propre = {
     pour: 'Production',
-    action: String(f.action || '').trim().slice(0, 400),
+    action: String(f.action || '').trim().slice(0, 4000),
+    etiquette: String(f.etiquette || '').trim().slice(0, 30),
+    zone: String(f.zone || '').trim().slice(0, 120),
     frequence: FREQUENCES.includes(f.frequence) ? f.frequence : '',
     evite: String(f.evite || '').trim().slice(0, 300),
   }
   if (!propre.action) throw new ErreurHttp(400, 'Le geste est obligatoire.')
   return propre
+}
+
+// ---------------------------------------------------------------- import d'un classeur
+
+const cle = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+// La feuille qui a une colonne « action » ; ses colonnes reconnues à leur intitulé.
+function fichesDuClasseur(feuilles) {
+  for (const { lignes } of feuilles) {
+    const iTete = lignes.findIndex((l) => l.some((c) => cle(c) === 'action'))
+    if (iTete < 0) continue
+    const tete = lignes[iTete].map(cle)
+    const colonne = (...noms) => { for (const n of noms) { const i = tete.indexOf(n); if (i >= 0) return i } return -1 }
+    const iEtiquette = colonne('etiquette imp', 'code etiquette', 'code', 'etiquette')
+    const iZone2 = colonne('zone n2', 'zone 2', 'sous zone')
+    const c = {
+      ligne: colonne('ligne'),
+      eth: colonne('eth'),
+      // Avec une colonne « zone n2 », « zone » est la machine ; sinon c'est la zone, et la machine a sa colonne.
+      machine: iZone2 >= 0 ? colonne('machine', 'zone') : colonne('machine', 'equipement'),
+      zone: iZone2 >= 0 ? iZone2 : colonne('zone'),
+      action: colonne('action'),
+      etiquette: iEtiquette,
+    }
+    const v = (l, n) => (c[n] < 0 ? '' : String(l[c[n]] ?? '').trim())
+    const parCle = new Map()
+    for (const l of lignes.slice(iTete + 1)) {
+      const action = v(l, 'action')
+      if (!action) continue
+      const f = { ligne: v(l, 'ligne'), eth: v(l, 'eth'), machine: v(l, 'machine'), zone: v(l, 'zone'), etiquette: v(l, 'etiquette') }
+      const k = [f.ligne, f.machine, f.etiquette || f.zone].join('\u0001')
+      if (!parCle.has(k)) parCle.set(k, { ...f, actions: [] })
+      parCle.get(k).actions.push(action)
+    }
+    return [...parCle.values()].map((f) => ({ ...f, action: f.actions.join('\n').replace(/\r/g, '').trim() }))
+  }
+  return []
 }
 
 // ---------------------------------------------------------------- demandes d'intervention
@@ -184,10 +224,36 @@ export function routes(r) {
   r.post('/api/mn1/fiches/:id', async (ctx) => {
     exigerEcriture()
     const propre = nettoyerFiche(await ctx.json())
-    const r2 = db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, evite = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, propre.evite, new Date().toISOString(), ctx.params.id)
+    const r2 = db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
     if (!r2.changes) throw new ErreurHttp(404, 'Fiche introuvable')
     noterModification()
     return lireFiches('WHERE f.id = ?', Number(ctx.params.id))[0]
+  })
+
+  // Import d'un classeur de fiches de contrôle (Excel, LibreOffice, CSV) : une ligne par point à vérifier, avec
+  // les colonnes ligne, ETH, machine, zone, action et étiquette (code de la carte). Les points d'une même étiquette
+  // forment une fiche ; une étiquette déjà importée est mise à jour. Nom du fichier dans l'en-tête X-Nom.
+  r.post('/api/mn1/import', async (ctx) => {
+    exigerEcriture()
+    const nom = decodeURIComponent(ctx.req.headers['x-nom'] || 'fiches.xlsx')
+    const frequence = FREQUENCES.includes(ctx.query.frequence) ? ctx.query.frequence : 'Mensuelle'
+    const fiches = fichesDuClasseur(lireTableur(nom, await ctx.octets()))
+    if (!fiches.length) throw new ErreurHttp(400, 'Aucune fiche trouvée : il faut une feuille avec au moins les colonnes « action » et « étiquette » (ou « zone »).')
+    const maintenant = new Date().toISOString()
+    const existante = db().prepare("SELECT id FROM fiches_mn1 WHERE origine = 'import' AND ligne = ? AND etiquette = ? AND machine_nom = ?")
+    const modifier = db().prepare('UPDATE fiches_mn1 SET eth = ?, zone = ?, action = ?, modifie_le = ? WHERE id = ?')
+    const creer = db().prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, evite, ligne, eth, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'import', ?, ?, '', ?, ?, ?, ?)")
+    let creees = 0
+    let modifiees = 0
+    transaction(() => {
+      for (const f of fiches) {
+        const deja = existante.get(f.ligne, f.etiquette, f.machine)
+        if (deja) { modifier.run(f.eth, f.zone, f.action, maintenant, deja.id); modifiees++ }
+        else { creer.run(f.etiquette, f.machine, f.zone, f.action, frequence, f.ligne, f.eth, maintenant, maintenant); creees++ }
+      }
+    })
+    noterModification()
+    return { creees, modifiees, total: fiches.length }
   })
 
   r.delete('/api/mn1/fiches/:id', (ctx) => {

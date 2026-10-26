@@ -13,6 +13,7 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { exigerEcriture } from 'ktec/partage.js'
 import { journal } from 'ktec/installation.js'
 import { lireArborescence } from '../../lib/arborescence.js'
+import { familleDe } from '../../lib/types.js'
 import { remplacerPassages, supprimerPassages, sansBalises } from '../recherche/passages.js'
 
 const CAS_MIN = 3 // une panne « connue » : au moins 3 rapports semblables
@@ -36,8 +37,6 @@ Règles :
 // ---------------------------------------------------------------- regroupement
 
 const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-// Les types d'intervention qui ne sont pas des pannes (mots cherchés dans le type, accents ignorés).
-const PAS_DES_PANNES = ['preventif', 'formation', 'administratif', 'amelioration', 'projet']
 const MOTS_VIDES = new Set('les des une aux est sont pas plus par pour sur sous avec sans dans ete etait suite fait faire bon tres trop mal apres avant lors cote'.split(' '))
 
 // Les mots qui comptent d'un symptôme (sans accents, sans pluriel, sans petits mots).
@@ -64,12 +63,12 @@ function decouperRapport(description) {
   return action && symptome.trim() ? { symptome: symptome.trim(), action } : null
 }
 
-// Les pannes répétées d'une machine : les rapports (hors préventif, formation…) groupés par symptôme semblable.
+// Les pannes répétées d'une machine : les rapports correctifs (famille du type) groupés par symptôme semblable.
 export function pannesDeLaMachine(machineId) {
   const rapports = db()
     .prepare('SELECT id, date, numero, type, description, intervenant FROM interventions WHERE machine_id = ? ORDER BY date DESC')
     .all(machineId)
-    .filter((r) => !PAS_DES_PANNES.some((mot) => sansAccents(r.type).includes(mot)))
+    .filter((r) => familleDe(r.type) === 'Correctif')
   const groupes = []
   for (const r of rapports) {
     const morceaux = decouperRapport(r.description)

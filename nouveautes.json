@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.5.2",
+      "date": "2026-10-26",
+      "points": [
+        "Types d'intervention rangés en familles (correctif, préventif, autre), réglables dans Administration : les chiffres suivent les noms de votre GMAO",
+        "Bouton « Analyse » sur la fiche machine",
+        "Fiches de niveau 1 par étiquette (zone et points à vérifier), importées d'un classeur",
+        "Impression au format de la carte terrain (recto et verso côte à côte), et d'un groupe de fiches d'un coup"
+      ]
+    },
+    {
       "version": "0.5.1",
       "date": "2026-10-25",
       "points": [

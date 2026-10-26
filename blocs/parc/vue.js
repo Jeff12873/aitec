@@ -80,6 +80,7 @@ async function afficherFiche(zone, id) {
       h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
       h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono', style: { fontSize: '22px' } }, m.repere), ' — ', m.designation), h('p', { class: 'sous-titre' }, [m.famille, m.emplacement].filter(Boolean).join(' · '))),
       etiquetteEtat(m.etat),
+      h('a', { class: 'bouton', href: `#/analyse/${m.id}`, title: 'Chiffres, pannes qui reviennent, résumé et conseils de l’IA, fiches de niveau 1' }, ic('graphique', 16), 'Analyse'),
       h('a', { class: 'bouton principal', href: `#/assistant?machine=${m.id}` }, ic('etincelle', 16), "Demander à l'IA"),
       peutModifier() ? h('button', { onclick: () => modifierMachine(m, valeurs) }, ic('crayon', 16), 'Modifier') : null,
       peutModifier() ? h('button', { class: 'danger', onclick: () => supprimerMachine(m) }, ic('poubelle', 16)) : null,

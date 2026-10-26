@@ -6,7 +6,7 @@ import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
-import { LOGO_MN1, FREQUENCES, carteFiche, carteCharge, definirParametres, lireParametres } from '../../interface/fiches-mn1.js'
+import { LOGO_MN1, FREQUENCES, carteFiche, carteCharge, definirParametres, imprimerFiches, nomMachine } from '../../interface/fiches-mn1.js'
 import { animer } from '../tableau-de-bord/vue.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
@@ -44,9 +44,10 @@ export default {
 
 async function afficherFiches(zone) {
   const fiches = await api('/api/mn1/fiches')
+  const barreImport = peutModifier() ? boutonImport() : null
   if (!fiches.length) {
-    return vider(zone, h('div', { class: 'carte vide' }, h('img', { src: LOGO_MN1, alt: '', style: { width: '56px', opacity: 0.8 } }),
-      h('p', {}, 'Pas encore de fiche. Elles se gardent depuis la fiche d’analyse d’une machine : Tableau de bord › « Machines les plus en panne », puis « Analyser » et « Garder dans les fiches MN1 ».')))
+    return vider(zone, barreImport, h('div', { class: 'carte vide' }, h('img', { src: LOGO_MN1, alt: '', style: { width: '56px', opacity: 0.8 } }),
+      h('p', {}, 'Pas encore de fiche. Importez un classeur de fiches de contrôle, ou gardez des gestes depuis la fiche d’analyse d’une machine (« Analyse », puis « Garder dans les fiches MN1 »).')))
   }
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : geste, machine, ETH…', value: filtres.texte })
   const liste = h('div')
@@ -58,25 +59,27 @@ async function afficherFiches(zone) {
     vider(zoneFiltres, recherche, pastilles('frequence', FREQUENCES.filter((f) => fiches.some((x) => x.frequence === f))))
     const mots = filtres.texte.trim().toLowerCase().split(/\s+/).filter(Boolean)
     const visibles = fiches.filter((f) => (!filtres.frequence || f.frequence === filtres.frequence)
-      && mots.every((m) => [f.action, f.evite, f.repere, f.designation, f.eth, f.ligne].join(' ').toLowerCase().includes(m)))
-    // Ligne › ETH › machine
+      && mots.every((m) => [f.action, f.evite, f.repere, f.designation, f.machine_nom, f.zone, f.etiquette, f.eth, f.ligne].join(' ').toLowerCase().includes(m)))
+    // Ligne › ETH › machine ; « Imprimer » imprime tout le groupe.
     const groupes = new Map()
     for (const f of visibles) {
-      const cle = [f.ligne || 'Sans ligne', f.eth || ''].join(' › ').replace(/ › $/, '')
+      const cle = [f.ligne || 'Sans ligne', f.eth, f.repere || f.machine_nom].filter(Boolean).join(' › ')
       ;(groupes.get(cle) || groupes.set(cle, []).get(cle)).push(f)
     }
     vider(liste, visibles.length ? [...groupes].map(([titre, groupe]) => h('section', { class: 'groupe-fiches-mn1' },
-      h('h2', {}, titre, h('span', { class: 'discret' }, ` · ${groupe.length} fiche${groupe.length > 1 ? 's' : ''}`)),
+      h('div', { class: 'tete-groupe-mn1' },
+        h('h2', {}, titre, h('span', { class: 'discret' }, ` · ${groupe.length} fiche${groupe.length > 1 ? 's' : ''}`)),
+        h('button', { class: 'petit', title: 'Imprimer toutes les fiches de ce groupe', onclick: () => imprimerFiches(groupe) }, ic('document', 14), groupe.length > 1 ? `Imprimer les ${groupe.length}` : 'Imprimer')),
       h('div', { class: 'fiches-mn1' }, groupe.map((f) => carteFiche(f, { enPlus: actionsFiche(f) }))))) : h('p', { class: 'discret' }, 'Aucune fiche ne correspond aux filtres.'))
   }
   recherche.addEventListener('input', () => { filtres.texte = recherche.value; dessiner() })
-  vider(zone, carteCharge(fiches), zoneFiltres, liste)
+  vider(zone, barreImport, carteCharge(fiches), zoneFiltres, liste)
   dessiner()
 }
 
 function actionsFiche(f) {
   return h('div', { class: 'actions-fiche-mn1' },
-    h('a', { href: `#/analyse/${f.machine_id}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse'),
+    f.machine_id ? h('a', { href: `#/analyse/${f.machine_id}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : h('span', { class: 'origine-mn1' }, 'importée'),
     peutModifier() ? h('button', { class: 'discret petit icone-seule', title: 'Corriger la fiche', onclick: () => corrigerFiche(f) }, ic('crayon', 14)) : null,
     peutModifier() ? h('button', { class: 'discret petit icone-seule', title: 'Supprimer la fiche', onclick: async () => {
       if (await confirmer('Supprimer cette fiche de niveau 1 ?', { danger: true, texte: 'Supprimer' }) && await essayer(() => api(`/api/mn1/fiches/${f.id}`, { methode: 'DELETE' }))) window.ktec.recharger()
@@ -84,24 +87,50 @@ function actionsFiche(f) {
 }
 
 async function corrigerFiche(f) {
-  const action = h('textarea', { rows: 3 }, f.action)
+  const etiquette = h('input', { type: 'text', value: f.etiquette || '' })
+  const zoneMachine = h('input', { type: 'text', value: f.zone || '' })
+  const action = h('textarea', { rows: 8 }, f.action)
   const frequence = h('select', {}, h('option', { value: '' }, 'À préciser'), FREQUENCES.map((x) => h('option', { value: x, selected: x === f.frequence }, x)))
   const evite = h('input', { type: 'text', value: f.evite })
   const ok = await fenetre({
-    titre: `Fiche de niveau 1 — ${f.repere}`,
+    titre: `Fiche de niveau 1 — ${nomMachine(f)}`,
+    large: true,
     contenu: h('div', { class: 'grille', style: { gap: '10px' } },
-      h('label', { class: 'champ' }, h('span', {}, 'Geste à réaliser'), action),
+      h('div', { class: 'grille grille-2', style: { gap: '10px' } },
+        h('label', { class: 'champ' }, h('span', {}, 'Étiquette (code de la carte)'), etiquette),
+        h('label', { class: 'champ' }, h('span', {}, 'Zone de la machine'), zoneMachine)),
+      h('label', { class: 'champ' }, h('span', {}, 'Points à vérifier (un par ligne ; « Porte : » pour un intertitre)'), action),
       h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
       h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite)),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
-      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { action: action.value, frequence: frequence.value, evite: evite.value } }); return true } },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { etiquette: etiquette.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } },
     ],
   })
   if (ok) {
     notifier('Fiche enregistrée')
     window.ktec.recharger()
   }
+}
+
+// Import d'un classeur de fiches de contrôle (une ligne par point à vérifier : ligne, ETH, machine, zone, action,
+// étiquette) : les fiches sont créées, ou mises à jour si l'étiquette a déjà été importée.
+function boutonImport() {
+  const frequence = h('select', { class: 'fin' }, FREQUENCES.filter((f) => f !== 'Quotidienne').map((f) => h('option', { value: f, selected: f === 'Mensuelle' }, f)))
+  const choix = h('input', { type: 'file', accept: '.xlsx,.xls,.ods,.csv', style: { display: 'none' } })
+  choix.onchange = async () => {
+    const fichier = choix.files[0]
+    if (!fichier) return
+    const r = await essayer(() => api(`/api/mn1/import?frequence=${encodeURIComponent(frequence.value)}`, { methode: 'POST', fichier, entetes: { 'X-Nom': encodeURIComponent(fichier.name) } }))
+    if (r) {
+      notifier(`${r.total} fiches lues : ${r.creees} nouvelles, ${r.modifiees} mises à jour`)
+      window.ktec.recharger()
+    }
+  }
+  return h('div', { class: 'barre-import-mn1' },
+    h('button', { onclick: () => choix.click() }, ic('telecharger', 16), 'Importer un classeur de fiches'),
+    h('label', { class: 'discret' }, 'fréquence des fiches importées ', frequence),
+    choix)
 }
 
 // Le rouage : combien de fiches les opérateurs tirent par semaine, et combien de fiches imprimer par fréquence.

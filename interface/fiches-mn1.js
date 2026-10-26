@@ -46,103 +46,131 @@ export function charge(fiches) {
   }
 }
 
-// Une fiche à l'écran : geste, fréquence préconisée (et le nombre de fiches qu'elle donne), panne évitée, ETH,
-// machine. options.enPlus : éléments ajoutés en bas (boutons) ; un clic ailleurs ouvre la version à imprimer.
+// La machine d'une fiche : son repère AITEC (fiche gardée depuis l'analyse) ou son nom dans le classeur importé.
+export const nomMachine = (f) => (f.repere ? `${f.repere}${f.designation ? ` — ${f.designation}` : ''}` : f.machine_nom || '')
+
+// Les points à vérifier : un par ligne ; « Porte : » est un intertitre ; les « ☐ » sont retirés (on les remet).
+export function points(texte) {
+  return String(texte || '')
+    .split('\n')
+    .flatMap((ligne) => ligne.split(/☐/).map((x, i) => ({ x: x.trim(), coche: i > 0 || /^\s*☐/.test(ligne) })))
+    .filter(({ x }) => x)
+    .map(({ x, coche }) => (!coche && /:$/.test(x) ? { titre: x.replace(/\s*:$/, '') } : { point: x.replace(/^[-•]\s*/, '') }))
+}
+
+// Une fiche à l'écran : étiquette et zone, points à vérifier, fréquence préconisée (et le nombre de fiches qu'elle
+// donne), panne évitée, ETH, machine. options.enPlus : boutons en bas ; un clic ailleurs ouvre l'impression.
 export function carteFiche(f, { enPlus = null } = {}) {
   const quotidienne = f.frequence === 'Quotidienne'
-  const ouvrir = () => imprimerFiche(f)
+  const ouvrir = () => imprimerFiches([f])
   const n = fichesPour(f.frequence)
-  return h('div', { class: `geste-mn1 production${quotidienne ? ' trop-frequente' : ''}`, role: 'button', tabindex: '0', title: quotidienne ? TROP_FREQUENT : 'Ouvrir les fiches à imprimer (A5 paysage)',
+  const liste = points(f.action)
+  return h('div', { class: `geste-mn1 production${quotidienne ? ' trop-frequente' : ''}`, role: 'button', tabindex: '0', title: quotidienne ? TROP_FREQUENT : 'Ouvrir la fiche à imprimer (A5 paysage)',
     onclick: (ev) => !ev.target.closest('.enplus-mn1') && ouvrir(),
     onkeydown: (ev) => ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ouvrir()) },
-    h('div', { class: 'tete-geste' }, h('img', { src: LOGO_MN1, alt: '' }), h('span', { class: 'pour-mn1' }, 'Production'),
+    h('div', { class: 'tete-geste' }, h('img', { src: LOGO_MN1, alt: '' }),
+      f.etiquette ? h('span', { class: 'code-etiquette' }, f.etiquette) : h('span', { class: 'pour-mn1' }, 'Production'),
       h('span', { class: 'imprimer-geste' }, ic('document', 13), n ? `${n} fiche${n > 1 ? 's' : ''} / ${PERIODES[f.frequence][1]}` : 'Fiche')),
-    h('div', { class: 'action-mn1' }, f.action),
+    f.zone ? h('div', { class: 'zone-mn1' }, f.zone) : null,
+    liste.length > 1 || f.etiquette
+      ? h('ul', { class: 'points-mn1' }, liste.slice(0, 6).map((p) => (p.titre ? h('li', { class: 'titre-point' }, p.titre) : h('li', {}, p.point))), liste.length > 6 ? h('li', { class: 'discret' }, `… ${liste.length - 6} de plus`) : null)
+      : h('div', { class: 'action-mn1' }, f.action),
     h('div', { class: 'detail-mn1' }, h('b', {}, 'Fréquence préconisée'), f.frequence || 'à préciser'),
     quotidienne ? h('div', { class: 'alerte-mn1' }, ic('alerte', 14), TROP_FREQUENT) : null,
     f.evite ? h('div', { class: 'detail-mn1' }, h('b', {}, 'Évite'), f.evite) : null,
     h('div', { class: 'lieu-mn1' },
       f.eth ? h('span', {}, h('b', {}, 'ETH'), f.eth) : null,
-      h('span', {}, h('b', {}, 'Machine'), `${f.repere}${f.designation ? ` — ${f.designation}` : ''}`)),
+      h('span', {}, h('b', {}, 'Machine'), nomMachine(f))),
     enPlus ? h('div', { class: 'enplus-mn1' }, enPlus) : null)
 }
 
-// Les fiches de niveau 1 à imprimer : A5 paysage, une page par fiche (5 pour un contrôle hebdomadaire : une par
-// semaine du mois), sobres, avec le logo, la machine, le geste et un cadre de contrôle à remplir à la main.
-export function imprimerFiche(f) {
+// Une seule fiche : toutes ses feuilles (5 pour un contrôle hebdomadaire, une par semaine du mois).
+export const imprimerFiche = (f) => imprimerFiches([f])
+
+// Les fiches à imprimer, A5 paysage, une feuille par fiche et par période. La feuille reprend la carte terrain :
+// à gauche le recto (machine, zone, étiquette, points à vérifier), à droite le verso (date, exécutant, mode
+// opératoire, résultat à cocher) et le bandeau « LIGNE - FICHE MAINTENANCE NIV 01 ».
+export function imprimerFiches(fiches) {
   const e = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-  const quotidienne = f.frequence === 'Quotidienne'
-  const nombre = Math.max(1, fichesPour(f.frequence))
-  const [periode] = PERIODES[f.frequence] || ['Période']
   const aujourdhui = new Date().toLocaleDateString('fr-FR')
-  const ligne = (libelle, valeur) => (valeur ? `<tr><th>${libelle}</th><td>${e(valeur)}</td></tr>` : '')
-  const feuille = (numero) => `<div class="feuille">
-  <header>
-    <img src="${LOGO_MN1}" alt="MN1">
-    <div><h1>Maintenance de niveau 1</h1><p>Fiche de contrôle · Production</p></div>
-    <span class="numero">${nombre > 1 ? `${e(periode)} ${numero} / ${nombre}` : e(periode)}</span>
-  </header>
-  ${quotidienne ? `<div class="alerte">${e(TROP_FREQUENT)}</div>` : ''}
-  <div class="haut">
-    <table class="infos">
-      ${ligne('Machine', `${f.repere}${f.designation ? ` — ${f.designation}` : ''}`)}
-      ${ligne('ETH', f.eth)}
-      ${ligne('Ligne', f.ligne)}
-      ${ligne('Fréquence préconisée', f.frequence || 'à préciser')}
-    </table>
-    <div class="geste"><h2>Geste à réaliser</h2><p>${e(f.action)}</p>${f.evite ? `<h2 style="margin-top:2mm">Panne évitée</h2><div>${e(f.evite)}</div>` : ''}</div>
-  </div>
-  <div class="controle">
-    <h2>Contrôle réalisé</h2>
-    <div class="champs">
-      <div><span>Date</span></div><div><span>Heure / poste</span></div><div><span>Nom de l’opérateur</span></div>
-      <div class="conforme"><span>Conforme</span><b>☐ Oui</b><b>☐ Non</b></div>
+  const ligneCourte = (f) => String(f.ligne || '').replace(/\s*\(.*\)$/, '')
+  const feuille = (f, numero, nombre) => {
+    const [periode] = PERIODES[f.frequence] || ['']
+    const machine = f.repere || f.machine_nom || ''
+    const liste = points(f.action)
+    return `<div class="feuille">
+  <section class="recto">
+    <div class="cases">
+      <div class="case verte">${e(f.eth || machine)}</div>
+      <div class="case claire">${e(machine)}${f.zone ? ` : ${e(f.zone)}` : ''}</div>
+      <div class="case verte code">${e(f.etiquette || 'MN1')}</div>
     </div>
-    <div class="obs"><span>Observations / anomalie constatée</span></div>
-    <div class="champs bas"><div><span>Signalé à (si non conforme)</span></div><div><span>Visa du responsable</span></div></div>
-  </div>
-  <footer><span>Éditée par AITEC le ${aujourdhui}, d’après l’analyse de la machine</span><span>${e(f.repere)}</span></footer>
+    <div class="points">
+      ${f.frequence === 'Quotidienne' ? `<p class="alerte">${e(TROP_FREQUENT)}</p>` : ''}
+      ${liste.map((p) => (p.titre ? `<p class="titre">${e(p.titre)} :</p>` : `<p class="point"><span>☐</span>${e(p.point)}</p>`)).join('')}
+      ${f.evite ? `<p class="evite">Évite : ${e(f.evite)}</p>` : ''}
+    </div>
+  </section>
+  <section class="verso">
+    <div class="periode">${nombre > 1 ? `${e(periode)} ${numero} / ${nombre} · ` : ''}${e(f.frequence || 'Fréquence à préciser')}</div>
+    <div class="date-mode">
+      <div class="qui"><p>Date :</p><p>Exécutant :</p></div>
+      <ol><li>Réaliser l’action indiquée.</li><li>Appliquer le correctif si cela est possible.</li><li>Cocher le résultat de l’inspection.</li><li>Renseigner la date et apposer votre nom.</li></ol>
+    </div>
+    <div class="resultats">
+      <div><i></i><span>Pas d’anomalie</span></div>
+      <div><i></i><span>Anomalie corrigée</span></div>
+      <div><i></i><span>Anomalie non corrigée et DI faite</span></div>
+    </div>
+    <div class="bandeau"><img src="${LOGO_MN1}" alt=""><span>${e(ligneCourte(f) ? `${ligneCourte(f)} - ` : '')}FICHE MAINTENANCE NIV 01</span></div>
+    <div class="pied">Éditée par AITEC le ${aujourdhui}${f.repere ? ` · ${e(f.repere)}` : ''}</div>
+  </section>
 </div>`
-  const page = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>MN1 — ${e(f.repere)} — ${e(f.action).slice(0, 60)}</title>
+  }
+  const feuilles = fiches.flatMap((f) => { const n = Math.max(1, fichesPour(f.frequence)); return Array.from({ length: n }, (_, i) => feuille(f, i + 1, n)) })
+  const page = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Fiches maintenance niveau 1</title>
 <style>
-  @page { size: A5 landscape; margin: 7mm; }
+  @page { size: A5 landscape; margin: 6mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 9.5pt/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1b1f1d; background: #e9ecea; }
-  .feuille { width: 210mm; height: 148mm; margin: 12px auto; padding: 7mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: flex; flex-direction: column; gap: 3mm; }
-  header { display: flex; align-items: center; gap: 4mm; border-bottom: 1.2mm solid #d4d01c; padding-bottom: 2.5mm; }
-  header img { width: 15mm; height: 15mm; }
-  header h1 { margin: 0; font-size: 14pt; letter-spacing: .02em; }
-  header p { margin: 0; color: #5d6662; font-size: 8.5pt; }
-  .numero { margin-left: auto; padding: 1.2mm 3mm; border-radius: 99px; font-weight: 700; font-size: 9pt; border: .3mm solid #1d5fbf; color: #1d5fbf; white-space: nowrap; }
-  .alerte { padding: 2mm 3mm; border-radius: 2mm; background: #fdecea; color: #a12a1a; font-weight: 600; font-size: 8.5pt; }
-  .haut { display: grid; grid-template-columns: 1fr 1.25fr; gap: 4mm; }
-  table { width: 100%; border-collapse: collapse; }
-  .infos th { text-align: left; width: 31mm; color: #5d6662; font-weight: 600; padding: .8mm 0; vertical-align: top; }
-  .infos td { padding: .8mm 0; font-weight: 600; }
-  .geste { border: .35mm solid #c9cec9; border-left: 1.2mm solid #d4d01c; border-radius: 2mm; padding: 2.5mm 3mm; }
-  h2 { margin: 0 0 1.2mm; font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: #5d6662; }
-  .geste p { margin: 0; font-size: 11pt; font-weight: 600; }
-  .controle { flex: 1; display: flex; flex-direction: column; gap: 2mm; }
-  .champs { display: grid; grid-template-columns: 24mm 28mm 1fr 44mm; gap: 2mm; }
-  .champs.bas { grid-template-columns: 1fr 1fr; }
-  .champs > div, .obs { border: .3mm solid #9aa29d; border-radius: 1.5mm; min-height: 11mm; padding: 1mm 2mm; position: relative; }
-  .champs span, .obs span { font-size: 6.8pt; color: #5d6662; text-transform: uppercase; letter-spacing: .05em; }
-  .conforme { display: flex; align-items: center; gap: 3mm; }
-  .conforme span { position: absolute; top: 1mm; left: 2mm; }
-  .conforme b { margin-top: 3mm; font-size: 10pt; font-weight: 600; }
-  .obs { flex: 1; min-height: 14mm; }
-  footer { display: flex; justify-content: space-between; font-size: 7pt; color: #8a938e; }
-  @media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; width: auto; height: 134mm; padding: 0; page-break-after: always; break-after: page; } .feuille:last-child { page-break-after: auto; break-after: auto; } }
-</style></head><body>${Array.from({ length: nombre }, (_, i) => feuille(i + 1)).join('')}</body></html>`
+  body { margin: 0; font: 10pt/1.35 Cambria, Georgia, 'Times New Roman', serif; color: #111; background: #e9ecea; }
+  .feuille { width: 210mm; height: 148mm; margin: 12px auto; padding: 6mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: grid; grid-template-columns: 1.15fr 1fr; gap: 6mm; }
+  section { display: flex; flex-direction: column; gap: 3mm; min-height: 0; }
+  .cases { display: grid; grid-template-columns: 1fr 1.4fr .8fr; gap: 2mm; }
+  .case { border: .45mm solid #111; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; padding: 1.5mm; min-height: 12mm; font-size: 9pt; line-height: 1.15; }
+  .verte { background: #92d050; }
+  .claire { background: #e2efda; font-size: 8pt; }
+  .code { font-size: 17pt; }
+  .points { flex: 1; border: .45mm solid #111; padding: 3mm 3.5mm; overflow: hidden; font-weight: 700; font-size: 9.5pt; }
+  .points p { margin: 0 0 1.3mm; }
+  .titre { text-decoration: underline; margin-top: 1.5mm !important; }
+  .point { display: flex; gap: 1.8mm; }
+  .point span { flex: none; }
+  .evite { margin-top: 2.5mm !important; font-weight: 400; font-style: italic; color: #444; }
+  .alerte { padding: 1.5mm 2mm; background: #fdecea; color: #a12a1a; font-family: system-ui, sans-serif; font-size: 8pt; }
+  .periode { align-self: flex-end; font: 600 8pt system-ui, sans-serif; color: #1d5fbf; border: .3mm solid #1d5fbf; border-radius: 99px; padding: .8mm 3mm; }
+  .date-mode { display: grid; grid-template-columns: .8fr 1.4fr; gap: 1.5mm; }
+  .qui, .date-mode ol { border: .45mm solid #111; margin: 0; padding: 2mm 3mm; font-weight: 700; }
+  .qui p { margin: 0 0 9mm; font-size: 11pt; text-align: center; }
+  .date-mode ol { padding-left: 7mm; font-size: 8.5pt; }
+  .resultats { display: flex; flex-direction: column; gap: 2mm; align-items: center; margin-top: 1mm; }
+  .resultats div { display: flex; align-items: center; gap: 4mm; width: 82%; }
+  .resultats i { width: 8mm; height: 7mm; border: .45mm solid #111; border-radius: 1.5mm; flex: none; }
+  .resultats span { flex: 1; border: .35mm solid #111; text-align: center; font-weight: 700; padding: 1.2mm; font-size: 9pt; }
+  .bandeau { margin-top: auto; background: #92d050; border: .45mm solid #111; display: flex; align-items: center; justify-content: center; gap: 3mm; padding: 1.5mm; font-weight: 700; font-size: 12pt; }
+  .bandeau img { width: 9mm; height: 9mm; }
+  .pied { font: 6.5pt system-ui, sans-serif; color: #888; text-align: right; }
+  @media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; width: auto; height: 136mm; padding: 0; page-break-after: always; break-after: page; } .feuille:last-child { page-break-after: auto; break-after: auto; } }
+</style></head><body>${feuilles.join('')}</body></html>`
   // L'aperçu par-dessus la page (pas de fenêtre surgissante, que les navigateurs bloquent souvent) ;
   // « Imprimer » imprime les feuilles seules.
   const cadre = h('iframe', { class: 'cadre-fiche', title: 'Fiches de niveau 1', srcdoc: page })
   const fermer = () => { voile.remove(); document.removeEventListener('keydown', surEchap) }
   const surEchap = (ev) => ev.key === 'Escape' && fermer()
+  const nombre = feuilles.length
   const voile = h('div', { class: 'apercu-fiche', onmousedown: (ev) => ev.target === voile && fermer() },
     h('div', { class: 'outils-fiche' },
       h('span', {}, ic('document', 16), `${nombre} fiche${nombre > 1 ? 's' : ''} de niveau 1 — A5 paysage`),
-      quotidienne ? h('span', { class: 'alerte-mn1' }, ic('alerte', 14), 'Trop fréquent') : null,
+      fiches.some((f) => f.frequence === 'Quotidienne') ? h('span', { class: 'alerte-mn1' }, ic('alerte', 14), 'Trop fréquent') : null,
       h('button', { class: 'principal', onclick: () => cadre.contentWindow?.print() }, ic('document', 15), nombre > 1 ? `Imprimer les ${nombre}` : 'Imprimer'),
       h('button', { class: 'discret icone-seule', title: 'Fermer (Échap)', onclick: fermer }, ic('x', 16))),
     cadre)

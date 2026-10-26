@@ -8,6 +8,7 @@ import { etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { sansBalises } from '../recherche/passages.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
+import { sqlFamille } from '../../lib/types.js'
 import { lireArborescencesTableau, lireArborescence } from '../../lib/arborescence.js'
 
 // La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau, sous la ligne).
@@ -71,9 +72,9 @@ function donnees(id) {
   const machine = lireMachine(id)
   const compter = (sql, ...valeurs) => db().prepare(sql).get(id, ...valeurs)?.n || 0
   const chiffres = {
-    pannes12Mois: compter("SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND type = 'Correctif' AND date >= date('now', '-12 months')"),
-    pannes3Mois: compter("SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND type = 'Correctif' AND date >= date('now', '-3 months')"),
-    preventifs12Mois: compter("SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND type = 'Préventif' AND date >= date('now', '-12 months')"),
+    pannes12Mois: compter(`SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND ${sqlFamille('Correctif')} AND date >= date('now', '-12 months')`),
+    pannes3Mois: compter(`SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND ${sqlFamille('Correctif')} AND date >= date('now', '-3 months')`),
+    preventifs12Mois: compter(`SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND ${sqlFamille('Préventif')} AND date >= date('now', '-12 months')`),
     interventions12Mois: compter("SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND date >= date('now', '-12 months')"),
     heures12Mois: Math.round(db().prepare("SELECT coalesce(sum(duree_h), 0) AS n FROM interventions WHERE machine_id = ? AND date >= date('now', '-12 months')").get(id).n * 10) / 10,
     interventionsTotal: compter('SELECT count(*) AS n FROM interventions WHERE machine_id = ?'),
@@ -81,7 +82,7 @@ function donnees(id) {
   }
   chiffres.frequencePannes = chiffres.pannes12Mois ? `${enClair(365 / chiffres.pannes12Mois)} (${chiffres.pannes12Mois} pannes en 12 mois)` : 'aucune panne en 12 mois'
   const lignes = db()
-    .prepare(`SELECT substr(date, 1, 7) AS mois, sum(type = 'Correctif') AS correctif, sum(type = 'Préventif') AS preventif, sum(type NOT IN ('Correctif', 'Préventif')) AS autre
+    .prepare(`SELECT substr(date, 1, 7) AS mois, sum(${sqlFamille('Correctif')}) AS correctif, sum(${sqlFamille('Préventif')}) AS preventif, sum(${sqlFamille('Autre')}) AS autre
               FROM interventions WHERE machine_id = ? AND date >= date('now', 'start of month', '-11 months') GROUP BY mois`)
     .all(id)
   const parMois = []
