@@ -11,6 +11,7 @@ export default {
   titre: 'Import GMAO',
   icone: 'tableur',
   menu: false,
+  admin: true,
   aide: 'import-gmao',
 
   async afficher(zone) {

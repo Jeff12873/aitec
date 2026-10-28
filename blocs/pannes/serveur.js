@@ -271,7 +271,7 @@ export function routes(r) {
 
   // Lance l'analyse d'une ligne de l'arborescence (en tâche de fond : suivre avec GET /api/pannes/analyse).
   r.post('/api/pannes/analyse', async (ctx) => {
-    exigerEcriture()
+    exigerEcriture({ pourTous: true }) // une analyse peut être lancée en consultation
     if (analyse.enCours) throw new ErreurHttp(409, `Analyse déjà en cours (${analyse.ligne}).`)
     const { ligne: id } = await ctx.json()
     const arbre = await lireArborescence()

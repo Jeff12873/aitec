@@ -4,7 +4,7 @@
 
 import { h, vider, ic, essayer, confirmer, fenetre, notifier, dateFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { peutModifier } from '/socle/etat.js'
+import { peutModifier, etat } from '/socle/etat.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
 
 let ligneChoisie = ''
@@ -35,7 +35,7 @@ export default {
         h('div', { class: 'actions' },
           lignes.length > 1 ? menuDeroulant({ choix: lignes.map((l) => ({ valeur: l.ligne, libelle: l.ligne, nombre: l.nombre })), valeur: ligneChoisie, surChoix: (v) => { ligneChoisie = v; location.hash = '#/pannes' ; window.ktec.recharger() } }) : null,
           recherche)),
-      peutModifier() ? carteAnalyse(etatAnalyse) : null,
+      !etat.partage?.autreAdmin ? carteAnalyse(etatAnalyse) : null, // une analyse se lance aussi en consultation
       donnees.fiches.length ? null : h('div', { class: 'carte vide' }, ic('historique', 32), lignes.length ? 'Aucune fiche sur cette ligne.' : 'Pas encore de pannes connues : un administrateur lance l’analyse d’une ligne ci-dessus.'),
       liste,
     )

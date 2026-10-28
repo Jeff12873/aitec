@@ -98,7 +98,7 @@ const vrai = (v) => v === true || v === 1 || /^(1|o|oui|vrai|true|x)$/i.test(Str
 async function lireDemandes() {
   const sql = requetes().demandes
   if (!sql) return null
-  if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion MySQL fermée : saisissez le mot de passe.')
+  if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible (réglée par l’administrateur).')
   // Une minute de cache : l'écran se redessine souvent, la base n'a pas besoin d'être relue à chaque fois.
   if (cache.cle === sql && Date.now() - cache.quand < 60_000) return cache.lignes
   const r = await executerRequete(sql.replace(/--[^\n]*/g, ''), 1_000_000)
@@ -190,13 +190,20 @@ async function tableau(lignesVoulues) {
 
 // ---------------------------------------------------------------- routes
 
+// Réglages et SQL : réservés à l'administrateur (ctx.exigerModeAdmin, KTEC 0.6 et plus).
+const reserve = (r) => Object.fromEntries(['get', 'post', 'delete'].map((m) => [m, (chemin, action) => r[m](chemin, (ctx) => {
+  ctx.exigerModeAdmin?.()
+  return action(ctx)
+})]))
+
 export function routes(r) {
+  const admin = reserve(r)
   r.get('/api/mn1/fiches', () => lireFiches())
 
   r.get('/api/mn1/parametres', () => ({ ...parametres(), origine: PARAMETRES }))
 
   // { parSemaine, fiches: { Hebdomadaire: 5, … } } (administrateur)
-  r.post('/api/mn1/parametres', async (ctx) => {
+  admin.post('/api/mn1/parametres', async (ctx) => {
     exigerEcriture()
     const { parSemaine, fiches = {} } = await ctx.json()
     const propres = Object.fromEntries(Object.keys(PARAMETRES.fiches).map((f) => [f, Math.max(1, Math.min(31, Math.round(Number(fiches[f]) || PARAMETRES.fiches[f])))]))
@@ -234,7 +241,7 @@ export function routes(r) {
   // Import d'un classeur de fiches de contrôle (Excel, LibreOffice, CSV) : une ligne par point à vérifier, avec
   // les colonnes ligne, ETH, machine, zone, action et étiquette (code de la carte). Les points d'une même étiquette
   // forment une fiche ; une étiquette déjà importée est mise à jour. Nom du fichier dans l'en-tête X-Nom.
-  r.post('/api/mn1/import', async (ctx) => {
+  admin.post('/api/mn1/import', async (ctx) => {
     exigerEcriture()
     const nom = decodeURIComponent(ctx.req.headers['x-nom'] || 'fiches.xlsx')
     const frequence = FREQUENCES.includes(ctx.query.frequence) ? ctx.query.frequence : 'Mensuelle'
@@ -259,9 +266,9 @@ export function routes(r) {
 
   // ---- Création dans la GMAO (administrateur)
 
-  r.get('/api/mn1/gmao/reglages', () => reglagesGmao())
+  admin.get('/api/mn1/gmao/reglages', () => reglagesGmao())
 
-  r.post('/api/mn1/gmao/reglages', async (ctx) => {
+  admin.post('/api/mn1/gmao/reglages', async (ctx) => {
     ctx.exigerAdmin()
     return enregistrerReglagesGmao(await ctx.json())
   })
@@ -270,7 +277,7 @@ export function routes(r) {
   r.get('/api/mn1/gmao/equipements', (ctx) => equipementsDeLaLigne(ctx.query.ligne))
 
   // Ce que la fenêtre de création propose : numéro, titre (d'après les modèles des réglages).
-  r.post('/api/mn1/gmao/proposition', async (ctx) => {
+  admin.post('/api/mn1/gmao/proposition', async (ctx) => {
     const { ligne = '', eth = '', machine = '', repere = '', nn = 1 } = await ctx.json()
     const r2 = reglagesGmao()
     const v = { ligne, eth, machine, repere, nn: String(nn).padStart(2, '0') }
@@ -278,7 +285,7 @@ export function routes(r) {
   })
 
   // { ids, numero, titre, parc, dateDeb, valider } : simule (valider absent) ou crée la FI.
-  r.post('/api/mn1/gmao/creer', async (ctx) => {
+  admin.post('/api/mn1/gmao/creer', async (ctx) => {
     ctx.exigerAdmin()
     return creerFi(await ctx.json())
   })
@@ -294,7 +301,7 @@ export function routes(r) {
   r.get('/api/mn1/demandes', (ctx) => tableau(String(ctx.query.lignes || '').split(',').filter(Boolean)))
 
   // Le type de demande compté comme niveau 1 (administrateur).
-  r.post('/api/mn1/type', async (ctx) => {
+  admin.post('/api/mn1/type', async (ctx) => {
     exigerEcriture()
     const { type = '' } = await ctx.json()
     modifierReglage('mn1_type_demande', String(type))

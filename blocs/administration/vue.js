@@ -21,7 +21,7 @@ export default {
   chemin: 'administration',
   titre: 'Administration',
   icone: 'reglages',
-  menu: true,
+  menu: 'admin',
   aide: 'administration',
 
   async afficher(zone, { id, query }) {

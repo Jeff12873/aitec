@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.5.4",
+      "date": "2026-10-28",
+      "points": [
+        "Administration et réglages de la GMAO réservés à l'administrateur ; les requêtes SQL ne sont plus montrées aux utilisateurs",
+        "L'analyse des pannes connues peut être lancée en consultation"
+      ]
+    },
+    {
       "version": "0.5.3",
       "date": "2026-10-26",
       "points": [

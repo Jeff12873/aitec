@@ -26,8 +26,8 @@ let enCours = null // promesse de la synchronisation en cours
 export const requetes = () => ({ machines: '', interventions: '', demandes: '', ...reglageJson('requetes_mysql', {}) })
 
 export function routes(r) {
-  r.get('/api/gmao/synchronisation', () => ({
-    requetes: requetes(),
+  r.get('/api/gmao/synchronisation', (ctx) => ({
+    requetes: (ctx.modeAdmin ?? true) ? requetes() : {},
     derniere: reglageJson('synchronisation', null),
     enCours: Boolean(enCours),
     connexion: etatConnexion().ouverte,
@@ -56,7 +56,7 @@ export function synchroniser() {
     try {
       const q = requetes()
       if (!q.machines && !q.interventions) throw new ErreurHttp(409, 'Aucune requête réglée : indiquez d’abord comment lire le parc et les interventions dans la base.')
-      if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion MySQL fermée : saisissez le mot de passe.')
+      if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible (réglée par l’administrateur).')
       const bilan = { date: new Date().toISOString() }
       const empreintes = reglageJson('synchronisation_empreintes', {})
       const nouvelles = {}
