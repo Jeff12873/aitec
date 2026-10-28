@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.1",
+      "date": "2026-10-28",
+      "points": [
+        "Bouton « Assistant » à côté des requêtes des machines, des interventions et des demandes (KTEC 0.6.1)"
+      ]
+    },
+    {
       "version": "0.6.0",
       "date": "2026-10-28",
       "points": [

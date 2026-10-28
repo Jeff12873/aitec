@@ -431,3 +431,4 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .choix-fi input, .remplacer-fi input { width: auto; flex: none; margin: 3px 0 0; }
 .choix-fi > div { flex: 1; }
 .barre-eth { background: color-mix(in srgb, var(--texte-3) 22%, transparent); }
+.tete-requete { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }

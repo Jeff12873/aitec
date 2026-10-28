@@ -5,6 +5,7 @@ import { h, vider, ic, essayer, nombreFr, notifier, dateHeureFr } from '/socle/u
 import { api } from '/socle/api.js'
 import { peutModifier, etat } from '/socle/etat.js'
 import { demanderMotDePasse } from '/socle/connexion.js'
+import { boutonAssistant, CHAMPS } from '../../interface/requetes-assistees.js'
 
 export default {
   chemin: 'import',
@@ -166,9 +167,9 @@ async function carteSynchronisation() {
     s.requetes.machines || s.requetes.interventions ? null : h('div', { class: 'bandeau info' }, ic('base'), 'Aucune requête pour l’instant : ouvrez « Les requêtes » ci-dessous.'),
     h('details', { open: !(s.requetes.machines && s.requetes.interventions) },
       h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),
-      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), machines),
-      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), interventions),
-      h('label', { class: 'champ', style: { marginTop: '10px' } }, h('span', {}, 'Demandes d’intervention (facultatif, pour le tableau de bord de la maintenance de niveau 1, lu en direct) — colonnes : numero, date, machine (repère), type, description, demandeur, etat, arret'), demandes),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), boutonAssistant(machines, { titre: 'Requête des machines', champs: CHAMPS.machines, consigne: 'Une ligne par machine du parc.' })), machines),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), boutonAssistant(interventions, { titre: 'Requête des interventions', champs: CHAMPS.interventions, consigne: 'Une ligne par intervention (bon de travail réalisé).' })), interventions),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Demandes d’intervention (facultatif, pour le tableau de bord de la maintenance de niveau 1, lu en direct) — colonnes : numero, date, machine (repère), type, description, demandeur, etat, arret'), boutonAssistant(demandes, { titre: 'Requête des demandes d’intervention', champs: CHAMPS.demandes, consigne: 'Une ligne par demande d’intervention.' })), demandes),
       h('div', { class: 'actions', style: { marginTop: '10px' } },
         h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: corpsRequetes() }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
     ),
