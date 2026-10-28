@@ -1,45 +1,32 @@
 // Le tableau de bord : chiffres clés, graphiques et remarques de l'IA.
-// Il ne compte que les machines des arborescences choisies dans Administration (production et maintenance,
-// par exemple), ou des lignes sélectionnées en haut de l'écran. Sans arborescence : toute la base.
+// Il compte les machines du parc choisi en haut d'AITEC (« Tous » : tout sauf les racines masquées dans
+// Administration › Parcs machines). Sans arborescence : toute la base.
 
 import { db, reglage, modifierReglage, noterModification } from '../../lib/base.js'
 import { etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
-import { lireArborescencesTableau } from '../../lib/arborescence.js'
+import { perimetreParc, filtreMachines, machinesMasquees } from '../../lib/parcs.js'
 import { sqlFamille } from '../../lib/types.js'
 
-// Le périmètre : { ids } (null = toute la base) et ce qu'il faut pour le choisir à l'écran.
-const TOUT = { ids: null }
+// Sans parc précisé : tout sauf les machines masquées (connues depuis la dernière lecture de l'arborescence).
+const tout = () => ({ ids: null, exclus: [...machinesMasquees()] })
 
 // Les consignes de « Ce que l'IA remarque » : modifiables par un administrateur (le rouage de l'encart),
 // gardées dans le fichier de connaissances ; vides = celles d'origine.
 const CONSIGNES_REMARQUES = `Tu es l'assistant d'un responsable de maintenance. À partir des données JSON fournies, écris 3 à 5 constats utiles, en français, sous forme de liste à puces courtes (une phrase chacune, avec les chiffres et les repères de machines).
 Mets en avant ce qui demande une action : machines dont les pannes augmentent, pannes qui se répètent, machines sans documentation, déséquilibre préventif/correctif. N'invente rien qui ne soit pas dans les données. Si les données sont presque vides, dis simplement ce qu'il faudrait importer.`
 const consignesRemarques = () => reglage('consignes_remarques', '') || CONSIGNES_REMARQUES
-async function perimetre(lignesVoulues = []) {
-  const a = await lireArborescencesTableau().catch(() => null)
-  if (!a) return { ...TOUT, lignes: [], arbres: [], choisies: [], selection: [] }
-  const selection = lignesVoulues.filter((id) => a.lignes.some((l) => l.id === id))
-  const retenues = selection.length ? a.lignes.filter((l) => selection.includes(l.id)) : a.lignes
-  return {
-    ids: [...new Set(retenues.flatMap((l) => l.machines))].map(Number).filter(Number.isInteger),
-    lignes: a.lignes.map((l) => ({ id: l.id, code: l.code, libelle: l.libelle, arbre: l.arbre, machines: l.machines.length })),
-    arbres: a.arbres,
-    choisies: a.choisies,
-    selection,
-  }
-}
-// « m.id IN (…) » : les ids sont des entiers lus dans la base, écrits tels quels dans la requête.
-const dans = (p, colonne) => (p.ids ? `${colonne} IN (${p.ids.join(',') || 'NULL'})` : '1')
-const lignesDemandees = (texte) => String(texte || '').split(',').map((x) => x.trim()).filter(Boolean)
+// Le périmètre : le parc choisi en haut d'AITEC (?parc=…), ou tout sauf les racines masquées.
+const perimetre = (parc = '') => perimetreParc(String(parc || '')).catch(() => ({ ids: null, exclus: [] }))
+const dans = (p, colonne) => filtreMachines(p, colonne)
 
 export function routes(r) {
   r.get('/api/tableau-de-bord', async (ctx) => {
-    const p = await perimetre(lignesDemandees(ctx.query.lignes))
-    const cle = p.selection.join(',')
+    const p = await perimetre(ctx.query.parc)
+    const cle = ctx.query.parc || ''
     return {
       atelier: reglage('nom_atelier', ''),
-      perimetre: { lignes: p.lignes, arbres: p.arbres, choisies: p.choisies, selection: p.selection, machines: p.ids?.length ?? null },
+      perimetre: { parc: p.parc || '', machines: p.ids?.length ?? null },
       tuiles: tuiles(p),
       parMois: interventionsParMois(p),
       parType: db()
@@ -51,8 +38,8 @@ export function routes(r) {
     }
   })
 
-  // Les dernières interventions d'un type (clic sur une part de l'anneau des types) : ?lignes=…&type=…
-  r.get('/api/tableau-de-bord/interventions', async (ctx) => dernieresInterventions(await perimetre(lignesDemandees(ctx.query.lignes)), ctx.query.type || ''))
+  // Les dernières interventions d'un type (clic sur une part de l'anneau des types) : ?parc=…&type=…
+  r.get('/api/tableau-de-bord/interventions', async (ctx) => dernieresInterventions(await perimetre(ctx.query.parc), ctx.query.type || ''))
 
   r.get('/api/tableau-de-bord/consignes', () => ({ texte: consignesRemarques(), origine: CONSIGNES_REMARQUES, modifiees: Boolean(reglage('consignes_remarques', '')) }))
 
@@ -67,28 +54,14 @@ export function routes(r) {
     return { texte: consignesRemarques() }
   })
 
-  r.get('/api/tableau-de-bord/arborescences', async () => {
-    const a = await lireArborescencesTableau().catch(() => null)
-    return a ? { arbres: a.arbres, choisies: a.choisies } : null
-  })
-
-  // Les arborescences comptées par le tableau de bord (administrateur) : { arbres: ['…', '…'] }
-  r.post('/api/tableau-de-bord/arborescences', async (ctx) => {
-    exigerEcriture()
-    const { arbres = [] } = await ctx.json()
-    modifierReglage('arborescences_tableau', JSON.stringify((Array.isArray(arbres) ? arbres : []).map(String)))
-    noterModification()
-    return { arbres }
-  })
-
   // « Ce que l'IA remarque » : l'IA lit les chiffres et écrit quelques constats.
   // Rien n'est enregistré dans le fichier : chaque poste garde ses remarques en mémoire.
   r.post('/api/tableau-de-bord/remarques', async (ctx) => {
     if (!iaInstallee()) return { texte: "L'IA n'est pas installée sur ce poste.", date: new Date().toISOString() }
-    const { lignes = [] } = await ctx.json().catch(() => ({}))
-    const p = await perimetre(Array.isArray(lignes) ? lignes.map(String) : [])
+    const { parc = '' } = await ctx.json().catch(() => ({}))
+    const p = await perimetre(parc)
     const donnees = {
-      perimetre: p.selection.length ? p.lignes.filter((l) => p.selection.includes(l.id)).map((l) => l.libelle) : p.choisies.length ? p.choisies : 'toute la base',
+      perimetre: p.parc ? `parc ${p.parc}` : 'tous les parcs',
       chiffres: tuiles(p),
       interventionsParMois: interventionsParMois(p),
       machinesLesPlusEnPanne12Mois: machinesLesPlusEnPanne(p, 10),
@@ -102,18 +75,18 @@ export function routes(r) {
       ],
       { temperature: 0.2, maxMots: 600 },
     )
-    remarquesEnMemoire = { texte, date: new Date().toISOString(), version: etatPartage().version, cle: p.selection.join(',') }
+    remarquesEnMemoire = { texte, date: new Date().toISOString(), version: etatPartage().version, cle: String(parc || '') }
     return remarquesEnMemoire
   })
 }
 
 let remarquesEnMemoire = { version: -1 }
 
-function tuiles(p = TOUT) {
+function tuiles(p = tout()) {
   const compter = (sql) => db().prepare(sql).get().n
   const machine = dans(p, 'machine_id')
   // Documents : ceux des machines comptées, et ceux qui ne sont rattachés à aucune machine.
-  const document = p.ids ? `(machine_id IS NULL OR ${machine})` : '1'
+  const document = p.ids ? `(machine_id IS NULL OR ${machine})` : machine
   return {
     machines: compter(`SELECT count(*) AS n FROM machines WHERE ${dans(p, 'id')}`),
     machinesHorsService: compter(`SELECT count(*) AS n FROM machines WHERE ${dans(p, 'id')} AND etat <> '' AND etat NOT LIKE 'En service%'`),
@@ -133,7 +106,7 @@ function dernieresInterventions(p, type = '') {
 }
 
 // Les 12 derniers mois, même ceux sans intervention.
-function interventionsParMois(p = TOUT) {
+function interventionsParMois(p = tout()) {
   const lignes = db()
     .prepare(
       `SELECT substr(date, 1, 7) AS mois,

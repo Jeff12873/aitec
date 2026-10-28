@@ -13,6 +13,7 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { exigerEcriture } from 'ktec/partage.js'
 import { journal } from 'ktec/installation.js'
 import { lireArborescence } from '../../lib/arborescence.js'
+import { perimetreParc, filtreMachines } from '../../lib/parcs.js'
 import { familleDe } from '../../lib/types.js'
 import { remplacerPassages, supprimerPassages, sansBalises } from '../recherche/passages.js'
 
@@ -237,13 +238,18 @@ async function analyserLigne(ligne) {
 
 export function routes(r) {
   // Les lignes qui ont des fiches, avec leur nombre.
-  r.get('/api/pannes/lignes', () => db().prepare("SELECT ligne, count(*) AS nombre FROM pannes GROUP BY ligne ORDER BY ligne").all())
+  // ?parc=… : seulement les fiches des machines du parc choisi en haut d'AITEC (jamais celles des machines masquées).
+  r.get('/api/pannes/lignes', async (ctx) => {
+    const p = await perimetreParc(ctx.query.parc || '')
+    return db().prepare(`SELECT ligne, count(*) AS nombre FROM pannes WHERE ${filtreMachines(p, 'machine_id')} GROUP BY ligne ORDER BY ligne`).all()
+  })
 
   // Les fiches d'une ligne (ou celle demandée par ?id=, avec toute sa ligne).
-  r.get('/api/pannes', (ctx) => {
+  r.get('/api/pannes', async (ctx) => {
     let ligne = ctx.query.ligne || ''
     if (ctx.query.id) ligne = db().prepare('SELECT ligne FROM pannes WHERE id = ?').get(ctx.query.id)?.ligne ?? ligne
-    const ids = db().prepare('SELECT p.id FROM pannes p LEFT JOIN machines m ON m.id = p.machine_id WHERE p.ligne = ? ORDER BY p.ensemble, m.repere, p.nombre DESC').all(ligne)
+    const p = await perimetreParc(ctx.query.id ? '' : ctx.query.parc || '')
+    const ids = db().prepare(`SELECT p.id FROM pannes p LEFT JOIN machines m ON m.id = p.machine_id WHERE p.ligne = ? AND ${filtreMachines(p, 'p.machine_id')} ORDER BY p.ensemble, m.repere, p.nombre DESC`).all(ligne)
     return { ligne, fiches: ids.map((f) => lireFiche(f.id)) }
   })
 

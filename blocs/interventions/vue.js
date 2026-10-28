@@ -3,6 +3,7 @@
 import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, nombreFr, apresPause } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
+import { avecParc } from '../../interface/parcs.js'
 
 export default {
   chemin: 'interventions',
@@ -22,7 +23,7 @@ export default {
 
     async function charger() {
       const parametres = new URLSearchParams({ q: recherche.value, machine: machine.value, type: type.value })
-      const interventions = await api('/api/interventions?' + parametres)
+      const interventions = await api(avecParc('/api/interventions?' + parametres))
       vider(
         liste,
         interventions.length === 500 ? h('p', { class: 'discret' }, 'Les 500 plus récentes sont affichées : précisez la recherche pour voir les autres.') : null,

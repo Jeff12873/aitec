@@ -8,6 +8,7 @@
 import { db } from '../../lib/base.js'
 import { etatPartage } from 'ktec/partage.js'
 import { iaInstallee, vecteurs } from 'ktec/ia.js'
+import { machinesMasquees } from '../../lib/parcs.js'
 
 const MOTS_VIDES = new Set(
   `le la les l de des du d un une et ou à au aux en pour par sur sous dans avec sans est sont été être avoir ai as a ont
@@ -24,7 +25,13 @@ export async function chercher(question, { machineId = null, limite = 8 } = {}) 
   for (const liste of [parMots, parSens]) {
     liste.forEach((id, rang) => scores.set(id, (scores.get(id) || 0) + 1 / (60 + rang)))
   }
-  const classes = [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  let classes = [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  // Les machines masquées (Administration › Parcs machines) ne comptent nulle part, pas même ici.
+  const masquees = machinesMasquees()
+  if (masquees.size && classes.length) {
+    const machineDe = new Map(db().prepare(`SELECT id, machine_id FROM passages WHERE id IN (${classes.map(() => '?').join(',')})`).all(...classes).map((p) => [p.id, p.machine_id]))
+    classes = classes.filter((id) => !masquees.has(machineDe.get(id)))
+  }
   return varier(classes, limite).map(decrirePassage).filter(Boolean)
 }
 

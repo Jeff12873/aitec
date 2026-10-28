@@ -6,6 +6,7 @@ import { h, vider, ic, essayer, confirmer, fenetre, notifier, dateFr } from '/so
 import { api } from '/socle/api.js'
 import { peutModifier, etat } from '/socle/etat.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
+import { avecParc } from '../../interface/parcs.js'
 
 let ligneChoisie = ''
 let suivi = null // minuterie du suivi de l'analyse en cours
@@ -18,9 +19,9 @@ export default {
   aide: 'assistant',
 
   async afficher(zone, { query }) {
-    const [lignes, etatAnalyse] = await Promise.all([api('/api/pannes/lignes'), api('/api/pannes/analyse')])
+    const [lignes, etatAnalyse] = await Promise.all([api(avecParc('/api/pannes/lignes')), api('/api/pannes/analyse')])
     if (!ligneChoisie && !query.id) ligneChoisie = lignes[0]?.ligne || ''
-    const donnees = await api(`/api/pannes?${query.id ? `id=${encodeURIComponent(query.id)}` : `ligne=${encodeURIComponent(ligneChoisie)}`}`)
+    const donnees = await api(avecParc(`/api/pannes?${query.id ? `id=${encodeURIComponent(query.id)}` : `ligne=${encodeURIComponent(ligneChoisie)}`}`))
     ligneChoisie = donnees.ligne
 
     const recherche = h('input', { type: 'search', placeholder: 'Filtrer : symptôme, cause, machine…' })

@@ -4,6 +4,7 @@
 
 import { h, ic } from '/socle/ui.js'
 import { estConcombre, concombreMasque } from './concombre.js'
+import { selecteurParc, rafraichirParcs } from './parcs.js'
 import tableauDeBord from '../blocs/tableau-de-bord/vue.js'
 import assistant from '../blocs/assistant/vue.js'
 import parc from '../blocs/parc/vue.js'
@@ -33,5 +34,8 @@ const champRecherche = h('input', {
     location.hash = `#/recherche?q=${encodeURIComponent(e.target.value.trim())}`
   },
 })
-export const barre = () => h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)
+export const barre = () => [selecteurParc(), h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)]
+
+// Les parcs du sélecteur : lus à l'ouverture (et après leur réglage dans Administration).
+export const auDemarrage = () => rafraichirParcs()
 export const styles = 'interface/app.css'

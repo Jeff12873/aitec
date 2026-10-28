@@ -4,6 +4,7 @@ import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr,
 import { api, adresse } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { texteSeul } from '../interventions/vue.js'
+import { avecParc } from '../../interface/parcs.js'
 
 export const ETATS = ['En service', 'En panne', 'En réserve', 'Hors service', 'Réformée']
 
@@ -24,7 +25,7 @@ export default {
 
     async function charger() {
       const parametres = new URLSearchParams({ q: recherche.value, famille: famille.value })
-      const machines = await api('/api/machines?' + parametres)
+      const machines = await api(avecParc('/api/machines?' + parametres))
       vider(
         liste,
         tableau({

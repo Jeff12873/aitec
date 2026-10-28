@@ -7,26 +7,12 @@ import { barres, anneau, barresHorizontales, COULEURS } from '/socle/graphiques.
 import { texteIA } from '/socle/texte-ia.js'
 import { etat } from '/socle/etat.js'
 import { texteSeul } from '../interventions/vue.js'
+import { avecParc, parcChoisi } from '../../interface/parcs.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 // Mêmes couleurs que le graphique par mois : correctif en violet, préventif en bleu.
 const COULEURS_TYPES = { Correctif: COULEURS.violet, Préventif: COULEURS.bleu }
 const AUTRES_COULEURS = [COULEURS.turquoise, COULEURS.orange, COULEURS.gris, COULEURS.rouge]
-
-// Les lignes choisies en haut du tableau de bord, gardées sur ce poste (aucune : toutes).
-const CLE_LIGNES = 'aitec-tableau-lignes'
-function lireSelection() {
-  try {
-    return JSON.parse(localStorage.getItem(CLE_LIGNES) || '[]')
-  } catch {
-    return []
-  }
-}
-function garderSelection(selection) {
-  try {
-    localStorage.setItem(CLE_LIGNES, JSON.stringify(selection))
-  } catch {}
-}
 
 export default {
   chemin: 'tableau-de-bord',
@@ -35,24 +21,15 @@ export default {
   menu: true,
   aide: 'tableau-de-bord',
 
+  // Le parc compté est celui du sélecteur, en haut d'AITEC.
   async afficher(zone) {
-    let selection = lireSelection()
-    const dessiner = async () => {
-      const d = await api(`/api/tableau-de-bord${selection.length ? `?lignes=${encodeURIComponent(selection.join(','))}` : ''}`)
-      selection = d.perimetre.selection
-      const choisir = (nouvelle) => {
-        selection = nouvelle
-        garderSelection(selection)
-        dessiner()
-      }
-      afficherTableau(zone, d, selection, choisir)
-      animer(zone)
-    }
-    await dessiner()
+    const d = await api(avecParc('/api/tableau-de-bord'))
+    afficherTableau(zone, d)
+    animer(zone)
   },
 }
 
-function afficherTableau(zone, d, selection, choisir) {
+function afficherTableau(zone, d) {
   const t = d.tuiles
   const ecart = t.interventions30j - t.interventions30jAvant
 
@@ -65,14 +42,14 @@ function afficherTableau(zone, d, selection, choisir) {
     typeChoisi = typeChoisi === type ? '' : type
     anneauTypes.marquer(typeChoisi)
     typeAffiche.textContent = typeChoisi ? `type : ${typeChoisi}` : ''
-    const liste = await essayer(() => api(`/api/tableau-de-bord/interventions?type=${encodeURIComponent(typeChoisi)}${selection.length ? `&lignes=${encodeURIComponent(selection.join(','))}` : ''}`))
+    const liste = await essayer(() => api(avecParc(`/api/tableau-de-bord/interventions?type=${encodeURIComponent(typeChoisi)}`)))
     if (liste) vider(zoneListe, listeInterventions(liste))
   }
   const anneauTypes = graphiqueTypes(d.parType, choisirType)
 
   vider(
     zone,
-    h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, 'Vue d’ensemble du parc et de la maintenance'))),
+    h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, d.perimetre?.parc ? `Parc ${d.perimetre.parc} : ${nombreFr(d.perimetre.machines)} machines` : 'Vue d’ensemble du parc et de la maintenance'))),
 
     t.machines === 0 ? bandeauDemarrage() : null,
 
@@ -84,52 +61,16 @@ function afficherTableau(zone, d, selection, choisir) {
       tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
     ),
 
-    barrePerimetre(d.perimetre, selection, choisir),
-
     h(
       'div',
       { class: 'grille grille-3' },
       h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
-      carteRemarques(d.remarques, selection),
+      carteRemarques(d.remarques),
       h('div', { class: 'carte' }, entete('cle', 'Types d’intervention', '12 mois · cliquer pour filtrer'), anneauTypes),
       h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus en panne', 'correctif, 12 mois · cliquer pour l’analyse'), graphiquePannes(d.machinesEnPanne)),
       h('div', { class: 'carte pleine' }, entete('historique', 'Dernières interventions', typeAffiche), zoneListe),
     ),
   )
-}
-
-// Les lignes (plus haut niveau de l'arborescence) à compter : aucune cochée = toutes. Avec plusieurs
-// arborescences, chaque ligne de la deuxième se range sous son équivalent de la première (même désignation,
-// ou même code une fois le préfixe ôté : « X_DISQUE » sous « DISQUE ») ; les autres suivent, seules.
-function barrePerimetre(perimetre, selection, choisir) {
-  if (!perimetre?.lignes?.length) return null
-  const basculer = (id) => choisir(selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id])
-  const pastille = (l) => h('button', { class: `pastille-ligne${selection.includes(l.id) ? ' choisie' : ''}`, title: `${l.libelle} — ${nombreFr(l.machines)} machines${l.arbre ? ` (${l.arbre})` : ''}`, onclick: () => basculer(l.id) }, l.code || l.libelle)
-  const arbres = [...new Set(perimetre.lignes.map((l) => l.arbre))]
-  const piles = rangerParPaires(perimetre.lignes, arbres)
-  return h('div', { class: 'perimetre-tableau' },
-    h('div', { class: 'tete-perimetre' },
-      h('button', { class: `pastille-ligne toutes${selection.length ? '' : ' choisie'}`, title: 'Toutes les lignes des arborescences choisies dans Administration', onclick: () => choisir([]) }, 'Toutes'),
-      arbres.length > 1 ? h('div', { class: 'legende-arbres' }, arbres.map((a, i) => h('span', {}, h('i', { class: `rang-${i}` }), a || 'sans arborescence'))) : null,
-      perimetre.machines !== null ? h('span', { class: 'discret compte-perimetre' }, `${nombreFr(perimetre.machines)} machines comptées`) : null),
-    h('div', { class: 'piles-lignes' }, piles.map((pile) => h('div', { class: 'pile-ligne' }, pile.map((l, i) => (l ? h('div', { class: `etage rang-${arbres.indexOf(l.arbre)}` }, pastille(l)) : h('div', { class: 'etage vide' })))))))
-}
-
-// [[ligne de l'arbre 1, ligne de l'arbre 2, …], …] : une pile par ligne de la première arborescence.
-function rangerParPaires(lignes, arbres) {
-  const cle = (texte) => String(texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
-  const designation = (l) => cle(/\((.*)\)$/.exec(l.libelle)?.[1] || '')
-  const sansPrefixe = (code) => cle(String(code).replace(/^[^_]{1,3}_/, ''))
-  const parArbre = arbres.map((a) => lignes.filter((l) => l.arbre === a))
-  const piles = parArbre[0].map((l) => [l])
-  for (let rang = 1; rang < parArbre.length; rang++) {
-    for (const l of parArbre[rang]) {
-      const pile = piles.find((p) => !p[rang] && p[0] && (sansPrefixe(l.code) === cle(p[0].code) || (designation(l) && designation(l) === designation(p[0]))))
-      if (pile) pile[rang] = l
-      else { const seule = Array(rang).fill(null); seule[rang] = l; piles.push(seule) }
-    }
-  }
-  return piles.map((p) => Array.from({ length: arbres.length }, (_, i) => p[i] || null))
 }
 
 // Les chiffres défilent jusqu'à leur valeur, les barres montent, l'anneau se dessine.
@@ -237,7 +178,7 @@ function listeInterventions(liste) {
 }
 
 // « Ce que l'IA remarque »
-function carteRemarques(remarques, selection) {
+function carteRemarques(remarques) {
   const corps = h('div', { class: 'texte-ia' })
   const date = h('span', { class: 'discret' })
   const bouton = h('button', { class: 'petit', onclick: analyser }, ic('rafraichir', 15), remarques ? 'Actualiser' : 'Analyser')
@@ -249,7 +190,7 @@ function carteRemarques(remarques, selection) {
   async function analyser() {
     bouton.disabled = true
     corps.innerHTML = '<p class="discret curseur">L’IA lit les chiffres de la base</p>'
-    const r = await essayer(() => api('/api/tableau-de-bord/remarques', { methode: 'POST', corps: { lignes: selection } }))
+    const r = await essayer(() => api('/api/tableau-de-bord/remarques', { methode: 'POST', corps: { parc: parcChoisi() } }))
     bouton.disabled = false
     if (r) montrer(r)
     else corps.textContent = ''

@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.5.5",
+      "date": "2026-10-28",
+      "points": [
+        "Parcs machines (Administration) : les racines de l'arborescence rangées en parcs (production, maintenance, autres), par glisser-déposer ; racines masquées ; « Non classé »",
+        "Liens production ↔ maintenance par machine, avec propositions d'après les codes",
+        "Sélecteur de parc en haut d'AITEC (« Tous » ou un parc) : tableau de bord, parc, interventions et pannes connues le suivent",
+        "Les machines masquées ne comptent plus nulle part (recherche et assistant compris)",
+        "Arborescence gardée 10 minutes : écrans plus rapides"
+      ]
+    },
+    {
       "version": "0.5.4",
       "date": "2026-10-28",
       "points": [

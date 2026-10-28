@@ -3,6 +3,7 @@
 import { db } from '../../lib/base.js'
 import { creerTable, routesTable } from '../../lib/tables.js'
 import { remplacerPassages, supprimerPassages } from '../recherche/passages.js'
+import { perimetreParc, filtreMachines } from '../../lib/parcs.js'
 
 export const machines = creerTable({
   table: 'machines',
@@ -40,8 +41,9 @@ export function indexerMachine(id) {
 
 export function routes(r) {
   routesTable(r, 'machines', machines, {
-    lister: (query) => {
-      const conditions = []
+    // ?parc=… : le parc choisi en haut d'AITEC ; sans lui, tout sauf les machines masquées.
+    lister: async (query) => {
+      const conditions = [filtreMachines(await perimetreParc(query.parc || ''), 'm.id')]
       const valeurs = []
       if (query.q) {
         conditions.push(`(m.repere LIKE ? OR m.designation LIKE ? OR m.marque LIKE ? OR m.modele LIKE ? OR m.emplacement LIKE ?)`)

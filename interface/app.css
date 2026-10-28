@@ -115,27 +115,10 @@
 .pastille-panne b { font-size: 11px; color: var(--accent); }
 .pastille-panne small { color: var(--accent); font-variant-numeric: tabular-nums; }
 
-/* Tableau de bord : les lignes comptées, par piles (maintenance au-dessus, son équivalent production dessous) */
-.perimetre-tableau { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--carte); }
-.tete-perimetre { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 10px; }
-.legende-arbres { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--texte-3); }
-.legende-arbres span { display: inline-flex; align-items: center; gap: 6px; }
-.legende-arbres i { width: 10px; height: 10px; border-radius: 3px; }
-.legende-arbres i.rang-0 { background: var(--accent); }
-.legende-arbres i.rang-1 { background: #a78bfa; }
-.legende-arbres i.rang-2 { background: #f59e0b; }
-.piles-lignes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
-.pile-ligne { display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 12px; background: var(--carte-2); }
-.pile-ligne .etage { display: flex; }
-.pile-ligne .etage.vide { min-height: 27px; }
-.pile-ligne .pastille-ligne { flex: 1; text-align: center; }
-.etage.rang-0 .pastille-ligne { border-left: 3px solid var(--accent); }
-.etage.rang-1 .pastille-ligne { border-left: 3px solid #a78bfa; }
-.etage.rang-2 .pastille-ligne { border-left: 3px solid #f59e0b; }
+/* Pastilles (sélecteur de parc) */
 .pastille-ligne { padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--texte-2); background: var(--carte); border: 1px solid var(--bord); }
 .pastille-ligne:hover { color: var(--texte); border-color: var(--bord-fort); }
 .pastille-ligne.choisie { color: var(--accent); background: var(--accent-doux); border-color: var(--accent); }
-.compte-perimetre { margin-left: auto; font-size: 12px; }
 
 /* Tableau de bord : dernières interventions */
 td.col-date { white-space: nowrap; }
@@ -299,3 +282,30 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .ligne-charge .barre-charge { height: 8px; }
 .ligne-charge.depasse .barre-charge > div { background: #f87171; }
 .chiffres-charge { text-align: right; font-variant-numeric: tabular-nums; color: var(--texte-2); }
+
+/* Parcs machines (Administration) : les racines à ranger, par glisser-déposer */
+.grille-parcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; margin-top: 16px; }
+.carte-parc .carte-entete h2 { font-size: 17px; letter-spacing: .02em; }
+.zone-depot { margin-top: 10px; padding: 8px 10px 10px; border: 1px dashed var(--bord-fort); border-radius: var(--rayon); background: var(--carte-2); transition: border-color .15s, background .15s; }
+.zone-depot.survol { border-color: var(--accent); background: var(--accent-doux); }
+.zone-depot-titre { display: flex; gap: 10px; align-items: baseline; font-size: 13px; margin-bottom: 6px; }
+.zone-depot.role-production .zone-depot-titre b { color: #a78bfa; }
+.zone-depot.role-maintenance .zone-depot-titre b { color: var(--accent); }
+.zone-depot.zone-masquees { border-color: var(--rouge-doux); }
+.zone-depot.zone-masquees .zone-depot-titre b { color: var(--rouge); }
+.zone-depot.zone-libres .zone-depot-titre b { color: var(--orange); }
+.puces-racines { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; align-items: center; }
+.vide-depot { font-size: 12px; }
+.puce-racine { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 13px; font-weight: 500; color: var(--texte); background: var(--carte); border: 1px solid var(--bord); cursor: grab; }
+.puce-racine small { color: var(--texte-3); font-variant-numeric: tabular-nums; }
+.puce-racine:hover { border-color: var(--accent); }
+.puce-racine.glisse { opacity: .4; }
+.liste-destinations { display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
+.destination { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+.destination:hover { background: var(--carte-2); }
+
+/* Le sélecteur de parc, en haut d'AITEC : « Tous » ou un parc, partout */
+.selecteur-parc { display: flex; gap: 5px; align-items: center; overflow-x: auto; scrollbar-width: none; max-width: 46vw; padding: 2px; }
+.selecteur-parc::-webkit-scrollbar { display: none; }
+.selecteur-parc .pastille-ligne { white-space: nowrap; flex: none; }
+.selecteur-parc .pastille-ligne.non-classe { border-style: dashed; }

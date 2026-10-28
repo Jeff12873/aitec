@@ -9,9 +9,11 @@ import { peutModifier, actualiserEtat } from '/socle/etat.js'
 import { ouvrirModeAdmin } from '/socle/fichier.js'
 import documents from '../documents/vue.js'
 import importGmao from '../import-gmao/vue.js'
+import { afficherReglageParcs } from '../../interface/reglage-parcs.js'
 
-// Les trois onglets de l'administration. Documents et Données GMAO réutilisent les écrans de leurs blocs.
+// Les onglets de l'administration. Documents et Données GMAO réutilisent les écrans de leurs blocs.
 const ONGLETS = [
+  ['parcs', 'Parcs machines', 'usine'],
   ['documents', 'Documents', 'document'],
   ['import', 'Données de la GMAO', 'tableur'],
   ['reglages', 'Réglages', 'reglages'],
@@ -25,7 +27,7 @@ export default {
   aide: 'administration',
 
   async afficher(zone, { id, query }) {
-    const onglet = ONGLETS.some(([cle]) => cle === id) ? id : 'documents'
+    const onglet = ONGLETS.some(([cle]) => cle === id) ? id : 'parcs'
     const contenu = h('div', { class: 'onglet-contenu' })
     vider(
       zone,
@@ -36,6 +38,7 @@ export default {
       contenu,
     )
     if (onglet === 'reglages') return afficherReglages(contenu)
+    if (onglet === 'parcs') return afficherReglageParcs(contenu)
     if (!peutModifier()) {
       vider(contenu, h('div', { class: 'carte' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Ajouter des documents ou mettre à jour les données de la GMAO demande le mode administrateur.'), h('button', { class: 'principal', onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))))
       return
@@ -53,7 +56,7 @@ async function afficherReglages(zone) {
       carteContenu(infos),
       carteModele(),
       peutModifier()
-        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteArborescencesTableau(), carteTypes(), carteIndex(infos), carteReprise(infos)]
+        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteTypes(), carteIndex(infos), carteReprise(infos)]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )
@@ -169,26 +172,6 @@ function carteArborescence() {
   return carte('reseau', 'Arborescence des machines', corps)
 }
 
-// Les arborescences comptées par le tableau de bord (plusieurs possibles : production et maintenance…).
-function carteArborescencesTableau() {
-  const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture de l’arborescence…'))
-  const charger = () => api('/api/tableau-de-bord/arborescences').then((a) => {
-    if (!a?.arbres?.length) return vider(corps, h('p', { class: 'texte-2' }, 'Une seule arborescence (ou aucune) : le tableau de bord compte toutes ses machines. Voir la carte « Arborescence des machines ».'))
-    const cases = a.arbres.map((x) => ({ nom: x.nom, c: h('input', { type: 'checkbox', checked: a.choisies.includes(x.nom) }), machines: x.machines }))
-    vider(corps,
-      h('p', { class: 'texte-2' }, 'Les machines comptées dans les chiffres, graphiques et remarques du tableau de bord.'),
-      h('div', { class: 'cases-arbres' }, cases.map((x) => h('label', { class: 'case-arbre' }, x.c, h('span', {}, x.nom), h('small', { class: 'discret' }, `${nombreFr(x.machines)} machines`)))),
-      h('div', { class: 'actions', style: { marginTop: '10px' } }, h('button', { class: 'principal', onclick: async () => {
-        const arbres = cases.filter((x) => x.c.checked).map((x) => x.nom)
-        if (await essayer(() => api('/api/tableau-de-bord/arborescences', { methode: 'POST', corps: { arbres } }), 'Arborescences du tableau de bord enregistrées')) charger()
-      } }, 'Enregistrer')))
-  }).catch((e) => vider(corps, h('p', { class: 'texte-2' }, `Arborescence illisible : ${e.message}`)))
-  charger()
-  return carte('tableau', 'Tableau de bord', corps)
-}
-
-// Les types d'intervention de la GMAO, rangés en familles : c'est ce qui fait compter une intervention comme
-// une panne (Correctif) ou comme du préventif dans les chiffres, les graphiques et les pannes connues.
 function carteTypes() {
   const corps = h('div', {}, h('p', { class: 'discret' }, 'Lecture des types…'))
   const charger = () => api('/api/admin/types').then((types) => {

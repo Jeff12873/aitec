@@ -5,6 +5,7 @@ import { creerTable, routesTable } from '../../lib/tables.js'
 import { remplacerPassages, supprimerPassages, sansBalises } from '../recherche/passages.js'
 import { journal } from 'ktec/installation.js'
 import { exigerEcriture, noterModification, transaction } from 'ktec/partage.js'
+import { perimetreParc, filtreMachines } from '../../lib/parcs.js'
 
 export const interventions = creerTable({
   table: 'interventions',
@@ -63,8 +64,9 @@ export function routes(r) {
     }
   }, 5000)
   routesTable(r, 'interventions', interventions, {
-    lister: (query) => {
-      const conditions = []
+    // ?parc=… : le parc choisi en haut d'AITEC ; sans lui, tout sauf les machines masquées.
+    lister: async (query) => {
+      const conditions = [filtreMachines(await perimetreParc(query.parc || ''), 'i.machine_id')]
       const valeurs = []
       if (query.q) {
         conditions.push('(i.description LIKE ? OR i.cause LIKE ? OR i.numero LIKE ? OR m.repere LIKE ? OR i.intervenant LIKE ?)')
