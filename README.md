@@ -15,6 +15,11 @@ aux questions **en français**, en citant ses sources.
 - **Un seul fichier de connaissances `.ktec`**, commun aux applications KTEC et partagé sur le lecteur réseau : copie
   locale, un seul poste modifie à la fois (verrou), publication automatique, sauvegardes. Un ancien fichier IASSITEC
   (`.datassitec`) se reprend en un clic (Administration › Réglages).
+- **Parcs machines** : les racines de l'arborescence de la GMAO rangées en parcs (production, maintenance), avec un
+  sélecteur de parc pour tout AITEC ; les racines masquées ne comptent nulle part.
+- **Maintenance de niveau 1** : une vignette par parc (charge réelle des FI de la GMAO, pertinence des fiches face
+  au Pareto des pannes, tendance, alertes), la fiche MN1 du parc, et la création, le remplacement ou la suspension
+  des FI dans la GMAO (SQL du site, simulé d'abord, en mode administrateur).
 
 Tout ce qui est propre au site (données, requêtes de synchronisation, glossaire) est dans le `.ktec`, jamais dans
 ce dépôt : c'est une coquille vide.

@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.6.0",
+      "date": "2026-10-28",
+      "points": [
+        "Maintenance de niveau 1 par parcs : une vignette par parc avec la charge des opérateurs, la pertinence des fiches, la tendance des pannes et les alertes ; tri par charge, pertinence ou alertes",
+        "Charge calculée sur les FI réelles de la GMAO (lues à chaque ouverture), pondérée par leur périodicité, avec un maximum de fiches par semaine et par ETH réglable par parc",
+        "FI dans la GMAO : nouvelle (premier numéro libre), réactivation d'une FI suspendue, ou remplacement de la fiche d'une FI ; suspension quand le maximum baisse ; jamais de renumérotation ; simulation d'abord",
+        "Analyse de corrélation par l'IA : Pareto des pannes ↔ fiches et demandes, pertinence pondérée, fiches sans cible (fréquence plus espacée proposée), trous du Pareto (brouillon de fiche par l'IA), analyse datée et signalée à refaire",
+        "Avant / après de chaque fiche, demandes faites malgré une fiche, fiches archivées avec leur historique, fréquence « à analyser » pour les fiches importées",
+        "Bandeau : pourquoi le niveau 1 (texte modifiable par l'administrateur), chiffres du site, et des repères sur la maintenance autonome qui défilent",
+        "Paramètres des FI choisis par leur nom dans des listes lues dans la GMAO ; ancien écran gardé derrière « Ancien mode »"
+      ]
+    },
+    {
       "version": "0.5.5",
       "date": "2026-10-28",
       "points": [

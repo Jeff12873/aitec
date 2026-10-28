@@ -6,11 +6,14 @@
 import { db, reglage, reglageJson, modifierReglage, noterModification, transaction } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { exigerEcriture } from 'ktec/partage.js'
-import { executerRequete, etatConnexion } from 'ktec/mysql.js'
-import { lireArborescencesTableau } from '../../lib/arborescence.js'
-import { requetes } from '../import-gmao/synchronisation.js'
+import { executerRequete } from 'ktec/mysql.js'
 import { lireTableur } from '../../lib/tableurs.js'
-import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir } from './gmao.js'
+import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir, reglagesDuParc, enregistrerReglagesDuParc, PROPRES_AU_PARC } from './gmao.js'
+import { lireDemandes, close } from './demandes.js'
+import { vignettes, detailDuParc, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
+import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
+import { analyser, proposerFiche } from './correlation.js'
+import { lireParcs } from '../../lib/parcs.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
@@ -42,6 +45,9 @@ function nettoyerFiche(f) {
   if (!propre.action) throw new ErreurHttp(400, 'Le geste est obligatoire.')
   return propre
 }
+
+// Le bandeau du haut : pourquoi la maintenance de niveau 1 (modifiable par l'administrateur).
+export const DESCRIPTION = 'La maintenance de niveau 1, ce sont les gestes simples que les opérateurs font sur leur machine : regarder, écouter, toucher, nettoyer, resserrer. Faits régulièrement, ils montrent les petites anomalies avant qu’elles ne deviennent des pannes : moins d’arrêts subis, des interventions préparées plutôt qu’urgentes, et des opérateurs qui connaissent mieux leur machine.'
 
 // ---------------------------------------------------------------- import d'un classeur
 
@@ -82,49 +88,12 @@ function fichesDuClasseur(feuilles) {
 
 // ---------------------------------------------------------------- demandes d'intervention
 
-let cache = { cle: '', quand: 0, lignes: [] }
-
-// AAAAMMJJ, AAAA-MM-JJ ou une date : → AAAA-MM-JJ
-function dateIso(v) {
-  if (v instanceof Date) return v.toISOString().slice(0, 10)
-  const t = String(v ?? '').trim()
-  if (/^\d{8}$/.test(t)) return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`
-  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''
-}
-// Une demande est close si son état le dit (mots courants, accents ignorés).
-const close = (etat) => /clos|clotur|termin|sold|realis|annul|refus|archiv/.test(String(etat || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase())
-const vrai = (v) => v === true || v === 1 || /^(1|o|oui|vrai|true|x)$/i.test(String(v ?? '').trim())
-
-async function lireDemandes() {
-  const sql = requetes().demandes
-  if (!sql) return null
-  if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible (réglée par l’administrateur).')
-  // Une minute de cache : l'écran se redessine souvent, la base n'a pas besoin d'être relue à chaque fois.
-  if (cache.cle === sql && Date.now() - cache.quand < 60_000) return cache.lignes
-  const r = await executerRequete(sql.replace(/--[^\n]*/g, ''), 1_000_000)
-  const i = (nom) => r.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
-  const col = Object.fromEntries(['numero', 'date', 'machine', 'type', 'description', 'demandeur', 'etat', 'arret'].map((n) => [n, i(n)]))
-  if (col.date < 0 || col.machine < 0 || col.type < 0) throw new ErreurHttp(400, 'Requête des demandes : il faut au moins les colonnes date, machine et type.')
-  const v = (l, n) => (col[n] < 0 ? '' : l[col[n]])
-  const lignes = r.lignes.map((l) => ({
-    numero: String(v(l, 'numero') ?? ''),
-    date: dateIso(v(l, 'date')),
-    machine: String(v(l, 'machine') ?? '').trim(),
-    type: String(v(l, 'type') ?? '').trim(),
-    description: String(v(l, 'description') ?? '').trim().slice(0, 300),
-    demandeur: String(v(l, 'demandeur') ?? '').trim(),
-    etat: String(v(l, 'etat') ?? '').trim(),
-    arret: vrai(v(l, 'arret')),
-  }))
-  cache = { cle: sql, quand: Date.now(), lignes }
-  return lignes
-}
-
 function moisDe(date) {
   return date.slice(0, 7)
 }
 
-async function tableau(lignesVoulues) {
+// ?parc=… : les demandes des machines du parc choisi en haut d'AITEC (jamais celles des machines masquées).
+async function tableau(parcVoulu = '') {
   const demandes = await lireDemandes()
   if (!demandes) return { reglee: false }
   const types = [...demandes.reduce((c, d) => (d.type ? c.set(d.type, (c.get(d.type) || 0) + 1) : c), new Map())].sort((a, b) => b[1] - a[1]).map(([nom, nombre]) => ({ nom, nombre }))
@@ -132,14 +101,16 @@ async function tableau(lignesVoulues) {
   // Par défaut : le type dont le nom parle de maintenance, sinon le plus fréquent.
   const type = voulu && types.some((t) => t.nom === voulu) ? voulu : (types.find((t) => /maint/i.test(t.nom)) || types[0])?.nom || ''
 
-  // La place de chaque machine (ligne, ETH), et les lignes à garder.
+  // La place de chaque machine (parc, ETH).
   const parRepere = new Map(db().prepare('SELECT id, repere, designation FROM machines').all().map((m) => [m.repere, m]))
-  const arbre = await lireArborescencesTableau().catch(() => null)
+  const p = await lireParcs().catch(() => null)
   const place = new Map()
-  for (const l of arbre?.lignes || []) {
-    for (const id of l.machines) if (!place.has(id)) place.set(id, { ligneId: l.id, ligne: l.libelle, eth: '' })
-    for (const e of l.enfants) for (const id of e.machines) place.set(id, { ligneId: l.id, ligne: l.libelle, eth: e.libelle })
+  for (const parc of p?.parcs || []) {
+    for (const racine of [...parc.production, ...parc.maintenance, ...parc.autres]) {
+      for (const n of p.detail(racine)) if (n.machine && !place.has(n.machine)) place.set(n.machine, { parc: parc.id, eth: n.eth })
+    }
   }
+  const masquees = p?.machinesMasquees || new Set()
   const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
   const depuis12Mois = ilYa(365)
   const retenues = demandes
@@ -148,7 +119,7 @@ async function tableau(lignesVoulues) {
       const m = parRepere.get(d.machine)
       return { ...d, machineId: m?.id || null, designation: m?.designation || '', ...(m ? place.get(m.id) : null), close: close(d.etat) }
     })
-    .filter((d) => !lignesVoulues.length || lignesVoulues.includes(d.ligneId))
+    .filter((d) => !(d.machineId && masquees.has(d.machineId)) && (!parcVoulu || place.get(d.machineId)?.parc === parcVoulu))
     .sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero, 'fr', { numeric: true }))
   const annee = retenues.filter((d) => d.date >= depuis12Mois)
 
@@ -161,7 +132,8 @@ async function tableau(lignesVoulues) {
     const du = annee.filter((x) => moisDe(x.date) === cle)
     parMois.push({ mois: cle, ouvertes: du.filter((x) => !x.close).length, closes: du.filter((x) => x.close).length })
   }
-  const avecFiche = new Set(db().prepare('SELECT DISTINCT machine_id FROM fiches_mn1').all().map((f) => f.machine_id))
+  // Les machines qui ont une fiche (celle de la fiche, son équipement de production, et sa machine de maintenance).
+  const avecFiche = new Set(db().prepare('SELECT machine_id, machine_prod FROM fiches_mn1 WHERE archivee = 0').all().flatMap((f) => [f.machine_id, f.machine_prod, p?.liens?.[f.machine_prod]]).filter(Boolean))
   const machines = compter(annee, 'machine').slice(0, 8).map(([repere, nombre]) => {
     const m = parRepere.get(repere)
     return { repere, nombre, id: m?.id || null, designation: m?.designation || '', fiche: m ? avecFiche.has(m.id) : false }
@@ -170,7 +142,6 @@ async function tableau(lignesVoulues) {
     reglee: true,
     types,
     type,
-    lignes: (arbre?.lignes || []).map((l) => ({ id: l.id, libelle: l.libelle })),
     tuiles: {
       annee: annee.length,
       ouvertes: retenues.filter((d) => !d.close).length,
@@ -212,28 +183,42 @@ export function routes(r) {
     return parametres()
   })
 
-  // { machine_id, pour, action, frequence, evite, eth, ligne } ; un même geste sur la même machine n'est gardé qu'une fois.
+  // Depuis l'analyse d'une machine : { machine_id, action, frequence, evite, eth, ligne } (fréquence préconisée).
+  // Depuis un trou du Pareto (brouillon de l'IA relu) : { parc, machine_nom, zone, etiquette, action, frequence, evite }.
+  // Un même geste sur la même machine n'est gardé qu'une fois.
   r.post('/api/mn1/fiches', async (ctx) => {
     exigerEcriture()
     const f = await ctx.json()
+    const propre = nettoyerFiche(f)
+    const maintenant = new Date().toISOString()
+    if (!f.machine_id) {
+      if (!f.parc) throw new ErreurHttp(400, 'Machine ou parc obligatoire.')
+      const id = db()
+        .prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, parc, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'ia', ?, ?, 'manuelle', ?, '', '', ?, ?, ?)")
+        .run(propre.etiquette, String(f.machine_nom || '').trim().slice(0, 120), propre.zone, propre.action, propre.frequence, propre.evite, String(f.parc), maintenant, maintenant).lastInsertRowid
+      noterModification()
+      return lireFiches('WHERE f.id = ?', Number(id))[0]
+    }
     const machine = db().prepare('SELECT id FROM machines WHERE id = ?').get(f.machine_id)
     if (!machine) throw new ErreurHttp(404, 'Machine introuvable')
-    const propre = nettoyerFiche(f)
     const deja = db().prepare('SELECT id FROM fiches_mn1 WHERE machine_id = ? AND lower(action) = lower(?)').get(machine.id, propre.action)
     if (deja) return lireFiches('WHERE f.id = ?', deja.id)[0]
-    const maintenant = new Date().toISOString()
     const id = db()
-      .prepare('INSERT INTO fiches_mn1 (machine_id, pour, action, frequence, evite, ligne, eth, cree_le, modifie_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .prepare("INSERT INTO fiches_mn1 (machine_id, pour, action, frequence, frequence_source, evite, ligne, eth, cree_le, modifie_le) VALUES (?, ?, ?, ?, 'analyse', ?, ?, ?, ?, ?)")
       .run(machine.id, propre.pour, propre.action, propre.frequence, propre.evite, String(f.ligne || ''), String(f.eth || ''), maintenant, maintenant).lastInsertRowid
     noterModification()
     return lireFiches('WHERE f.id = ?', Number(id))[0]
   })
 
+  // Corriger une fiche ; une fréquence choisie ici (après l'analyse de la machine) n'est plus provisoire.
   r.post('/api/mn1/fiches/:id', async (ctx) => {
     exigerEcriture()
-    const propre = nettoyerFiche(await ctx.json())
-    const r2 = db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
-    if (!r2.changes) throw new ErreurHttp(404, 'Fiche introuvable')
+    const entree = await ctx.json()
+    const propre = nettoyerFiche(entree)
+    const avant = db().prepare('SELECT frequence, frequence_source FROM fiches_mn1 WHERE id = ?').get(ctx.params.id)
+    if (!avant) throw new ErreurHttp(404, 'Fiche introuvable')
+    const source = entree.confirmerFrequence || avant.frequence !== propre.frequence ? (propre.frequence ? 'manuelle' : avant.frequence_source) : avant.frequence_source
+    db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, frequence_source = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, source, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
     noterModification()
     return lireFiches('WHERE f.id = ?', Number(ctx.params.id))[0]
   })
@@ -250,7 +235,7 @@ export function routes(r) {
     const maintenant = new Date().toISOString()
     const existante = db().prepare("SELECT id FROM fiches_mn1 WHERE origine = 'import' AND ligne = ? AND etiquette = ? AND machine_nom = ?")
     const modifier = db().prepare('UPDATE fiches_mn1 SET eth = ?, zone = ?, action = ?, modifie_le = ? WHERE id = ?')
-    const creer = db().prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, evite, ligne, eth, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'import', ?, ?, '', ?, ?, ?, ?)")
+    const creer = db().prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'import', ?, ?, 'import', '', ?, ?, ?, ?)")
     let creees = 0
     let modifiees = 0
     transaction(() => {
@@ -297,8 +282,111 @@ export function routes(r) {
     return { supprimee: true }
   })
 
-  // Le tableau de bord des demandes de niveau 1 : ?lignes=id1,id2
-  r.get('/api/mn1/demandes', (ctx) => tableau(String(ctx.query.lignes || '').split(',').filter(Boolean)))
+  // Le tableau de bord des demandes de niveau 1 : ?parc=…
+  r.get('/api/mn1/demandes', (ctx) => tableau(String(ctx.query.parc || '')))
+
+  // ---- Parcs : vignettes, fiche du parc, analyse de corrélation
+
+  // Les vignettes (les FI de la GMAO sont relues à chaque ouverture : ?relire=1).
+  r.get('/api/mn1/vignettes', async (ctx) => {
+    if (ctx.query.relire) await lireFiGmao({ force: true }).catch(() => {})
+    return vignettes()
+  })
+
+  r.get('/api/mn1/parcs/:id', async (ctx) => {
+    const d = await detailDuParc(ctx.params.id)
+    if (!d) throw new ErreurHttp(404, 'Parc introuvable')
+    return d
+  })
+
+  // Analyse de corrélation par l'IA (aussi en consultation : le résultat est enregistré).
+  r.post('/api/mn1/parcs/:id/analyse', (ctx) => analyser(ctx.params.id))
+
+  // Brouillon de fiche pour une panne du Pareto qu'aucune fiche ne vise : { code } (rien n'est enregistré).
+  r.post('/api/mn1/parcs/:id/proposer', async (ctx) => proposerFiche(ctx.params.id, String((await ctx.json()).code || '')))
+
+  // Les réglages propres au parc (administrateur) : maximum par ETH, paramètres de ses FI.
+  admin.get('/api/mn1/parcs/:id/reglages', (ctx) => {
+    const r2 = reglagesDuParc(ctx.params.id)
+    return { propres: r2.propres, generaux: Object.fromEntries(PROPRES_AU_PARC.map((cle) => [cle, reglagesGmao()[cle]])) }
+  })
+  admin.post('/api/mn1/parcs/:id/reglages', async (ctx) => {
+    ctx.exigerAdmin()
+    return enregistrerReglagesDuParc(ctx.params.id, await ctx.json()).propres
+  })
+
+  // Les équipements de production du parc (l'équipement d'une FI), par ETH.
+  admin.get('/api/mn1/parcs/:id/equipements', async (ctx) => (await equipementsDuParc(ctx.params.id)).equipements.filter((n) => n.niveau >= 2).map(({ noeud, code, designation, niveau, ethCode, ethLibelle, machine }) => ({ noeud, code, designation, niveau, eth: ethCode, ethLibelle, machine })))
+
+  // Ranger une fiche dans un parc, l'archiver ou la ramener : { parc } ou { archivee: true | false }.
+  admin.post('/api/mn1/fiches/:id/ranger', async (ctx) => {
+    ctx.exigerAdmin()
+    const { parc, archivee } = await ctx.json()
+    const f = db().prepare('SELECT id, fi_gmao FROM fiches_mn1 WHERE id = ?').get(ctx.params.id)
+    if (!f) throw new ErreurHttp(404, 'Fiche introuvable')
+    const maintenant = new Date().toISOString()
+    if (parc !== undefined) db().prepare('UPDATE fiches_mn1 SET parc = ?, modifie_le = ? WHERE id = ?').run(String(parc || ''), maintenant, f.id)
+    if (archivee !== undefined) {
+      if (archivee && f.fi_gmao) throw new ErreurHttp(409, `Cette fiche porte la FI ${f.fi_gmao} : remplacez-la ou suspendez la FI d’abord.`)
+      db().prepare('UPDATE fiches_mn1 SET archivee = ?, archivee_le = ?, modifie_le = ? WHERE id = ?').run(archivee ? 1 : 0, archivee ? maintenant : null, maintenant, f.id)
+    }
+    noterModification()
+    return lireFiches('WHERE f.id = ?', f.id)[0]
+  })
+
+  // Les fiches archivées d'un parc, avec leur historique dans les FI.
+  r.get('/api/mn1/archives', (ctx) => {
+    const fiches = db().prepare('SELECT f.*, m.repere FROM fiches_mn1 f LEFT JOIN machines m ON m.id = f.machine_id WHERE f.archivee = 1 AND (? = \'\' OR f.parc = ?) ORDER BY f.archivee_le DESC').all(ctx.query.parc || '', ctx.query.parc || '')
+    const historique = db().prepare('SELECT numero, debut, fin, motif FROM fiches_mn1_fi WHERE fiche_id = ? ORDER BY debut')
+    return fiches.map((f) => ({ ...f, historique: historique.all(f.id) }))
+  })
+
+  // ---- FI de niveau 1 dans la GMAO (administrateur) : le plan, puis la simulation ou l'écriture.
+  // { parc, fiche, noeud, dateDeb, cible: nouvelle | reactiver | remplacer, numero, remplacer: [numéros] }
+  admin.post('/api/mn1/fi/plan', async (ctx) => resumePlan(await planifier(await ctx.json())))
+  admin.post('/api/mn1/fi/executer', async (ctx) => {
+    ctx.exigerAdmin()
+    const demande = await ctx.json()
+    return executer(demande, { valider: Boolean(demande.valider) })
+  })
+  // Maximum baissé : suspendre des FI. { parc, numeros, valider }
+  admin.post('/api/mn1/fi/suspendre', async (ctx) => {
+    ctx.exigerAdmin()
+    const demande = await ctx.json()
+    return suspendre(demande, { valider: Boolean(demande.valider) })
+  })
+
+  // Les listes de choix des paramètres de FI, lues dans la GMAO (requêtes des réglages : colonnes valeur, libelle).
+  admin.get('/api/mn1/gmao/listes', async () => {
+    const r2 = reglagesGmao()
+    const listes = {}
+    for (const [cle, sql] of Object.entries(r2.listes || {})) {
+      if (!sql) continue
+      try {
+        const res = await executerRequete(sql.replace(/--[^\n]*/g, ''), 5000)
+        const iV = res.colonnes.findIndex((c) => c.nom.toLowerCase() === 'valeur')
+        const iL = res.colonnes.findIndex((c) => c.nom.toLowerCase() === 'libelle')
+        listes[cle] = res.lignes.map((l) => ({ valeur: String(l[iV < 0 ? 0 : iV] ?? ''), libelle: String(l[iL < 0 ? (iV < 0 ? 0 : iV) : iL] ?? '') }))
+      } catch (e) {
+        listes[cle] = { erreur: e.message }
+      }
+    }
+    return listes
+  })
+
+  // Le bandeau du haut : la description (modifiable par l'administrateur) et le seuil d'alerte de pertinence.
+  r.get('/api/mn1/entete', () => ({ description: reglage('mn1_description', '') || DESCRIPTION, origine: DESCRIPTION, seuil: seuilPertinence(), seuilOrigine: SEUIL_PERTINENCE }))
+  admin.post('/api/mn1/entete', async (ctx) => {
+    ctx.exigerAdmin()
+    const { description, seuil } = await ctx.json()
+    if (description !== undefined) {
+      const propre = String(description || '').trim().slice(0, 1500)
+      modifierReglage('mn1_description', propre === DESCRIPTION ? '' : propre)
+    }
+    if (seuil !== undefined) modifierReglage('mn1_seuil_pertinence', String(Math.max(0.05, Math.min(1, Number(seuil) || SEUIL_PERTINENCE))))
+    noterModification()
+    return { description: reglage('mn1_description', '') || DESCRIPTION, seuil: seuilPertinence() }
+  })
 
   // Le type de demande compté comme niveau 1 (administrateur).
   admin.post('/api/mn1/type', async (ctx) => {

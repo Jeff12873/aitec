@@ -1,0 +1,30 @@
+<h1>Maintenance de niveau 1</h1>
+<p>Les gestes simples que les opérateurs font sur leur machine pour voir venir les pannes. L'écran s'organise par <b>parcs</b> (réglés dans Administration › Parcs machines).</p>
+
+<h2>Les vignettes</h2>
+<p>Une vignette par parc, avec :</p>
+<ul>
+<li><b>La charge</b> : les FI de niveau 1 réellement présentes dans la GMAO (lues à chaque ouverture de l'écran), pondérées par leur périodicité, rapportées au maximum de fiches par semaine et par ETH. La jauge montre l'ETH le plus chargé ; au-dessus de 100 %, la vignette passe en rouge.</li>
+<li><b>La pertinence</b> : la part du Pareto des pannes visée par les fiches, d'après la dernière analyse de corrélation (chaque panne compte pour son nombre de cas). Sous le seuil réglé par l'administrateur, la vignette passe en orange.</li>
+<li><b>La tendance</b> : les correctifs du parc sur 12 mois ; la courbe rougit quand les trois derniers mois dépassent les trois d'avant.</li>
+</ul>
+<p>Les boutons « Trier par » rangent les vignettes par nom, charge, pertinence ou alertes. Le parc choisi en haut d'AITEC ne garde que sa vignette.</p>
+
+<h2>La fiche MN1 d'un parc</h2>
+<ul>
+<li><b>Charge des opérateurs</b> : par ETH, les FI de la GMAO (numéro, fiche portée, poids par semaine). Une FI barrée est suspendue.</li>
+<li><b>Pareto des pannes ↔ fiches</b> : les pannes qui reviennent (même symptôme, trois cas au moins) sur les machines de maintenance du parc, et les fiches qui les visent. « Analyse de corrélation » fait faire ce rapprochement à l'IA ; le résultat est daté, et marqué « à refaire » quand des pannes ou des fiches ont changé depuis. Tout le monde peut la lancer.</li>
+<li><b>Trous du Pareto</b> : une panne qu'aucune fiche ne vise propose « Proposer une fiche » ; l'IA rédige un brouillon, que l'administrateur relit avant de l'enregistrer.</li>
+<li><b>Fiches</b> : chacune dit sa FI, si sa fréquence est encore celle de l'import (« à analyser »), si elle ne vise aucune panne (« sans cible », avec la fréquence plus espacée proposée et la charge gagnée), les demandes de niveau 1 faites malgré elle, et son <b>avant / après</b> : les pannes par mois avant et depuis son entrée dans une FI.</li>
+</ul>
+
+<h2>Les FI dans la GMAO (administrateur)</h2>
+<p>Une FI porte une fiche. « Créer la FI » ouvre une fenêtre qui recalcule la charge de l'ETH en direct :</p>
+<ul>
+<li><b>Nouvelle FI</b> : le premier numéro jamais utilisé dans l'ETH (on ne renumérote jamais) ;</li>
+<li><b>Réactiver</b> une FI suspendue de l'ETH ;</li>
+<li><b>Remplacer</b> la fiche d'une FI active, quand le maximum serait dépassé : la première FI cochée reçoit la fiche (son historique reste), les autres cochées sont suspendues. Les FI sont rangées de la moins utile à la plus utile.</li>
+</ul>
+<p>« Simuler » exécute tout dans une transaction annulée ; « Écrire dans la GMAO » n'est possible qu'après une simulation réussie, et relit les FI de la GMAO juste avant d'écrire. Augmenter le maximum d'un parc ne crée aucune FI ; le baisser fait passer l'ETH en alerte, avec un bouton pour choisir les FI à suspendre. Les fiches remplacées ou suspendues vont aux <b>archives</b>, avec leur historique.</p>
+<p>Le bouton base de données règle la GMAO : les paramètres des FI (choisis par leur nom dans des listes lues dans la GMAO), les périodicités (unités de la GMAO et périodicité de chaque fréquence) et le SQL du site. Le rouage d'un parc règle son maximum et ce qu'il fait autrement que les autres.</p>
+<p>« Ancien mode » garde l'écran d'avant (fiches par ligne, une FI par machine) le temps que le nouveau fasse ses preuves.</p>

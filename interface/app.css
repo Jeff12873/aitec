@@ -309,3 +309,125 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .selecteur-parc::-webkit-scrollbar { display: none; }
 .selecteur-parc .pastille-ligne { white-space: nowrap; flex: none; }
 .selecteur-parc .pastille-ligne.non-classe { border-style: dashed; }
+
+/* ===================== Maintenance de niveau 1 par parcs ===================== */
+
+/* Bandeau : pourquoi, chiffres du site, une idée qui tourne */
+.bandeau-mn1 { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 18px; padding: 18px 20px; border-radius: var(--rayon-carte); background: linear-gradient(120deg, color-mix(in srgb, #e9e54a 9%, var(--carte)), var(--carte) 60%); border: 1px solid var(--bord); animation: tableau-apparait .4s ease both; }
+.bandeau-mn1 .logo-page-mn1 { width: 64px; height: 64px; flex: none; filter: drop-shadow(0 4px 14px color-mix(in srgb, #e9e54a 35%, transparent)); }
+.texte-bandeau-mn1 { flex: 1; min-width: 0; }
+.titre-bandeau-mn1 { display: flex; align-items: center; gap: 8px; }
+.titre-bandeau-mn1 h1 { margin: 0; }
+.description-mn1 { margin: 6px 0 12px; color: var(--texte-2); line-height: 1.55; max-width: 980px; }
+.chiffres-mn1 { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 12px; }
+.chiffre-mn1 { display: flex; flex-direction: column; }
+.chiffre-mn1 b { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--texte); }
+.chiffre-mn1 span { font-size: 12px; color: var(--texte-3); }
+.idee-mn1 { display: flex; gap: 10px; align-items: baseline; min-height: 22px; font-size: 14px; color: var(--texte-2); opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; }
+.idee-mn1.visible { opacity: 1; transform: none; }
+.source-idee { flex: none; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #e9e54a; }
+.barre-onglets-mn1 { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.barre-onglets-mn1 .espace, .barre-vignettes .espace, .entete-parc .espace { flex: 1; }
+
+/* Vignettes des parcs */
+.barre-vignettes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 14px; }
+.segments.petits button { padding: 4px 11px; font-size: 13px; }
+.petit-texte { font-size: 12px; }
+.vignettes-mn1 { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+.vignette-mn1 { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: var(--rayon-carte); background: var(--carte); border: 1px solid var(--bord); cursor: pointer; position: relative; overflow: hidden;
+  animation: vignette-arrive .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); transition: transform .18s, border-color .18s, box-shadow .18s; }
+.vignette-mn1::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, #e9e54a, var(--accent)); opacity: .7; }
+.vignette-mn1.orange::before { background: var(--orange); opacity: 1; }
+.vignette-mn1.rouge::before { background: var(--rouge); opacity: 1; }
+.vignette-mn1:hover, .vignette-mn1:focus-visible { transform: translateY(-3px); border-color: var(--bord-fort); box-shadow: 0 10px 28px rgba(0, 0, 0, .28); outline: none; }
+@keyframes vignette-arrive { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.tete-vignette { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tete-vignette h2 { margin: 0; font-size: 20px; letter-spacing: .02em; }
+.jauges-vignette { display: flex; align-items: center; gap: 14px; }
+.jauge-vignette { flex: none; }
+.tendance-vignette { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.alertes-vignette { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-items: center; }
+
+/* Jauge en anneau et courbe */
+.jauge-mn1 { display: block; }
+.jauge-mn1 .fond-jauge { fill: none; stroke: color-mix(in srgb, var(--texte-3) 30%, transparent); stroke-width: 7; }
+.jauge-mn1.vide .fond-jauge { stroke-dasharray: 3 4; }
+.jauge-mn1 .arc-jauge { fill: none; stroke-width: 7; stroke-linecap: round; animation: jauge-remplit 1.1s cubic-bezier(.2, .8, .2, 1) .15s forwards; }
+.jauge-mn1 .arc-jauge.bon { stroke: var(--accent); }
+.jauge-mn1 .arc-jauge.orange { stroke: var(--orange); }
+.jauge-mn1 .arc-jauge.rouge { stroke: var(--rouge); }
+@keyframes jauge-remplit { to { stroke-dashoffset: var(--fin); } }
+.jauge-mn1 .valeur-jauge { font-size: 17px; font-weight: 700; fill: var(--texte); font-variant-numeric: tabular-nums; }
+.jauge-mn1.vide .valeur-jauge { fill: var(--texte-2); }
+.jauge-mn1 .libelle-jauge { font-size: 8.5px; fill: var(--texte-3); text-transform: uppercase; letter-spacing: .04em; }
+.courbe-mn1 .trait-courbe { fill: none; stroke: #a78bfa; stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 400; stroke-dashoffset: 400; animation: courbe-trace 1.2s ease .2s forwards; }
+.courbe-mn1 .surface-courbe { fill: color-mix(in srgb, #a78bfa 14%, transparent); }
+.courbe-mn1 .point-courbe { fill: #a78bfa; }
+.courbe-mn1.hausse .trait-courbe { stroke: var(--rouge); }
+.courbe-mn1.hausse .point-courbe { fill: var(--rouge); }
+.courbe-mn1.hausse .surface-courbe { fill: color-mix(in srgb, var(--rouge) 12%, transparent); }
+@keyframes courbe-trace { to { stroke-dashoffset: 0; } }
+
+/* Fiche MN1 d'un parc */
+.entete-parc { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-bottom: 16px; }
+.titre-parc { display: flex; align-items: center; gap: 12px; }
+.titre-parc img { width: 46px; height: 46px; }
+.titre-parc h1 { margin: 0; }
+.tendance-parc { display: flex; flex-direction: column; align-items: flex-end; }
+.parc-mn1 { display: grid; gap: 16px; }
+.eths-parc { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.eth-parc { padding: 10px 12px; border-radius: var(--rayon); background: var(--carte-2); animation: tableau-apparait .4s ease both; }
+.eth-parc.depasse { box-shadow: inset 3px 0 0 var(--rouge); }
+.tete-eth { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 6px; }
+.tete-eth b { flex: 1; }
+.barre-eth { height: 8px; border-radius: 99px; background: var(--carte-3); overflow: hidden; }
+.barre-eth i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), #e9e54a); transform-origin: left; animation: tableau-elargit .9s cubic-bezier(.2, .8, .2, 1) both; }
+.eth-parc.depasse .barre-eth i { background: var(--rouge); }
+.fi-eth { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.puce-fi { display: inline-flex; gap: 5px; align-items: baseline; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-family: var(--mono); background: var(--carte); border: 1px solid var(--bord); }
+.puce-fi small { font-family: var(--police); color: var(--texte-3); }
+.puce-fi.suspendue { opacity: .55; text-decoration: line-through; }
+.tete-correlation { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+.date-analyse { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--texte-3); margin-bottom: 6px; }
+.resume-correlation { font-size: 14px; }
+.pareto-mn1 td { vertical-align: top; }
+.pareto-mn1 td.nombre { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.pareto-mn1 .etiquette { margin: 0 4px 4px 0; font-size: 12px; padding: 2px 8px; }
+.pareto-mn1 tr.trou-pareto td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.cumul-pareto { position: relative; width: 70px; height: 16px; border-radius: 4px; background: var(--carte-3); overflow: hidden; }
+.cumul-pareto i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, #a78bfa 45%, transparent); }
+.cumul-pareto span { position: relative; font-size: 11px; padding-left: 5px; }
+.badges-fiche { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.badges-fiche .etiquette { font-size: 11.5px; padding: 2px 8px; }
+.badges-fiche .actions-fiche-mn1 { width: 100%; }
+.avant-apres { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
+.avant-apres.baisse { color: var(--vert); }
+.avant-apres.hausse { color: var(--rouge); }
+.archive-mn1 { padding: 10px 0; border-bottom: 1px solid var(--bord); }
+.tete-archive { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.tete-archive b { flex: 1; }
+.historique-fiche { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--texte-2); }
+
+/* Fenêtre de FI : choix de la cible, FI à remplacer, jauge avant → après */
+.tete-plan { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin: 14px 0 10px; }
+.jauge-eth { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.jauge-eth-barre { position: relative; width: 180px; height: 10px; border-radius: 99px; background: var(--carte-3); overflow: hidden; }
+.jauge-eth-barre i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; transition: width .3s; }
+.jauge-eth-barre i.avant { background: color-mix(in srgb, var(--texte-3) 50%, transparent); }
+.jauge-eth-barre i.apres { background: var(--accent); opacity: .85; }
+.jauge-eth.depassee .jauge-eth-barre i.apres { background: var(--rouge); }
+.jauge-eth.depassee b { color: var(--rouge); }
+.choix-cible { display: grid; gap: 6px; }
+.choix-fi-groupe { display: grid; gap: 6px; }
+.choix-fi { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: var(--rayon); border: 1px solid var(--bord); cursor: pointer; }
+.choix-fi.choisi { border-color: var(--accent); background: var(--accent-doux); }
+.choix-fi.grise { opacity: .5; cursor: default; }
+.choix-fi .discret { font-size: 12.5px; }
+.liste-remplacer { display: grid; gap: 4px; margin-top: 10px; max-height: 40vh; overflow: auto; }
+.remplacer-fi { display: grid; grid-template-columns: auto auto 1fr auto auto; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; background: var(--carte-2); cursor: pointer; font-size: 13.5px; }
+.remplacer-fi.coche { box-shadow: inset 3px 0 0 var(--accent); }
+.bilan-plan { margin: 6px 0 10px; padding-left: 18px; }
+.tableau.compact td, .tableau.compact th { padding: 5px 8px; }
+.choix-fi input, .remplacer-fi input { width: auto; flex: none; margin: 3px 0 0; }
+.choix-fi > div { flex: 1; }
+.barre-eth { background: color-mix(in srgb, var(--texte-3) 22%, transparent); }

@@ -7,6 +7,7 @@ const PAGES = [
   ['premiers-pas', 'Premiers pas'],
   ['assistant', 'Poser une question à l’IA'],
   ['tableau-de-bord', 'Tableau de bord'],
+  ['maintenance-niveau-1', 'Maintenance de niveau 1'],
   ['documents', 'Documents et formats lus'],
   ['import-gmao', 'Importer un export GMAO'],
   ['administration', 'Mode administrateur'],
