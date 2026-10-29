@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.6.5",
+      "date": "2026-10-29",
+      "points": [
+        "Pareto des pannes : colonnes triables d'un clic (un 2e clic inverse), explication du « Cumul » au survol, pourcentage centré",
+        "Un clic sur une fiche du Pareto descend jusqu'à elle"
+      ]
+    },
+    {
       "version": "0.6.4",
       "date": "2026-10-29",
       "points": [

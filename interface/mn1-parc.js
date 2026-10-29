@@ -58,6 +58,46 @@ export async function afficherParc(zone, id) {
   }
   const boutonAnalyse = h('button', { class: 'principal', disabled: Boolean(etat.partage?.autreAdmin), title: etat.partage?.autreAdmin ? 'Un autre poste modifie le fichier : réessayez plus tard' : '', onclick: (e) => lancer(e.currentTarget) }, ic('etincelle', 15), d.analyse ? 'Refaire l’analyse de corrélation' : 'Analyse de corrélation')
   const a = d.analyse
+  let allerAFiche = () => {} // défini avec la liste des fiches, plus bas
+  const tableauPareto = h('table', { class: 'tableau pareto-mn1' })
+  // Les colonnes se trient d'un clic (un 2e clic inverse) ; au départ, l'ordre du Pareto.
+  const lignes = d.pareto.slice(0, 15).map((p, rang) => ({ p, x: parCode.get(p.code), rang }))
+  const COLONNES = [
+    ['code', 'Code', (l) => l.p.code],
+    ['machine', 'Machine', (l) => l.p.repere || ''],
+    ['panne', 'Panne qui revient', (l) => l.p.symptome || ''],
+    ['cas', 'Cas (12 mois)', (l) => l.p.nombre],
+    ['cumul', 'Cumul', (l) => l.p.cumul, 'Part des cas du Pareto atteinte en comptant cette panne et toutes celles qui ont plus de cas qu’elle. Quand les fiches visent les pannes jusqu’à 80 % de cumul, elles couvrent l’essentiel des pannes qui reviennent.'],
+    ['fiches', 'Fiches qui la visent', (l) => l.x?.fiches.length ?? -1],
+  ]
+  let triPareto = { col: 'cumul', sens: 1 }
+  const dessinerPareto = () => {
+    const [, , valeur] = COLONNES.find(([c]) => c === triPareto.col)
+    const triees = [...lignes].sort((l1, l2) => {
+      const v1 = valeur(l1)
+      const v2 = valeur(l2)
+      const ecart = typeof v1 === 'number' ? v1 - v2 : String(v1).localeCompare(String(v2), 'fr', { numeric: true })
+      return (ecart || l1.rang - l2.rang) * triPareto.sens
+    })
+    vider(tableauPareto,
+      h('thead', {}, h('tr', {}, COLONNES.map(([c, titre, , aide]) => h('th', {
+        class: `triable${triPareto.col === c ? ' trie' : ''}`, title: aide || 'Trier par cette colonne (un 2e clic inverse)',
+        onclick: () => { triPareto = { col: c, sens: triPareto.col === c ? -triPareto.sens : 1 }; dessinerPareto() },
+      }, titre, triPareto.col === c ? h('span', { class: 'sens-tri' }, triPareto.sens > 0 ? ' ▲' : ' ▼') : null)), h('th', {}, ''))),
+      h('tbody', {}, triees.map(({ p, x }) => {
+        const trou = a && x && !x.fiches.length
+        return h('tr', { class: trou ? 'trou-pareto' : '' },
+          h('td', { class: 'mono discret' }, p.code),
+          h('td', {}, h('a', { href: `#/analyse/${p.machine}`, class: 'mono' }, p.repere), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
+          h('td', { title: x?.commentaire || '' }, p.symptome),
+          h('td', { class: 'nombre' }, String(p.nombre)),
+          h('td', {}, h('div', { class: 'cumul-pareto', title: `${pct(p.cumul)} des cas du Pareto en comptant jusqu’à cette panne` }, h('i', { style: { width: `${Math.round(p.cumul * 100)}%` } }), h('span', {}, pct(p.cumul)))),
+          h('td', {}, x ? (x.fiches.length ? x.fiches.map((fid) => h('button', { class: 'etiquette lien-fiche', title: 'Descendre jusqu’à la fiche', onclick: () => allerAFiche(fid) }, etiquetteFiche(fid))) : h('span', { class: 'etiquette orange' }, 'aucune')) : h('span', { class: 'discret' }, '—'),
+            x?.demandes?.length ? h('span', { class: 'discret petit-texte' }, ` · ${x.demandes.length} demande${x.demandes.length > 1 ? 's' : ''}`) : null),
+          h('td', {}, trou ? h('button', { class: 'petit', title: 'L’IA rédige un brouillon de fiche pour cette panne', onclick: () => proposerFiche(d, p) }, ic('etincelle', 13), 'Proposer une fiche') : null))
+      })))
+  }
+  dessinerPareto()
   vider(zoneCorrelation,
     h('div', { class: 'tete-correlation' },
       jauge(a?.pertinence ?? null, { taille: 92, seuil: d.seuil, libelle: 'pertinence' }),
@@ -66,21 +106,7 @@ export async function afficherParc(zone, id) {
         a ? h('div', { class: 'date-analyse' }, ic('horloge', 13), `Analyse du ${dateFr(a.date)}`, a.perimee ? h('span', { class: 'etiquette orange' }, 'à refaire : pannes ou fiches changées depuis') : null) : null,
         a?.resume ? h('div', { class: 'texte-ia resume-correlation' }, h('div', { html: texteIA(a.resume) })) : null),
       boutonAnalyse),
-    d.pareto.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau pareto-mn1' },
-      h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Machine'), h('th', {}, 'Panne qui revient'), h('th', {}, 'Cas (12 mois)'), h('th', {}, 'Cumul'), h('th', {}, 'Fiches qui la visent'), h('th', {}, ''))),
-      h('tbody', {}, d.pareto.slice(0, 15).map((p) => {
-        const x = parCode.get(p.code)
-        const trou = a && x && !x.fiches.length
-        return h('tr', { class: trou ? 'trou-pareto' : '' },
-          h('td', { class: 'mono discret' }, p.code),
-          h('td', {}, h('a', { href: `#/analyse/${p.machine}`, class: 'mono' }, p.repere), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
-          h('td', { title: x?.commentaire || '' }, p.symptome),
-          h('td', { class: 'nombre' }, String(p.nombre)),
-          h('td', {}, h('div', { class: 'cumul-pareto' }, h('i', { style: { width: `${Math.round(p.cumul * 100)}%` } }), h('span', {}, pct(p.cumul)))),
-          h('td', {}, x ? (x.fiches.length ? x.fiches.map((fid) => h('span', { class: 'etiquette' }, etiquetteFiche(fid))) : h('span', { class: 'etiquette orange' }, 'aucune')) : h('span', { class: 'discret' }, '—'),
-            x?.demandes?.length ? h('span', { class: 'discret petit-texte' }, ` · ${x.demandes.length} demande${x.demandes.length > 1 ? 's' : ''}`) : null),
-          h('td', {}, trou ? h('button', { class: 'petit', title: 'L’IA rédige un brouillon de fiche pour cette panne', onclick: () => proposerFiche(d, p) }, ic('etincelle', 13), 'Proposer une fiche') : null))
-      })))) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de ce parc ces 12 derniers mois.'))
+    d.pareto.length ? h('div', { class: 'tableau-conteneur' }, tableauPareto) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de ce parc ces 12 derniers mois.'))
   const carteCorrelation = h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, ic('graphique', 18), 'Pareto des pannes ↔ fiches')), zoneCorrelation)
 
   // ---- fiches
@@ -99,13 +125,30 @@ export async function afficherParc(zone, id) {
   const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
   const alertes = (f) => (f.aAnalyser ? 1 : 0) + (f.sansCible ? 2 : 0) + (f.demandes ? 1 : 0)
+  const reperee = (carte, id) => {
+    carte.dataset.fiche = id
+    return carte
+  }
   const dessinerFiches = () => {
     const mots = recherche.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
     const visibles = d.fiches.filter((f) => mots.every((m) => [f.action, f.etiquette, f.zone, f.machine_nom, f.repere, f.eth, f.fi_gmao].join(' ').toLowerCase().includes(m)))
     if (tri.value === 'utilite') visibles.sort((x, y) => (u.get(x.id) || 0) - (u.get(y.id) || 0))
     if (tri.value === 'sans') visibles.sort((x, y) => Boolean(x.fi_gmao) - Boolean(y.fi_gmao))
     if (tri.value === 'alertes') visibles.sort((x, y) => alertes(y) - alertes(x))
-    vider(liste, visibles.length ? visibles.map((f) => carteFiche(f, { enPlus: enPlus(f) })) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans ce parc : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
+    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans ce parc : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
+  }
+  // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
+  allerAFiche = (id) => {
+    if (!liste.querySelector(`[data-fiche="${id}"]`) && recherche.value) {
+      recherche.value = ''
+      dessinerFiches()
+    }
+    const carte = liste.querySelector(`[data-fiche="${id}"]`)
+    if (!carte) return notifier('Cette fiche n’est plus dans le parc (archivée ?).')
+    carte.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    carte.classList.remove('fiche-montree')
+    void carte.offsetWidth
+    carte.classList.add('fiche-montree')
   }
   recherche.addEventListener('input', dessinerFiches)
   tri.addEventListener('change', dessinerFiches)
