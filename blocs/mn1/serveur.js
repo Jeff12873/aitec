@@ -397,3 +397,7 @@ export function routes(r) {
     return { type }
   })
 }
+
+// Au démarrage, une fois le fichier ouvert : les vignettes sont calculées une première fois (arborescence, FI de la
+// GMAO, Pareto), pour que la première ouverture de l'écran soit rapide.
+setTimeout(() => vignettes().catch(() => {}), 20_000).unref()

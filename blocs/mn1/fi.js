@@ -48,7 +48,8 @@ export function lireFiGmao({ force = false } = {}) {
     if (!sql) throw new ErreurHttp(409, 'La requête de lecture des FI n’est pas réglée (Maintenance de niveau 1 › réglages de la GMAO).')
     if (!mysql.etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible : lecture des FI impossible.')
     const vus = new Map()
-    for (const like of new Set(parcs.map((x) => motifs(reglagesDuParc(x.id).numero, { parc: x.nom }).like))) {
+    // Une seule lecture par modèle de numéro (le parc y devient un joker) : chaque requête lance le moteur Java.
+    for (const like of new Set(parcs.map((x) => motifs(reglagesDuParc(x.id).numero).like))) {
       const r = await mysql.executerRequete(sql.replace(/--[^\n]*/g, '').replace(/:motif\b/g, `'${like.replace(/'/g, "''")}'`), 20_000)
       const i = (nom) => r.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
       const col = Object.fromEntries(['numero', 'actif', 'periot', 'val_periot', 'equipement', 'titre', 'date_deb'].map((n) => [n, i(n)]))

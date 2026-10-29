@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.3",
+      "date": "2026-10-29",
+      "points": [
+        "Maintenance de niveau 1 plus rapide : une seule lecture des FI dans la GMAO pour tous les parcs, vignettes préparées au démarrage (ouverture en moins d'une seconde)"
+      ]
+    },
+    {
       "version": "0.6.2",
       "date": "2026-10-29",
       "points": [
