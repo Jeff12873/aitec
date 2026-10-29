@@ -55,15 +55,16 @@ export function courbe(valeurs, { largeur = 400, hauteur = 60 } = {}) {
   return svg
 }
 
-// À 15 % près de la moyenne des 12 mois, la tendance est stable.
-export function tendance(valeurs) {
+// L'écart des 3 derniers mois à la moyenne des 12 : +0,3 = 30 % au-dessus. À 15 % près, la tendance est stable.
+export function ecartTendance(valeurs) {
   const moyenne = (liste) => liste.reduce((a, b) => a + b, 0) / (liste.length || 1)
-  if (valeurs.length < 4) return 'stable'
-  const recent = moyenne(valeurs.slice(-3))
   const annee = moyenne(valeurs)
-  if (recent > annee * 1.15) return 'hausse'
-  if (recent < annee * 0.85) return 'baisse'
-  return 'stable'
+  return valeurs.length < 4 || !annee ? 0 : moyenne(valeurs.slice(-3)) / annee - 1
+}
+
+export function tendance(valeurs) {
+  const ecart = ecartTendance(valeurs)
+  return ecart > 0.15 ? 'hausse' : ecart < -0.15 ? 'baisse' : 'stable'
 }
 
 // La vitesse du balayage suit la pente des 12 mois (droite des moindres carrés, rapportée à la moyenne) :

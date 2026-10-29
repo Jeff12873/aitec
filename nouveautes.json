@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.9",
+      "date": "2026-10-29",
+      "points": [
+        "Vignettes : tri par tendance, les parcs dont les correctifs montent le plus d'abord"
+      ]
+    },
+    {
       "version": "0.6.8",
       "date": "2026-10-29",
       "points": [

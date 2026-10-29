@@ -11,7 +11,7 @@ import { LOGO_MN1, definirParametres } from '../../interface/fiches-mn1.js'
 import { afficherParc } from '../../interface/mn1-parc.js'
 import { afficherFiches, boutonImport, reglerParametres, reglerCreationGmao } from '../../interface/mn1-ancien.js'
 import { reglerGmao, reglerEntete } from '../../interface/mn1-reglages.js'
-import { jauge, courbe } from '../../interface/mn1-graphiques.js'
+import { jauge, courbe, ecartTendance } from '../../interface/mn1-graphiques.js'
 import { avecParc, parcChoisi } from '../../interface/parcs.js'
 import { animer } from '../tableau-de-bord/vue.js'
 
@@ -133,14 +133,16 @@ async function afficherVignettes(zone, bandeau) {
     charge: (a, b) => (b.charge?.taux ?? -1) - (a.charge?.taux ?? -1),
     pertinence: (a, b) => (a.pertinence?.taux ?? 2) - (b.pertinence?.taux ?? 2),
     alertes: (a, b) => alertes(b) - alertes(a) || a.nom.localeCompare(b.nom, 'fr'),
+    // Les parcs dont les correctifs montent le plus d'abord, ceux qui baissent le plus à la fin.
+    tendance: (a, b) => ecartTendance(b.tendance.map((x) => x.n)) - ecartTendance(a.tendance.map((x) => x.n)),
   }
   parcs = [...parcs].sort(ordres[tri])
   const grille = h('div', { class: 'vignettes-mn1' }, parcs.map((p, i) => vignette(p, i, v.seuil)))
   vider(zone,
     h('div', { class: 'barre-vignettes' },
       h('span', { class: 'discret' }, 'Trier par'),
-      h('div', { class: 'segments petits' }, [['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes']].map(([cle, texte]) =>
-        h('button', { class: tri === cle ? 'choisi' : '', onclick: () => { tri = cle; afficherVignettes(zone, bandeau) } }, texte))),
+      h('div', { class: 'segments petits' }, [['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes'], ['tendance', 'Tendance']].map(([cle, texte]) =>
+        h('button', { class: tri === cle ? 'choisi' : '', title: cle === 'tendance' ? 'Les correctifs qui montent le plus d’abord (3 derniers mois par rapport à la moyenne des 12)' : '', onclick: () => { tri = cle; afficherVignettes(zone, bandeau) } }, texte))),
       h('div', { class: 'espace' }),
       v.lecture?.erreur ? h('span', { class: 'etiquette orange', title: v.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : v.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO à ${new Date(v.lecture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`) : null,
       admin && v.sansParc ? h('button', { class: 'petit', onclick: rangerSansParc }, ic('alerte', 14), `${v.sansParc} fiche${v.sansParc > 1 ? 's' : ''} sans parc`) : null,
