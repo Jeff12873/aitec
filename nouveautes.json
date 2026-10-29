@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.7",
+      "date": "2026-10-29",
+      "points": [
+        "Pareto des pannes : un « ? » signale l'aide du Cumul, expliquée avec des exemples (% bas, % haut, repère des 80 %)"
+      ]
+    },
+    {
       "version": "0.6.6",
       "date": "2026-10-29",
       "points": [

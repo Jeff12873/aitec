@@ -447,3 +447,4 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .fond-tendance-parc { position: absolute; inset: 0 0 auto 0; z-index: 0; pointer-events: none; }
 .fond-tendance-parc .courbe-mn1 { opacity: .9; }
 .legende-tendance { align-self: flex-start; }
+.pareto-mn1 .aide-colonne { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; border: 1px solid #a78bfa; color: #a78bfa; font-size: 10px; font-weight: 700; cursor: help; vertical-align: 1px; }

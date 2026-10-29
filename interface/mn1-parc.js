@@ -67,7 +67,14 @@ export async function afficherParc(zone, id) {
     ['machine', 'Machine', (l) => l.p.repere || ''],
     ['panne', 'Panne qui revient', (l) => l.p.symptome || ''],
     ['cas', 'Cas (12 mois)', (l) => l.p.nombre],
-    ['cumul', 'Cumul', (l) => l.p.cumul, 'Part des cas du Pareto atteinte en comptant cette panne et toutes celles qui ont plus de cas qu’elle. Quand les fiches visent les pannes jusqu’à 80 % de cumul, elles couvrent l’essentiel des pannes qui reviennent.'],
+    ['cumul', 'Cumul', (l) => l.p.cumul, [
+      'Cumul : la part des cas du Pareto atteinte en comptant cette panne et toutes celles qui ont plus de cas qu’elle (le tableau rangé par nombre de cas).',
+      '',
+      '% bas (ex. 20 % sur la 1re ligne) : cette panne pèse lourd à elle seule, 1 cas sur 5 des pannes qui reviennent. C’est elle qu’une fiche doit viser en premier.',
+      '% haut (ex. 95 %) : avec les pannes au-dessus, on a déjà 95 % des cas ; celle-ci n’ajoute que peu. Une fiche pour elle est moins prioritaire.',
+      '',
+      'Repère : des fiches qui visent toutes les pannes jusqu’à 80 % de cumul couvrent l’essentiel ; une panne sous 80 % marquée « aucune » est un trou à combler.',
+    ].join('\n')],
     ['fiches', 'Fiches qui la visent', (l) => l.x?.fiches.length ?? -1],
   ]
   let triPareto = { col: 'cumul', sens: 1 }
@@ -83,7 +90,7 @@ export async function afficherParc(zone, id) {
       h('thead', {}, h('tr', {}, COLONNES.map(([c, titre, , aide]) => h('th', {
         class: `triable${triPareto.col === c ? ' trie' : ''}`, title: aide || 'Trier par cette colonne (un 2e clic inverse)',
         onclick: () => { triPareto = { col: c, sens: triPareto.col === c ? -triPareto.sens : 1 }; dessinerPareto() },
-      }, titre, triPareto.col === c ? h('span', { class: 'sens-tri' }, triPareto.sens > 0 ? ' ▲' : ' ▼') : null)), h('th', {}, ''))),
+      }, titre, aide ? h('span', { class: 'aide-colonne' }, '?') : null, triPareto.col === c ? h('span', { class: 'sens-tri' }, triPareto.sens > 0 ? ' ▲' : ' ▼') : null)), h('th', {}, ''))),
       h('tbody', {}, triees.map(({ p, x }) => {
         const trou = a && x && !x.fiches.length
         return h('tr', { class: trou ? 'trou-pareto' : '' },
