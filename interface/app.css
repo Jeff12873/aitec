@@ -345,28 +345,33 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .tete-vignette h2 { margin: 0; font-size: 20px; letter-spacing: .02em; }
 .jauges-vignette { display: flex; align-items: center; gap: 14px; }
 .jauge-vignette { flex: none; }
-.tendance-vignette { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.tendance-vignette { display: flex; flex-direction: column; gap: 2px; margin: -4px -4px 0; }
+.tendance-vignette small { align-self: flex-end; }
+.tendance-parc { width: 300px; }
 .alertes-vignette { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-items: center; }
 
 /* Jauge en anneau et courbe */
 .jauge-mn1 { display: block; }
 .jauge-mn1 .fond-jauge { fill: none; stroke: color-mix(in srgb, var(--texte-3) 30%, transparent); stroke-width: 7; }
-.jauge-mn1.vide .fond-jauge { stroke-dasharray: 3 4; }
+.jauge-mn1.sans-mesure .fond-jauge { stroke: var(--bord-fort); stroke-dasharray: 3 4; }
 .jauge-mn1 .arc-jauge { fill: none; stroke-width: 7; stroke-linecap: round; animation: jauge-remplit 1.1s cubic-bezier(.2, .8, .2, 1) .15s forwards; }
 .jauge-mn1 .arc-jauge.bon { stroke: var(--accent); }
 .jauge-mn1 .arc-jauge.orange { stroke: var(--orange); }
 .jauge-mn1 .arc-jauge.rouge { stroke: var(--rouge); }
 @keyframes jauge-remplit { to { stroke-dashoffset: var(--fin); } }
 .jauge-mn1 .valeur-jauge { font-size: 17px; font-weight: 700; fill: var(--texte); font-variant-numeric: tabular-nums; }
-.jauge-mn1.vide .valeur-jauge { fill: var(--texte-2); }
+.jauge-mn1.sans-mesure .valeur-jauge { fill: var(--texte-2); }
 .jauge-mn1 .libelle-jauge { font-size: 8.5px; fill: var(--texte-3); text-transform: uppercase; letter-spacing: .04em; }
-.courbe-mn1 .trait-courbe { fill: none; stroke: #a78bfa; stroke-width: 2; stroke-linejoin: round; stroke-dasharray: 400; stroke-dashoffset: 400; animation: courbe-trace 1.2s ease .2s forwards; }
-.courbe-mn1 .surface-courbe { fill: color-mix(in srgb, #a78bfa 14%, transparent); }
-.courbe-mn1 .point-courbe { fill: #a78bfa; }
-.courbe-mn1.hausse .trait-courbe { stroke: var(--rouge); }
-.courbe-mn1.hausse .point-courbe { fill: var(--rouge); }
-.courbe-mn1.hausse .surface-courbe { fill: color-mix(in srgb, var(--rouge) 12%, transparent); }
-@keyframes courbe-trace { to { stroke-dashoffset: 0; } }
+.courbe-mn1 { display: block; width: 100%; height: auto; overflow: visible; --trace: #a78bfa; }
+.courbe-mn1.hausse { --trace: var(--rouge); }
+.courbe-mn1 .grille-courbe { stroke: color-mix(in srgb, var(--trace) 10%, transparent); stroke-width: 1; }
+.courbe-mn1 .surface-courbe { fill: color-mix(in srgb, var(--trace) 13%, transparent); }
+.courbe-mn1 .trait-courbe { fill: none; stroke: color-mix(in srgb, var(--trace) 55%, transparent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.courbe-mn1 .eclat-courbe { fill: none; stroke: var(--trace); stroke-width: 3.4; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--trace)) drop-shadow(0 0 9px var(--trace)); opacity: 0; transition: opacity .2s; }
+.courbe-mn1 .tete-courbe { fill: #fff; filter: drop-shadow(0 0 5px var(--trace)) drop-shadow(0 0 10px var(--trace)); opacity: 0; transition: opacity .2s; }
+.courbe-mn1 .point-courbe { fill: var(--trace); }
+.courbe-mn1 .battement-courbe { fill: none; stroke: var(--trace); stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: battement 1.2s ease-out infinite; }
+@keyframes battement { 0% { transform: scale(1); opacity: .9; } 14% { transform: scale(2.4); opacity: .5; } 28% { transform: scale(1.4); opacity: .7; } 42% { transform: scale(3.6); opacity: 0; } 100% { transform: scale(3.6); opacity: 0; } }
 
 /* Fiche MN1 d'un parc */
 .entete-parc { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-bottom: 16px; }

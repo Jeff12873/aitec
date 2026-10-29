@@ -31,7 +31,7 @@ export async function afficherParc(zone, id) {
     h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
     h('div', { class: 'titre-parc' }, h('img', { src: LOGO_MN1, alt: '' }), h('div', {}, h('h1', {}, d.parc.nom), h('p', { class: 'sous-titre' }, `${d.fiches.length} fiche${d.fiches.length > 1 ? 's' : ''} · ${d.parc.production} machines de production · ${d.parc.maintenance} de maintenance`))),
     h('div', { class: 'espace' }),
-    d.tendance?.length ? h('div', { class: 'tendance-parc', title: 'Correctifs du parc, 12 derniers mois' }, courbe(d.tendance.map((x) => x.n), { largeur: 160, hauteur: 40 }), h('small', { class: 'discret' }, 'correctifs, 12 mois')) : null,
+    d.tendance?.length ? h('div', { class: 'tendance-parc', title: 'Correctifs du parc, 12 derniers mois' }, courbe(d.tendance.map((x) => x.n), { largeur: 300, hauteur: 64 }), h('small', { class: 'discret' }, 'correctifs, 12 mois')) : null,
     admin ? h('button', { class: 'discret icone-seule', title: 'Réglages du parc : maximum par ETH, paramètres de ses FI', onclick: () => reglerParc(d.parc) }, ic('reglages', 18)) : null)
 
   // ---- charge des opérateurs, par ETH

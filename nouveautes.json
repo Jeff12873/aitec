@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.6.2",
+      "date": "2026-10-29",
+      "points": [
+        "Courbes des correctifs plus grandes, animées comme un moniteur cardiaque (balayage lumineux, dernier mois qui bat)",
+        "La jauge « non analysé » des vignettes s'affiche de nouveau"
+      ]
+    },
+    {
       "version": "0.6.1",
       "date": "2026-10-28",
       "points": [
