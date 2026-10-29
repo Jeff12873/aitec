@@ -51,7 +51,7 @@ export function courbe(valeurs, { largeur = 400, hauteur = 60 } = {}) {
   const [x, y] = points.at(-1)
   svg.append(trait, eclat, s('circle', { cx: x, cy: y, r: 3.2, class: 'battement-courbe' }), s('circle', { cx: x, cy: y, r: 3.2, class: 'point-courbe' }), tete)
   svg.classList.add(tendance(valeurs))
-  balayer(svg, trait, eclat, tete)
+  balayer(svg, trait, eclat, tete, dureeBalayage(valeurs))
   return svg
 }
 
@@ -66,9 +66,25 @@ export function tendance(valeurs) {
   return 'stable'
 }
 
+// La vitesse du balayage suit la pente des 12 mois (droite des moindres carrés, rapportée à la moyenne) :
+// une courbe presque plate défile lentement (4,2 s), une qui varie de 100 % ou plus sur l'année, vite (1,2 s).
+export function dureeBalayage(valeurs) {
+  const n = valeurs.length
+  const moyenne = valeurs.reduce((a, b) => a + b, 0) / (n || 1)
+  if (n < 2 || !moyenne) return 4200
+  const xm = (n - 1) / 2
+  let haut = 0
+  let bas = 0
+  valeurs.forEach((v, i) => {
+    haut += (i - xm) * (v - moyenne)
+    bas += (i - xm) ** 2
+  })
+  const delta = Math.abs((haut / bas) * (n - 1)) / moyenne
+  return Math.round(4200 - 3000 * Math.min(1, delta))
+}
+
 // Le balayage : une lueur (un morceau du tracé) et le point de tête avancent ensemble, puis une courte pause.
-function balayer(svg, trait, eclat, tete) {
-  const DUREE = 2400
+function balayer(svg, trait, eclat, tete, DUREE = 2400) {
   const PAUSE = 700
   let longueur = 0
   let debut = null

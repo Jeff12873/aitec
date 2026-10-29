@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.8",
+      "date": "2026-10-29",
+      "points": [
+        "Courbes des correctifs : le balayage va plus ou moins vite selon la pente sur 12 mois (lent si la courbe est plate, rapide si elle varie fort)"
+      ]
+    },
+    {
       "version": "0.6.7",
       "date": "2026-10-29",
       "points": [
