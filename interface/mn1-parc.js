@@ -131,6 +131,24 @@ export async function afficherParc(zone, id) {
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : étiquette, machine, zone, geste…' })
   const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
+  // Les filtres rapides, avec le nombre de fiches de chacun ; un seul à la fois.
+  const ilYaJours = (date, jours) => date && Date.now() - new Date(date).getTime() < jours * 86_400_000
+  const FILTRES = [
+    ['', 'Toutes', () => true, ''],
+    ['nouvelles', 'Nouvelles', (f) => ilYaJours(f.cree_le, 30), 'Créées ces 30 derniers jours'],
+    ['utilisees', 'Utilisées', (f) => Boolean(f.fi_gmao), 'Portées par une FI de la GMAO'],
+    ['sansfi', 'Sans FI', (f) => !f.fi_gmao, 'Pas encore dans une FI : les opérateurs ne la font pas'],
+    ['utiles', 'Visent le Pareto', (f) => (u.get(f.id) || 0) > 0, 'Visent au moins une panne du Pareto (d’après l’analyse de corrélation)'],
+    ['sanscible', 'Sans cible', (f) => f.sansCible, 'Ne visent aucune panne du Pareto'],
+    ['aanalyser', 'À analyser', (f) => f.aAnalyser, 'Fréquence de l’import, encore provisoire'],
+    ['demandes', 'Demandes malgré la fiche', (f) => f.demandes > 0, 'Des demandes de niveau 1 sur la machine ces 12 mois, malgré la fiche'],
+  ]
+  let filtre = ''
+  const boutonsFiltre = h('div', { class: 'segments petits' })
+  const dessinerBoutonsFiltre = () => vider(boutonsFiltre, FILTRES.map(([cle, texte, garde, aide]) => {
+    const n = d.fiches.filter(garde).length
+    return cle && !n ? null : h('button', { class: filtre === cle ? 'choisi' : '', title: aide, onclick: () => { filtre = cle; dessinerBoutonsFiltre(); dessinerFiches() } }, texte, h('span', { class: 'nombre-filtre' }, String(n)))
+  }))
   const alertes = (f) => (f.aAnalyser ? 1 : 0) + (f.sansCible ? 2 : 0) + (f.demandes ? 1 : 0)
   const reperee = (carte, id) => {
     carte.dataset.fiche = id
@@ -138,7 +156,8 @@ export async function afficherParc(zone, id) {
   }
   const dessinerFiches = () => {
     const mots = recherche.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    const visibles = d.fiches.filter((f) => mots.every((m) => [f.action, f.etiquette, f.zone, f.machine_nom, f.repere, f.eth, f.fi_gmao].join(' ').toLowerCase().includes(m)))
+    const garde = FILTRES.find(([cle]) => cle === filtre)[2]
+    const visibles = d.fiches.filter(garde).filter((f) => mots.every((m) => [f.action, f.etiquette, f.zone, f.machine_nom, f.repere, f.eth, f.fi_gmao].join(' ').toLowerCase().includes(m)))
     if (tri.value === 'utilite') visibles.sort((x, y) => (u.get(x.id) || 0) - (u.get(y.id) || 0))
     if (tri.value === 'sans') visibles.sort((x, y) => Boolean(x.fi_gmao) - Boolean(y.fi_gmao))
     if (tri.value === 'alertes') visibles.sort((x, y) => alertes(y) - alertes(x))
@@ -146,8 +165,10 @@ export async function afficherParc(zone, id) {
   }
   // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
   allerAFiche = (id) => {
-    if (!liste.querySelector(`[data-fiche="${id}"]`) && recherche.value) {
+    if (!liste.querySelector(`[data-fiche="${id}"]`) && (recherche.value || filtre)) {
       recherche.value = ''
+      filtre = ''
+      dessinerBoutonsFiltre()
       dessinerFiches()
     }
     const carte = liste.querySelector(`[data-fiche="${id}"]`)
@@ -166,8 +187,9 @@ export async function afficherParc(zone, id) {
         admin && d.fiches.length ? h('button', { class: 'petit discret', title: 'Les fiches en cours du parc dans un fichier .vignettes', onclick: () => exporterVignettes(d) }, ic('telecharger', 14), 'Exporter') : null,
         d.fiches.length ? h('button', { class: 'petit', onclick: () => imprimerFiches(d.fiches) }, ic('document', 14), `Imprimer les ${d.fiches.length}`) : null,
         h('button', { class: 'petit discret', onclick: () => voirArchives(d) }, ic('boite', 14), `Archives (${d.archivees})`))),
-    h('div', { class: 'filtres-mn1' }, recherche, tri),
+    h('div', { class: 'filtres-mn1' }, recherche, tri, boutonsFiltre),
     liste)
+  dessinerBoutonsFiltre()
   dessinerFiches()
 
   // ---- demandes de niveau 1 du parc

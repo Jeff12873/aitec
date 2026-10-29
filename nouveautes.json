@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.10",
+      "date": "2026-10-29",
+      "points": [
+        "Fiches d'un parc : filtres rapides avec leur nombre (nouvelles, utilisées, sans FI, visent le Pareto, sans cible, à analyser, demandes malgré la fiche)"
+      ]
+    },
+    {
       "version": "0.6.9",
       "date": "2026-10-29",
       "points": [

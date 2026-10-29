@@ -448,3 +448,4 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .fond-tendance-parc .courbe-mn1 { opacity: .9; }
 .legende-tendance { align-self: flex-start; }
 .pareto-mn1 .aide-colonne { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; border: 1px solid #a78bfa; color: #a78bfa; font-size: 10px; font-weight: 700; cursor: help; vertical-align: 1px; }
+.filtres-mn1 .nombre-filtre { margin-left: 6px; font-size: 11px; color: var(--texte-2); font-variant-numeric: tabular-nums; }
