@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.6",
+      "date": "2026-10-29",
+      "points": [
+        "Fiche d'un parc : la courbe des correctifs en grand, sur toute la largeur, floutée derrière la charge des opérateurs"
+      ]
+    },
+    {
       "version": "0.6.5",
       "date": "2026-10-29",
       "points": [

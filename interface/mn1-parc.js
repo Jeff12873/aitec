@@ -31,7 +31,7 @@ export async function afficherParc(zone, id) {
     h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
     h('div', { class: 'titre-parc' }, h('img', { src: LOGO_MN1, alt: '' }), h('div', {}, h('h1', {}, d.parc.nom), h('p', { class: 'sous-titre' }, `${d.fiches.length} fiche${d.fiches.length > 1 ? 's' : ''} · ${d.parc.production} machines de production · ${d.parc.maintenance} de maintenance`))),
     h('div', { class: 'espace' }),
-    d.tendance?.length ? h('div', { class: 'tendance-parc', title: 'Correctifs du parc, 12 derniers mois' }, courbe(d.tendance.map((x) => x.n), { largeur: 420, hauteur: 60 }), h('small', { class: 'discret' }, 'correctifs, 12 mois')) : null,
+    d.tendance?.length ? h('small', { class: 'discret legende-tendance', title: `Correctifs du parc, mois par mois : ${d.tendance.map((x) => x.n).join(', ')}` }, 'courbe : correctifs, 12 mois') : null,
     admin ? h('button', { class: 'discret icone-seule', title: 'Réglages du parc : maximum par ETH, paramètres de ses FI', onclick: () => reglerParc(d.parc) }, ic('reglages', 18)) : null)
 
   // ---- charge des opérateurs, par ETH
@@ -173,7 +173,9 @@ export async function afficherParc(zone, id) {
         h('td', {}, x.fiche ? h('span', { class: 'etiquette violet', title: 'Cette machine a déjà une fiche : signe d’un geste mal fait ou d’une fiche à revoir' }, x.fiche.etiquette || 'fiche') : ''),
         h('td', {}, h('span', { class: `etiquette ${x.close ? '' : 'violet'}` }, x.etat || (x.close ? 'Close' : 'Ouverte')))))))) : h('p', { class: 'discret' }, 'Aucune demande sur 12 mois.')) : null
 
-  vider(zone, entete, h('div', { class: 'parc-mn1' }, carteChargeParc, carteCorrelation, carteFiches, carteDemandes))
+  // La courbe des correctifs en grand, derrière l'en-tête et la charge (floutée sous la carte).
+  const fond = d.tendance?.length ? h('div', { class: 'fond-tendance-parc' }, courbe(d.tendance.map((x) => x.n), { largeur: 1400, hauteur: 210 })) : null
+  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, carteChargeParc), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.

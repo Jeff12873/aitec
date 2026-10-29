@@ -347,7 +347,6 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .jauge-vignette { flex: none; }
 .tendance-vignette { display: flex; flex-direction: column; gap: 2px; margin: -4px -10px 0; }
 .tendance-vignette small { align-self: flex-end; }
-.tendance-parc { width: 420px; max-width: 100%; }
 .alertes-vignette { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-items: center; }
 
 /* Jauge en anneau et courbe */
@@ -377,7 +376,6 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .titre-parc { display: flex; align-items: center; gap: 12px; }
 .titre-parc img { width: 46px; height: 46px; }
 .titre-parc h1 { margin: 0; }
-.tendance-parc { display: flex; flex-direction: column; align-items: flex-end; }
 .parc-mn1 { display: grid; gap: 16px; }
 .eths-parc { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .eth-parc { padding: 10px 12px; border-radius: var(--rayon); background: var(--carte-2); animation: tableau-apparait .4s ease both; }
@@ -443,3 +441,9 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .pareto-mn1 .lien-fiche:hover { border-color: #a78bfa; color: var(--texte); }
 .fiche-montree { animation: fiche-montree 1.6s ease-out; }
 @keyframes fiche-montree { 0%, 40% { box-shadow: 0 0 0 3px #a78bfa, 0 0 18px #a78bfa; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.scene-parc { position: relative; margin-bottom: 16px; }
+.scene-parc > .entete-parc, .scene-parc > .carte { position: relative; z-index: 1; }
+.scene-parc > .carte { background: color-mix(in srgb, var(--carte) 72%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.fond-tendance-parc { position: absolute; inset: 0 0 auto 0; z-index: 0; pointer-events: none; }
+.fond-tendance-parc .courbe-mn1 { opacity: .9; }
+.legende-tendance { align-self: flex-start; }
