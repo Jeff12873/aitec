@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.6.4",
+      "date": "2026-10-29",
+      "points": [
+        "Fiches d'un parc : boutons Importer et Exporter (fichier .vignettes) pour passer les fiches d'un fichier de connaissances à un autre",
+        "Courbes des correctifs plus larges, juste le trait : vertes en baisse, jaunes stables, rouges en hausse par rapport à la moyenne des 12 mois"
+      ]
+    },
+    {
       "version": "0.6.3",
       "date": "2026-10-29",
       "points": [

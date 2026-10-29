@@ -31,7 +31,7 @@ export async function afficherParc(zone, id) {
     h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
     h('div', { class: 'titre-parc' }, h('img', { src: LOGO_MN1, alt: '' }), h('div', {}, h('h1', {}, d.parc.nom), h('p', { class: 'sous-titre' }, `${d.fiches.length} fiche${d.fiches.length > 1 ? 's' : ''} · ${d.parc.production} machines de production · ${d.parc.maintenance} de maintenance`))),
     h('div', { class: 'espace' }),
-    d.tendance?.length ? h('div', { class: 'tendance-parc', title: 'Correctifs du parc, 12 derniers mois' }, courbe(d.tendance.map((x) => x.n), { largeur: 300, hauteur: 64 }), h('small', { class: 'discret' }, 'correctifs, 12 mois')) : null,
+    d.tendance?.length ? h('div', { class: 'tendance-parc', title: 'Correctifs du parc, 12 derniers mois' }, courbe(d.tendance.map((x) => x.n), { largeur: 420, hauteur: 60 }), h('small', { class: 'discret' }, 'correctifs, 12 mois')) : null,
     admin ? h('button', { class: 'discret icone-seule', title: 'Réglages du parc : maximum par ETH, paramètres de ses FI', onclick: () => reglerParc(d.parc) }, ic('reglages', 18)) : null)
 
   // ---- charge des opérateurs, par ETH
@@ -112,6 +112,8 @@ export async function afficherParc(zone, id) {
   const carteFiches = h('div', { class: 'carte' },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Fiches du parc'),
       h('div', { class: 'actions' },
+        admin ? h('button', { class: 'petit discret', title: 'Reprendre les fiches d’un fichier .vignettes dans ce parc', onclick: () => importerVignettes(d, () => afficherParc(zone, id)) }, ic('dossier', 14), 'Importer') : null,
+        admin && d.fiches.length ? h('button', { class: 'petit discret', title: 'Les fiches en cours du parc dans un fichier .vignettes', onclick: () => exporterVignettes(d) }, ic('telecharger', 14), 'Exporter') : null,
         d.fiches.length ? h('button', { class: 'petit', onclick: () => imprimerFiches(d.fiches) }, ic('document', 14), `Imprimer les ${d.fiches.length}`) : null,
         h('button', { class: 'petit discret', onclick: () => voirArchives(d) }, ic('boite', 14), `Archives (${d.archivees})`))),
     h('div', { class: 'filtres-mn1' }, recherche, tri),
@@ -227,4 +229,38 @@ async function proposerFiche(d, panne) {
     notifier('Fiche ajoutée au parc')
     window.ktec.recharger()
   }
+}
+
+// ---- les fiches du parc dans un fichier .vignettes (passage d'un fichier de connaissances à un autre)
+
+async function exporterVignettes(d) {
+  const contenu = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/export`))
+  if (!contenu) return
+  const lien = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(contenu, null, 1)], { type: 'application/json' })), download: `vignette-${d.parc.nom.replace(/[^\w.-]+/g, '_')}.vignettes` })
+  document.body.append(lien)
+  lien.click()
+  lien.remove()
+  setTimeout(() => URL.revokeObjectURL(lien.href), 10_000)
+  notifier(`${contenu.fiches.length} fiches exportées`)
+}
+
+function importerVignettes(d, apres) {
+  const choix = h('input', { type: 'file', accept: '.vignettes,application/json' })
+  choix.onchange = async () => {
+    const fichier = choix.files[0]
+    if (!fichier) return
+    let contenu
+    try {
+      contenu = JSON.parse(await fichier.text())
+    } catch {
+      return notifier('Ce fichier n’est pas lisible.', 'erreur')
+    }
+    const n = contenu?.fiches?.length || 0
+    if (!(await confirmer(`Reprendre ${n} fiche${n > 1 ? 's' : ''} de « ${contenu?.parc || fichier.name} » dans le parc ${d.parc.nom} ? Les fiches déjà présentes ne sont pas doublées.`))) return
+    const r = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/import`, { methode: 'POST', corps: contenu }))
+    if (!r) return
+    notifier(`${r.ajoutees} fiche${r.ajoutees > 1 ? 's' : ''} ajoutée${r.ajoutees > 1 ? 's' : ''}${r.deja ? `, ${r.deja} déjà là` : ''}${r.fiNonTrouvees.length ? ` ; FI absentes de cette GMAO, non reprises : ${r.fiNonTrouvees.join(', ')}` : ''}`)
+    apres()
+  }
+  choix.click()
 }

@@ -34,9 +34,10 @@ export function jauge(valeur, { taille = 74, seuil = null, inverse = false, libe
   return svg
 }
 
-// La courbe des 12 derniers mois, comme un moniteur cardiaque : le tracé reste visible, une lueur le parcourt en
-// boucle avec un point brillant en tête, et le dernier mois bat. Elle prend toute la largeur disponible.
-export function courbe(valeurs, { largeur = 300, hauteur = 70 } = {}) {
+// La courbe des 12 derniers mois, comme un moniteur cardiaque : juste le trait, une lueur le parcourt en boucle avec
+// un point brillant en tête, et le dernier mois bat. Sa couleur dit la tendance : les 3 derniers mois par rapport à
+// la moyenne des 12 (vert : en baisse, jaune : stable, rouge : en hausse).
+export function courbe(valeurs, { largeur = 400, hauteur = 60 } = {}) {
   const svg = s('svg', { viewBox: `0 0 ${largeur} ${hauteur}`, class: 'courbe-mn1', preserveAspectRatio: 'xMidYMid meet' })
   if (!valeurs.length) return svg
   const max = Math.max(1, ...valeurs)
@@ -44,19 +45,25 @@ export function courbe(valeurs, { largeur = 300, hauteur = 70 } = {}) {
   const pas = valeurs.length > 1 ? (largeur - 2 * marge) / (valeurs.length - 1) : 0
   const points = valeurs.map((v, i) => [marge + i * pas, hauteur - marge - (v / max) * (hauteur - 2 * marge)])
   const trace = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
-  // Les lignes du moniteur, très discrètes.
-  for (let y = marge; y < hauteur; y += (hauteur - marge) / 4) svg.append(s('line', { x1: 0, x2: largeur, y1: y.toFixed(1), y2: y.toFixed(1), class: 'grille-courbe' }))
-  svg.append(s('path', { d: `${trace} L${points.at(-1)[0].toFixed(1)},${hauteur} L${points[0][0].toFixed(1)},${hauteur} Z`, class: 'surface-courbe' }))
   const trait = s('path', { d: trace, class: 'trait-courbe' })
   const eclat = s('path', { d: trace, class: 'eclat-courbe' })
   const tete = s('circle', { r: 3.4, class: 'tete-courbe', cx: points[0][0], cy: points[0][1] })
   const [x, y] = points.at(-1)
   svg.append(trait, eclat, s('circle', { cx: x, cy: y, r: 3.2, class: 'battement-courbe' }), s('circle', { cx: x, cy: y, r: 3.2, class: 'point-courbe' }), tete)
-  // En hausse sur les 3 derniers mois par rapport aux 3 d'avant : la courbe le dit.
-  const somme = (liste) => liste.reduce((a, b) => a + b, 0)
-  if (valeurs.length >= 6 && somme(valeurs.slice(-3)) > somme(valeurs.slice(-6, -3)) * 1.2) svg.classList.add('hausse')
+  svg.classList.add(tendance(valeurs))
   balayer(svg, trait, eclat, tete)
   return svg
+}
+
+// À 15 % près de la moyenne des 12 mois, la tendance est stable.
+export function tendance(valeurs) {
+  const moyenne = (liste) => liste.reduce((a, b) => a + b, 0) / (liste.length || 1)
+  if (valeurs.length < 4) return 'stable'
+  const recent = moyenne(valeurs.slice(-3))
+  const annee = moyenne(valeurs)
+  if (recent > annee * 1.15) return 'hausse'
+  if (recent < annee * 0.85) return 'baisse'
+  return 'stable'
 }
 
 // Le balayage : une lueur (un morceau du tracé) et le point de tête avancent ensemble, puis une courte pause.

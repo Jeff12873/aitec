@@ -345,9 +345,9 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .tete-vignette h2 { margin: 0; font-size: 20px; letter-spacing: .02em; }
 .jauges-vignette { display: flex; align-items: center; gap: 14px; }
 .jauge-vignette { flex: none; }
-.tendance-vignette { display: flex; flex-direction: column; gap: 2px; margin: -4px -4px 0; }
+.tendance-vignette { display: flex; flex-direction: column; gap: 2px; margin: -4px -10px 0; }
 .tendance-vignette small { align-self: flex-end; }
-.tendance-parc { width: 300px; }
+.tendance-parc { width: 420px; max-width: 100%; }
 .alertes-vignette { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-items: center; }
 
 /* Jauge en anneau et courbe */
@@ -362,10 +362,9 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .jauge-mn1 .valeur-jauge { font-size: 17px; font-weight: 700; fill: var(--texte); font-variant-numeric: tabular-nums; }
 .jauge-mn1.sans-mesure .valeur-jauge { fill: var(--texte-2); }
 .jauge-mn1 .libelle-jauge { font-size: 8.5px; fill: var(--texte-3); text-transform: uppercase; letter-spacing: .04em; }
-.courbe-mn1 { display: block; width: 100%; height: auto; overflow: visible; --trace: #a78bfa; }
+.courbe-mn1 { display: block; width: 100%; height: auto; overflow: visible; opacity: .8; --trace: #facc15; }
+.courbe-mn1.baisse { --trace: var(--vert); }
 .courbe-mn1.hausse { --trace: var(--rouge); }
-.courbe-mn1 .grille-courbe { stroke: color-mix(in srgb, var(--trace) 10%, transparent); stroke-width: 1; }
-.courbe-mn1 .surface-courbe { fill: color-mix(in srgb, var(--trace) 13%, transparent); }
 .courbe-mn1 .trait-courbe { fill: none; stroke: color-mix(in srgb, var(--trace) 55%, transparent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
 .courbe-mn1 .eclat-courbe { fill: none; stroke: var(--trace); stroke-width: 3.4; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--trace)) drop-shadow(0 0 9px var(--trace)); opacity: 0; transition: opacity .2s; }
 .courbe-mn1 .tete-courbe { fill: #fff; filter: drop-shadow(0 0 5px var(--trace)) drop-shadow(0 0 10px var(--trace)); opacity: 0; transition: opacity .2s; }

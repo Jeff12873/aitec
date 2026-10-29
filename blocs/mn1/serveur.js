@@ -10,7 +10,7 @@ import { executerRequete } from 'ktec/mysql.js'
 import { lireTableur } from '../../lib/tableurs.js'
 import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir, reglagesDuParc, enregistrerReglagesDuParc, PROPRES_AU_PARC } from './gmao.js'
 import { lireDemandes, close } from './demandes.js'
-import { vignettes, detailDuParc, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
+import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { lireParcs } from '../../lib/parcs.js'
@@ -297,6 +297,73 @@ export function routes(r) {
     const d = await detailDuParc(ctx.params.id)
     if (!d) throw new ErreurHttp(404, 'Parc introuvable')
     return d
+  })
+
+  // Les fiches en cours d'un parc dans un fichier .vignettes, pour les passer d'un fichier de connaissances à un
+  // autre. Les machines voyagent par leur repère (les id d'AITEC changent d'un fichier à l'autre).
+  admin.get('/api/mn1/parcs/:id/export', async (ctx) => {
+    ctx.exigerAdmin()
+    const p = await lireParcs()
+    const parc = p?.parcs.find((x) => x.id === ctx.params.id)
+    if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+    const repere = db().prepare('SELECT repere FROM machines WHERE id = ?')
+    const historique = db().prepare('SELECT numero, debut, fin, motif FROM fiches_mn1_fi WHERE fiche_id = ? ORDER BY debut')
+    const fiches = (fichesDesParcs(p).parParc.get(parc.id) || []).map((f) => ({
+      etiquette: f.etiquette, machine_nom: f.machine_nom, zone: f.zone, action: f.action, frequence: f.frequence, frequence_source: f.frequence_source, evite: f.evite,
+      ligne: f.ligne, eth: f.eth, noeud: f.noeud, origine: f.origine, fi_gmao: f.fi_gmao, cree_le: f.cree_le,
+      machine: f.machine_id ? repere.get(f.machine_id)?.repere || '' : '', machine_prod: f.machine_prod ? repere.get(f.machine_prod)?.repere || '' : '',
+      historique: historique.all(f.id),
+    }))
+    return { format: 'aitec-vignettes', version: 1, parc: parc.nom, exporte_le: new Date().toISOString(), fiches }
+  })
+
+  // L'import d'un fichier .vignettes dans ce parc. Une fiche déjà là (même étiquette et mêmes gestes) n'est pas
+  // reprise ; une FI n'est gardée que si elle existe dans la GMAO de ce site et ne porte pas déjà une autre fiche.
+  admin.post('/api/mn1/parcs/:id/import', async (ctx) => {
+    ctx.exigerAdmin()
+    exigerEcriture()
+    const fichier = await ctx.json()
+    if (fichier?.format !== 'aitec-vignettes' || !Array.isArray(fichier.fiches)) throw new ErreurHttp(400, 'Ce n’est pas un fichier de vignettes d’AITEC.')
+    const p = await lireParcs()
+    const parc = p?.parcs.find((x) => x.id === ctx.params.id)
+    if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+    let fiGmao = null
+    try {
+      fiGmao = new Set((await lireFiGmao({ force: true })).map((fi) => fi.numero))
+    } catch {} // sans GMAO, aucune FI n'est gardée
+    const presentes = fichesDesParcs(p).parParc.get(parc.id) || []
+    const cle = (f) => `${String(f.etiquette || '').trim().toLowerCase()}|${String(f.action || '').trim().toLowerCase()}`
+    const deja = new Set(presentes.map(cle))
+    const portees = new Set(db().prepare("SELECT fi_gmao FROM fiches_mn1 WHERE fi_gmao <> '' AND archivee = 0").all().map((f) => f.fi_gmao))
+    const machine = db().prepare('SELECT id FROM machines WHERE repere = ?')
+    const inserer = db().prepare('INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, fi_gmao, action, frequence, frequence_source, evite, ligne, eth, parc, noeud, machine_prod, cree_le, modifie_le) VALUES (?, \'Production\', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    const ajouterHistorique = db().prepare('INSERT INTO fiches_mn1_fi (fiche_id, numero, debut, fin, motif) VALUES (?, ?, ?, ?, ?)')
+    const bilan = { ajoutees: 0, deja: 0, fiNonTrouvees: [] }
+    const maintenant = new Date().toISOString()
+    transaction(() => {
+      for (const f of fichier.fiches) {
+        const propre = nettoyerFiche(f)
+        if (!propre.action) continue
+        if (deja.has(cle(propre))) {
+          bilan.deja++
+          continue
+        }
+        deja.add(cle(propre))
+        let fi = String(f.fi_gmao || '')
+        if (fi && (!fiGmao?.has(fi) || portees.has(fi))) {
+          bilan.fiNonTrouvees.push(fi)
+          fi = ''
+        }
+        if (fi) portees.add(fi)
+        const id = inserer.run(machine.get(String(f.machine || ''))?.id ?? null, propre.etiquette, String(f.machine_nom || '').trim().slice(0, 120), propre.zone, String(f.origine || 'import'), fi,
+          propre.action, propre.frequence, String(f.frequence_source || 'import'), propre.evite, String(f.ligne || ''), String(f.eth || ''), parc.id, String(f.noeud || ''),
+          machine.get(String(f.machine_prod || ''))?.id ?? null, String(f.cree_le || maintenant), maintenant).lastInsertRowid
+        if (fi) for (const x of f.historique || []) if (x.numero === fi) ajouterHistorique.run(id, x.numero, String(x.debut), x.fin || null, String(x.motif || ''))
+        bilan.ajoutees++
+      }
+    })
+    noterModification()
+    return bilan
   })
 
   // Analyse de corrélation par l'IA (aussi en consultation : le résultat est enregistré).

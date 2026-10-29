@@ -6,7 +6,7 @@
 <ul>
 <li><b>La charge</b> : les FI de niveau 1 réellement présentes dans la GMAO (lues à chaque ouverture de l'écran), pondérées par leur périodicité, rapportées au maximum de fiches par semaine et par ETH. La jauge montre l'ETH le plus chargé ; au-dessus de 100 %, la vignette passe en rouge.</li>
 <li><b>La pertinence</b> : la part du Pareto des pannes visée par les fiches, d'après la dernière analyse de corrélation (chaque panne compte pour son nombre de cas). Sous le seuil réglé par l'administrateur, la vignette passe en orange.</li>
-<li><b>La tendance</b> : les correctifs du parc sur 12 mois ; la courbe rougit quand les trois derniers mois dépassent les trois d'avant.</li>
+<li><b>La tendance</b> : les correctifs du parc sur 12 mois ; la courbe est verte quand les trois derniers mois sont nettement sous la moyenne des 12, jaune quand ils sont dans la moyenne (à 15 % près), rouge quand ils sont au-dessus.</li>
 </ul>
 <p>Les boutons « Trier par » rangent les vignettes par nom, charge, pertinence ou alertes. Le parc choisi en haut d'AITEC ne garde que sa vignette.</p>
 
@@ -17,6 +17,7 @@
 <li><b>Trous du Pareto</b> : une panne qu'aucune fiche ne vise propose « Proposer une fiche » ; l'IA rédige un brouillon, que l'administrateur relit avant de l'enregistrer.</li>
 <li><b>Fiches</b> : chacune dit sa FI, si sa fréquence est encore celle de l'import (« à analyser »), si elle ne vise aucune panne (« sans cible », avec la fréquence plus espacée proposée et la charge gagnée), les demandes de niveau 1 faites malgré elle, et son <b>avant / après</b> : les pannes par mois avant et depuis son entrée dans une FI.</li>
 </ul>
+<p>Les boutons <b>Exporter</b> et <b>Importer</b> (administrateur) passent les fiches en cours du parc d'un fichier de connaissances à un autre, dans un fichier <code>.vignettes</code>. À l'import, une fiche déjà présente (même étiquette, mêmes gestes) n'est pas doublée, et une FI n'est reprise que si elle existe dans la GMAO du site.</p>
 
 <h2>Les FI dans la GMAO (administrateur)</h2>
 <p>Une FI porte une fiche. « Créer la FI » ouvre une fenêtre qui recalcule la charge de l'ETH en direct :</p>
