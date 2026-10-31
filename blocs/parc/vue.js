@@ -10,6 +10,7 @@ export const ETATS = ['En service', 'En panne', 'En réserve', 'Hors service', '
 
 export default {
   chemin: 'parc',
+  parcs: true, // le choix du parc sous le titre
   titre: 'Parc',
   icone: 'usine',
   menu: false,

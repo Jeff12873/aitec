@@ -4,10 +4,13 @@
 // 2. on les donne au modèle avec des consignes strictes : français, sources citées, ne rien inventer ;
 // 3. la réponse est envoyée au navigateur au fur et à mesure qu'elle s'écrit.
 //
-// Les consignes sont dans CONSIGNES ci-dessous : c'est l'endroit où ajuster le comportement de l'IA.
+// Les consignes d'origine sont dans CONSIGNES ci-dessous. Un administrateur peut les adapter (le rouage de la
+// page Assistant) : elles sont alors gardées dans le fichier de connaissances (réglage « consignes_assistant »).
+// {atelier}, {date} et {glossaire} sont remplacés à chaque question.
 
 import { db, reglage, modifierReglage, noterModification } from '../../lib/base.js'
 import { ouvrirFlux, ErreurHttp } from 'ktec/http.js'
+import { exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { installation } from 'ktec/installation.js'
 import { glossaire } from '../../lib/glossaire.js'
@@ -69,7 +72,22 @@ Poser des questions pour affiner :
 - Dans ce cas, termine par une ligne qui commence exactement par « CHOIX : », suivie de 2 à 5 réponses possibles séparées par « | », tirées des sources. Exemple : CHOIX : PRS-01 presse 200 t | PRS-02 presse 100 t | Une autre machine
 - Si les sources permettent de répondre : réponds directement, sans ligne CHOIX. Au plus une question finale si elle fait avancer le dépannage (« Le défaut revient-il à chaque cycle ? »).`
 
+const consignesAssistant = () => reglage('consignes_assistant', '') || CONSIGNES
+export const REPERES_CONSIGNES = ['{atelier}', '{date}', '{glossaire}']
+
 export function routes(r) {
+  r.get('/api/assistant/consignes', () => ({ texte: consignesAssistant(), origine: CONSIGNES, modifiees: Boolean(reglage('consignes_assistant', '')), reperes: REPERES_CONSIGNES }))
+
+  // { texte } ; un texte vide ou identique à l'original revient aux consignes d'origine (administrateur).
+  r.post('/api/assistant/consignes', async (ctx) => {
+    exigerEcriture()
+    const { texte = '' } = await ctx.json()
+    const propre = String(texte).trim()
+    modifierReglage('consignes_assistant', !propre || propre === CONSIGNES.trim() ? '' : propre)
+    noterModification()
+    return { texte: consignesAssistant() }
+  })
+
   // Les deux premiers niveaux de l'arborescence des machines (voir lib/arborescence.js).
   r.get('/api/arborescence', () => lireArborescence())
 
@@ -153,7 +171,7 @@ function texteDeRecherche(question, historique) {
 }
 
 function construireMessages(question, historique, passages, machineId, groupe = null, precisions = [], recents = []) {
-  const consignes = CONSIGNES.replace('{atelier}', reglage('nom_atelier', 'Atelier'))
+  const consignes = consignesAssistant().replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
     .replace('{glossaire}', glossaire())
 

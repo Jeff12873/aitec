@@ -35,6 +35,7 @@ const IDEES = [
 
 export default {
   chemin: 'mn1',
+  parcs: true, // le choix du parc sous le titre
   titre: 'Maintenance de niveau 1',
   icone: 'coche',
   menu: true,
@@ -52,7 +53,7 @@ export default {
       bandeau,
       h('div', { class: 'barre-onglets-mn1' },
         h('div', { class: 'segments' },
-          h('button', { class: !['demandes', 'ancien'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Parcs'),
+          h('button', { class: !['demandes', 'ancien'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches focus'),
           h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes de niveau 1')),
         h('div', { class: 'espace' }),
         admin ? h('button', { class: 'discret petit', title: 'L’ancien écran (fiches par ligne, une FI par machine), le temps que le nouveau fasse ses preuves', onclick: () => (location.hash = '#/mn1/ancien') }, ic('historique', 14), 'Ancien mode') : null,
@@ -125,8 +126,10 @@ async function afficherVignettes(zone, bandeau) {
       h('p', {}, 'Pas encore de parc : rangez les racines de l’arborescence en parcs dans Administration › Parcs machines.'),
       admin ? h('a', { class: 'bouton principal', href: '#/administration/parcs' }, 'Ranger les parcs') : null))
   }
+  // Un parc choisi en haut d'AITEC : sa page directement, avec le bandeau de synthèse (plus de vignette seule).
   const choisi = parcChoisi()
-  let parcs = choisi ? v.parcs.filter((p) => p.id === choisi) : v.parcs
+  if (choisi && v.parcs.some((p) => p.id === choisi)) return afficherParc(zone, choisi, { integre: true })
+  let parcs = v.parcs
   const alertes = (p) => p.alertes.reduce((s, a) => s + ({ rouge: 3, orange: 2, gris: 1 }[a.niveau] || 0), 0)
   const ordres = {
     nom: (a, b) => a.nom.localeCompare(b.nom, 'fr'),
@@ -225,7 +228,7 @@ async function afficherDemandes(zone) {
     h('div', { class: 'barre-demandes' },
       h('span', { class: 'discret' }, 'Type de demande'),
       menuDeroulant({ choix: d.types.map((x) => ({ valeur: x.nom, libelle: x.nom, nombre: x.nombre })), valeur: d.type, surChoix: async (type) => { if (await essayer(() => api('/api/mn1/type', { methode: 'POST', corps: { type } }))) window.ktec.recharger() } }),
-      parcChoisi() ? h('span', { class: 'discret' }, 'parc choisi en haut d’AITEC') : null),
+      parcChoisi() ? h('span', { class: 'discret' }, 'parc choisi sous le titre') : null),
     h('div', { class: 'grille grille-4', style: { marginBottom: '16px' } },
       tuile('document', 'violet', `Demandes ${d.type} (12 mois)`, t.annee, null),
       tuile('horloge', '', 'Encore ouvertes', t.ouvertes, null),

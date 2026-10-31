@@ -1,11 +1,11 @@
 // L'assistant : une discussion avec l'IA, qui répond à partir de la base et cite ses sources.
 // La conversation est gardée sur ce poste (pas dans le fichier partagé).
 
-import { h, vider, ic, notifier } from '/socle/ui.js'
+import { h, vider, ic, notifier, essayer, fenetre } from '/socle/ui.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api, flux } from '/socle/api.js'
 import { texteIA } from '/socle/texte-ia.js'
-import { etat } from '/socle/etat.js'
+import { etat, peutModifier } from '/socle/etat.js'
 
 const SUGGESTIONS = [
   'Quelles machines tombent le plus souvent en panne cette année ?',
@@ -293,7 +293,8 @@ export default {
           { class: 'fil' },
           h('div', { class: 'haut-discussion' },
             h('button', { class: 'discret petit', title: 'Aide de l’assistant', onclick: () => { onglet = 'aide'; dessinerPanneau(); ouvrirTiroir() } }, ic('aide', 14), 'Aide'),
-            h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation')),
+            h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation'),
+            peutModifier() ? h('button', { class: 'discret petit icone-seule', title: 'Les consignes données à l’IA de l’assistant', onclick: modifierConsignes }, ic('reglages', 14)) : null),
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
           messages,
           zonePannes,
@@ -315,6 +316,34 @@ export default {
       envoyer(transmise)
     }
   },
+}
+
+// Le rouage : les consignes que suit l'IA pour répondre (administrateur). Les repères {atelier}, {date} et
+// {glossaire} sont remplacés à chaque question ; on prévient si l'un d'eux disparaît du texte.
+async function modifierConsignes() {
+  const c = await essayer(() => api('/api/assistant/consignes'))
+  if (!c) return
+  const texte = h('textarea', { rows: 18, spellcheck: false, style: { fontSize: '13px' } }, c.texte)
+  const alerte = h('p', { class: 'orange', style: { fontSize: '13px', minHeight: '1em', margin: '6px 0 0' } })
+  const verifier = () => {
+    const manquants = c.reperes.filter((r) => !texte.value.includes(r))
+    alerte.textContent = manquants.length ? `Attention : sans ${manquants.join(', ')}, l’IA ne recevra plus ${manquants.map((r) => ({ '{atelier}': 'le nom de l’atelier', '{date}': 'la date du jour', '{glossaire}': 'le glossaire des repères' })[r]).join(', ')}.` : ''
+  }
+  texte.addEventListener('input', verifier)
+  verifier()
+  const enregistrees = await fenetre({
+    titre: 'Consignes de l’assistant',
+    large: true,
+    contenu: h('div', {},
+      h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Ce que l’IA doit faire en répondant aux agents : ton, forme des réponses, sécurité, sources. Les repères {atelier}, {date} et {glossaire} sont remplacés à chaque question.'),
+      texte, alerte),
+    boutons: [
+      { texte: 'Revenir à l’original', classe: 'discret', action: () => { texte.value = c.origine; verifier(); return false } },
+      { texte: 'Annuler', classe: 'discret', valeur: null },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api('/api/assistant/consignes', { methode: 'POST', corps: { texte: texte.value } }); return true } },
+    ],
+  })
+  if (enregistrees) notifier('Consignes enregistrées : elles servent dès la prochaine question')
 }
 
 // L'assistant peut finir par « CHOIX : réponse 1 | réponse 2 » : on affiche ces réponses en boutons.

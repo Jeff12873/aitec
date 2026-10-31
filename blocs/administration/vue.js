@@ -10,12 +10,14 @@ import { ouvrirModeAdmin } from '/socle/fichier.js'
 import documents from '../documents/vue.js'
 import importGmao from '../import-gmao/vue.js'
 import { afficherReglageParcs } from '../../interface/reglage-parcs.js'
+import pannes from '../pannes/vue.js'
 
-// Les onglets de l'administration. Documents et Données GMAO réutilisent les écrans de leurs blocs.
+// Les onglets de l'administration. Documents, Données GMAO et Pannes connues réutilisent les écrans de leurs blocs.
 const ONGLETS = [
   ['parcs', 'Parcs machines', 'usine'],
   ['documents', 'Documents', 'document'],
   ['import', 'Données de la GMAO', 'tableur'],
+  ['pannes', 'Pannes connues', 'historique'],
   ['reglages', 'Réglages', 'reglages'],
 ]
 
@@ -39,6 +41,7 @@ export default {
     )
     if (onglet === 'reglages') return afficherReglages(contenu)
     if (onglet === 'parcs') return afficherReglageParcs(contenu)
+    if (onglet === 'pannes') return pannes.afficher(contenu, { query }) // l'analyse des pannes qui reviennent
     if (!peutModifier()) {
       vider(contenu, h('div', { class: 'carte' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Ajouter des documents ou mettre à jour les données de la GMAO demande le mode administrateur.'), h('button', { class: 'principal', onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))))
       return

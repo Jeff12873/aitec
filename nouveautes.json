@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.6.11",
+      "date": "2026-10-31",
+      "points": [
+        "Assistant : un rouage (administrateur) pour adapter les consignes de l'IA, avec retour à l'original",
+        "Tableau de bord : le nom de l'atelier centré, sans les tuiles du haut",
+        "Les boutons de parc passent sous le titre des écrans, en plus grand",
+        "Les types d'intervention gardent leur nom de la GMAO (plus de renommage à l'import)",
+        "Pannes connues : sorti du menu, dans Administration",
+        "Maintenance de niveau 1 : l'onglet « Parcs » devient « Fiches focus » ; un parc choisi s'affiche directement, avec un bandeau charge, pertinence, tendance et à faire",
+        "Paramètres des FI : un message dit pourquoi une liste ne s'affiche pas"
+      ]
+    },
+    {
       "version": "0.6.10",
       "date": "2026-10-29",
       "points": [

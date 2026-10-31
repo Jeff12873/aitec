@@ -27,8 +27,18 @@ function choixGmao(liste, valeur, { vide = null } = {}) {
 
 // ---------------------------------------------------------------- GMAO
 
+// La raison pour laquelle un champ n'a pas de liste : SQL vide, ou lecture impossible (connexion, mode admin…).
+function sansListe(listes, cle, sql, lecture) {
+  if (lecture) return `liste non lue : ${lecture}`
+  if (listes[cle]?.erreur) return `liste illisible : ${listes[cle].erreur}`
+  if (!Array.isArray(listes[cle]) && !String(sql || '').trim()) return 'liste non réglée : SQL du site › Listes de choix'
+  if (Array.isArray(listes[cle]) && !listes[cle].length) return 'la liste est vide (vérifier son SQL)'
+  return ''
+}
+
 export async function reglerGmao() {
-  const [r, listes] = await Promise.all([essayer(() => api('/api/mn1/gmao/reglages')), api('/api/mn1/gmao/listes').catch(() => ({}))])
+  let lecture = ''
+  const [r, listes] = await Promise.all([essayer(() => api('/api/mn1/gmao/reglages')), api('/api/mn1/gmao/listes').catch((e) => { lecture = e.message; return {} })])
   if (!r) return
   const onglets = h('div', { class: 'segments', style: { marginBottom: '14px' } })
   const corps = h('div')
@@ -40,7 +50,8 @@ export async function reglerGmao() {
     h('div', { class: 'grille grille-2', style: { gap: '10px' } },
       PARAMETRES.map(([cle, libelle]) => {
         champs[cle] = choixGmao(listes[cle], r[cle], { vide: Array.isArray(listes[cle]) ? '— à choisir —' : 'valeur attendue par le SQL' })
-        return h('label', { class: 'champ' }, h('span', {}, libelle, listes[cle]?.erreur ? h('small', { class: 'rouge' }, ` — liste illisible : ${listes[cle].erreur}`) : ''), champs[cle])
+        const raison = sansListe(listes, cle, r.listes?.[cle], lecture)
+        return h('label', { class: 'champ' }, h('span', {}, libelle, raison ? h('small', { class: 'orange' }, ` — ${raison}`) : ''), champs[cle])
       }),
       [['tpsPrevu', 'Temps prévu (h)', 'number'], ['delai', 'Retard admissible (jours)', 'number'], ['parSemaine', 'Maximum de fiches par semaine et par ETH', 'number'], ['numero', 'Modèle du numéro ({parc} {eth} {eth_fiche} {nnn})'], ['titre', 'Modèle du titre ({machine} {etiquette} {zone} {repere})']]
         .map(([cle, libelle, type]) => {

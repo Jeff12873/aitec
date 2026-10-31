@@ -13,9 +13,10 @@ let suivi = null // minuterie du suivi de l'analyse en cours
 
 export default {
   chemin: 'pannes',
+  parcs: true, // le choix du parc sous le titre
   titre: 'Pannes connues',
   icone: 'historique',
-  menu: true,
+  menu: false, // ouvert depuis Administration › Pannes connues
   aide: 'assistant',
 
   async afficher(zone, { query }) {
@@ -34,7 +35,7 @@ export default {
       h('div', { class: 'entete-page' },
         h('div', {}, h('h1', {}, 'Pannes connues'), h('p', { class: 'sous-titre' }, 'Les pannes qui reviennent, tirées des rapports d’intervention : symptôme, causes, remèdes')),
         h('div', { class: 'actions' },
-          lignes.length > 1 ? menuDeroulant({ choix: lignes.map((l) => ({ valeur: l.ligne, libelle: l.ligne, nombre: l.nombre })), valeur: ligneChoisie, surChoix: (v) => { ligneChoisie = v; location.hash = '#/pannes' ; window.ktec.recharger() } }) : null,
+          lignes.length > 1 ? menuDeroulant({ choix: lignes.map((l) => ({ valeur: l.ligne, libelle: l.ligne, nombre: l.nombre })), valeur: ligneChoisie, surChoix: (v) => { ligneChoisie = v; window.ktec.recharger() } }) : null,
           recherche)),
       !etat.partage?.autreAdmin ? carteAnalyse(etatAnalyse) : null, // une analyse se lance aussi en consultation
       donnees.fiches.length ? null : h('div', { class: 'carte vide' }, ic('historique', 32), lignes.length ? 'Aucune fiche sur cette ligne.' : 'Pas encore de pannes connues : un administrateur lance l’analyse d’une ligne ci-dessus.'),

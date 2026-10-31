@@ -207,16 +207,10 @@ function trouverOuCreerMachine(repere, bilan, aIndexer) {
   return id
 }
 
-// « CUR », « Curatif », « panne » → Correctif ; « PREV », « Systématique » → Préventif…
+// Le type tel qu'il est écrit dans la GMAO (« Entretien machine », « Dépannage temporaire »…) : on ne le renomme
+// plus. Sa famille (Correctif, Préventif, Autre), qui sert aux graphiques, est calculée à part (lib/types.js).
 function normaliserType(type) {
-  const t = normaliser(type || '')
-  if (!t) return 'Correctif'
-  if (/^(cur|corr|depan|panne|bris|urgen)/.test(t)) return 'Correctif'
-  if (/^(prev|syst|cond|entretien|graiss|lubri)/.test(t)) return 'Préventif'
-  if (/^(amel|modif|travaux neufs)/.test(t)) return 'Amélioration'
-  if (/^(regl)/.test(t)) return 'Réglage'
-  if (/^(control|verif|vgp|reglem|inspect)/.test(t)) return 'Contrôle réglementaire'
-  return String(type).trim()
+  return String(type ?? '').trim() || 'Sans type'
 }
 
 // ---------------------------------------------------------------- correspondance des colonnes

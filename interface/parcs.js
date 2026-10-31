@@ -1,4 +1,4 @@
-// Le sélecteur de parc, en haut d'AITEC : « Tous » ou un parc (réglés dans Administration › Parcs machines).
+// Le sélecteur de parc, sous le titre des écrans concernés : « Tous » ou un parc (réglés dans Administration › Parcs machines).
 // Un seul parc à la fois, valable pour tous les écrans ; remis à « Tous » à chaque ouverture d'AITEC.
 // Les écrans ajoutent ?parc=… à leurs demandes avec avecParc(adresse).
 

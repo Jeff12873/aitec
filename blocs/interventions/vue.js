@@ -7,6 +7,7 @@ import { avecParc } from '../../interface/parcs.js'
 
 export default {
   chemin: 'interventions',
+  parcs: true, // le choix du parc sous le titre
   titre: 'Interventions',
   icone: 'cle',
   menu: false,

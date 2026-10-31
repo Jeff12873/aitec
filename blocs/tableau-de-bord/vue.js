@@ -1,4 +1,4 @@
-// Tableau de bord : tuiles chiffrées, graphiques, remarques de l'IA.
+// Tableau de bord : graphiques et remarques de l'IA.
 
 import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier, tableau } from '/socle/ui.js'
 import { api } from '/socle/api.js'
@@ -16,6 +16,7 @@ const AUTRES_COULEURS = [COULEURS.turquoise, COULEURS.orange, COULEURS.gris, COU
 
 export default {
   chemin: 'tableau-de-bord',
+  parcs: true, // le choix du parc sous le titre
   titre: 'Tableau de bord',
   icone: 'tableau',
   menu: true,
@@ -31,7 +32,6 @@ export default {
 
 function afficherTableau(zone, d) {
   const t = d.tuiles
-  const ecart = t.interventions30j - t.interventions30jAvant
 
   // Un clic sur une part de l'anneau : les autres s'assombrissent et la liste du dessous ne montre que ce type ;
   // un nouveau clic sur la même part revient à tous les types.
@@ -49,17 +49,10 @@ function afficherTableau(zone, d) {
 
   vider(
     zone,
-    h('div', { class: 'entete-page' }, h('div', {}, h('h1', {}, d.atelier || 'Tableau de bord'), h('p', { class: 'sous-titre' }, d.perimetre?.parc ? `Parc ${d.perimetre.parc} : ${nombreFr(d.perimetre.machines)} machines` : 'Vue d’ensemble du parc et de la maintenance'))),
+    // Le nom de l'atelier, centré ; le choix du parc s'affiche juste dessous (interface/menu.js).
+    h('div', { class: 'entete-page entete-centree' }, h('h1', {}, d.atelier || 'Tableau de bord')),
 
     t.machines === 0 ? bandeauDemarrage() : null,
-
-    h(
-      'div',
-      { class: 'grille grille-3', style: { marginBottom: '16px' } },
-      tuile('usine', '', 'Machines', nombreFr(t.machines), t.machinesHorsService ? h('span', { class: 'ecart' }, `${t.machinesHorsService} hors service`) : null, null),
-      tuile('cle', 'violet', 'Interventions (30 j)', nombreFr(t.interventions30j), ecart ? h('span', { class: `ecart ${ecart > 0 ? 'hausse' : 'baisse'}`, title: 'Par rapport aux 30 jours précédents' }, `${ecart > 0 ? '+' : ''}${ecart}`) : null, null),
-      tuile('document', 'bleu', 'Documents', nombreFr(t.documents), t.documents ? h('small', {}, `${nombreFr(t.documentsLus)} lus par l’IA`) : null, '#/administration/documents'),
-    ),
 
     h(
       'div',
@@ -94,15 +87,6 @@ export function animer(zone) {
     }
     requestAnimationFrame(pas)
   })
-}
-
-function tuile(icone, couleur, libelle, valeur, detail, lien) {
-  return h(
-    lien ? 'a' : 'div',
-    { class: 'tuile', href: lien, style: { color: 'inherit', textDecoration: 'none' } },
-    h('div', { class: 'libelle' }, h('span', { class: `pastille ${couleur}` }, ic(icone, 16)), libelle),
-    h('div', { class: 'valeur' }, valeur, detail),
-  )
 }
 
 function entete(icone, titre, detail) {

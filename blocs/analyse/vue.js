@@ -80,7 +80,7 @@ function graphiqueMois(parMois) {
 }
 
 function listePannes(pannes) {
-  if (!pannes.length) return h('div', { class: 'vide' }, 'Pas de panne connue : lancez l’analyse de sa ligne (écran « Pannes connues »).')
+  if (!pannes.length) return h('div', { class: 'vide' }, 'Pas de panne connue : lancez l’analyse de sa ligne (Administration › Pannes connues).')
   return h('div', { class: 'pannes-analyse' }, pannes.slice(0, 8).map((p) => h('a', { class: 'panne-analyse', href: `#/pannes?id=${p.id}` },
     h('div', { class: 'tete-panne-analyse' }, h('b', {}, p.symptome), h('span', { class: 'cas-panne' }, `${p.nombre} cas`)),
     h('div', { class: 'frequence-panne' }, ic('horloge', 12), p.frequence),
@@ -90,7 +90,7 @@ function listePannes(pannes) {
 // Sans pannes connues : les rapports semblables regroupés par AITEC, avec leur fréquence.
 function listeRepetees(repetees) {
   return h('div', { class: 'pannes-analyse' },
-    h('p', { class: 'discret', style: { margin: '0 0 4px', fontSize: '13px' } }, 'La ligne de cette machine n’a pas encore été analysée (écran « Pannes connues ») : voici les rapports semblables regroupés, sans les causes.'),
+    h('p', { class: 'discret', style: { margin: '0 0 4px', fontSize: '13px' } }, 'La ligne de cette machine n’a pas encore été analysée (Administration › Pannes connues) : voici les rapports semblables regroupés, sans les causes.'),
     repetees.slice(0, 8).map((p) => h('div', { class: 'panne-analyse' },
       h('div', { class: 'tete-panne-analyse' }, h('b', {}, p.symptome), h('span', { class: 'cas-panne' }, `${p.nombre} cas`)),
       h('div', { class: 'frequence-panne' }, ic('horloge', 12), p.frequence),

@@ -1,6 +1,6 @@
 // Le menu d'AITEC, chargé par la coquille commune de KTEC (page /aitec/).
-// Seuls le tableau de bord, l'assistant, les pannes connues, la maintenance de niveau 1 et l'administration sont au menu (menu: true) ; les autres écrans
-// s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
+// Seuls le tableau de bord, l'assistant, la maintenance de niveau 1 et l'administration sont au menu (menu: true) ; les autres écrans
+// (dont les pannes connues) s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
 
 import { h, ic } from '/socle/ui.js'
 import { estConcombre, concombreMasque } from './concombre.js'
@@ -34,7 +34,16 @@ const champRecherche = h('input', {
     location.hash = `#/recherche?q=${encodeURIComponent(e.target.value.trim())}`
   },
 })
-export const barre = () => [selecteurParc(), h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)]
+export const barre = () => [h('div', { class: 'recherche' }, ic('loupe', 17), champRecherche)]
+
+// Le choix du parc : centré, en grand, sous le titre des écrans qui en tiennent compte (parcs: true).
+export function apresAffichage(zone, bloc) {
+  if (!bloc.parcs) return
+  const entete = zone.querySelector('.entete-page, .bandeau-mn1')
+  const choix = h('div', { class: 'zone-parcs' }, selecteurParc())
+  if (entete) entete.after(choix)
+  else zone.prepend(choix)
+}
 
 // Les parcs du sélecteur : lus à l'ouverture (et après leur réglage dans Administration).
 export const auDemarrage = () => rafraichirParcs()

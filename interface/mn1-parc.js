@@ -9,12 +9,14 @@ import { texteIA } from '/socle/texte-ia.js'
 import { LOGO_MN1, FREQUENCES, carteFiche, imprimerFiches, nomMachine } from './fiches-mn1.js'
 import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
 import { reglerParc } from './mn1-reglages.js'
-import { jauge, courbe } from './mn1-graphiques.js'
+import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
 const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 100) / 100).toLocaleString('fr-FR'))
 
-export async function afficherParc(zone, id) {
+// integre : le parc choisi en haut d'AITEC, affiché directement à la place des vignettes (sans « Tous les parcs »),
+// avec un bandeau qui explique sa charge, sa pertinence, sa tendance et ce qu'il reste à faire.
+export async function afficherParc(zone, id, { integre = false } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture du parc et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
   const admin = peutModifier()
@@ -28,7 +30,7 @@ export async function afficherParc(zone, id) {
 
   // ---- en-tête
   const entete = h('div', { class: 'entete-parc' },
-    h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
+    integre ? null : h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
     h('div', { class: 'titre-parc' }, h('img', { src: LOGO_MN1, alt: '' }), h('div', {}, h('h1', {}, d.parc.nom), h('p', { class: 'sous-titre' }, `${d.fiches.length} fiche${d.fiches.length > 1 ? 's' : ''} · ${d.parc.production} machines de production · ${d.parc.maintenance} de maintenance`))),
     h('div', { class: 'espace' }),
     d.tendance?.length ? h('small', { class: 'discret legende-tendance', title: `Correctifs du parc, mois par mois : ${d.tendance.map((x) => x.n).join(', ')}` }, 'courbe : correctifs, 12 mois') : null,
@@ -204,7 +206,16 @@ export async function afficherParc(zone, id) {
 
   // La courbe des correctifs en grand, derrière l'en-tête et la charge (floutée sous la carte).
   const fond = d.tendance?.length ? h('div', { class: 'fond-tendance-parc' }, courbe(d.tendance.map((x) => x.n), { largeur: 1400, hauteur: 210 })) : null
-  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, carteChargeParc), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
+  // Le bandeau de synthèse : un clic sur une chose « à faire » filtre les fiches et y descend.
+  const filtrer = (cle) => {
+    filtre = cle
+    recherche.value = ''
+    dessinerBoutonsFiltre()
+    dessinerFiches()
+    carteFiches.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const synthese = integre ? bandeauSynthese(d, { filtrer, compter: (cle) => d.fiches.filter(FILTRES.find(([c]) => c === cle)[2]).length }) : null
+  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, synthese, carteChargeParc), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.
@@ -337,4 +348,63 @@ function importerVignettes(d, apres) {
     apres()
   }
   choix.click()
+}
+
+// ---------------------------------------------------------------- synthèse du parc choisi
+
+// Quatre colonnes : la charge (le calcul en clair et un verdict), la pertinence (et les grosses pannes qu'aucune
+// fiche ne vise), la tendance des correctifs, et ce qu'il reste à faire (cliquable).
+function bandeauSynthese(d, { filtrer, compter }) {
+  const colonne = (icone, titre, ...contenu) => h('div', { class: 'colonne-synthese' }, h('h3', {}, ic(icone, 16), titre), ...contenu)
+  const verdict = (classe, texte) => h('p', { class: `verdict-synthese ${classe}` }, texte)
+
+  // Charge : la plus haute d'un ETH, comparée au maximum réglé.
+  let charge
+  if (d.erreurCharge) charge = colonne('personne', 'Charge', h('p', { class: 'discret' }, d.erreurCharge))
+  else if (!d.charge.eths.length) charge = colonne('personne', 'Charge', h('p', { class: 'discret' }, 'Pas encore d’ETH de production dans ce parc (Administration › Parcs machines).'))
+  else {
+    const plusHaut = d.charge.eths.reduce((m, e) => (e.taux > m.taux ? e : m))
+    const total = d.charge.eths.reduce((s, e) => s + e.charge, 0)
+    const taux = plusHaut.taux
+    charge = colonne('personne', 'Charge',
+      h('p', {}, h('b', { class: 'grand-synthese' }, pct(taux)), ' du maximum'),
+      h('p', { class: 'texte-2' }, `${arrondi(total)} fiche${total > 1 ? 's' : ''} par semaine pour ${d.charge.eths.length} ETH ; l’ETH le plus chargé (${plusHaut.libelle}) en a ${arrondi(plusHaut.charge)} sur ${arrondi(plusHaut.max)} autorisées (${arrondi(d.reglages.parSemaine)} par semaine et par ETH).`),
+      taux > 1 + 1e-9 ? verdict('rouge', 'Surchargé : des FI sont à suspendre ou à espacer.') : taux >= 0.85 ? verdict('orange', 'À la limite : peu de place pour une fiche de plus.') : verdict('vert', 'De la marge : on peut ajouter des fiches.'))
+  }
+
+  // Pertinence : la part des cas du Pareto visée par les fiches, et les 3 plus grosses pannes sans fiche.
+  const a = d.analyse
+  const parCode = new Map((a?.pareto || []).map((x) => [x.code, x]))
+  const trous = d.pareto.filter((p) => parCode.get(p.code) && !parCode.get(p.code).fiches.length).slice(0, 3)
+  const pertinence = colonne('loupe', 'Pertinence',
+    a ? h('p', {}, h('b', { class: 'grand-synthese' }, pct(a.pertinence)), ' des pannes qui reviennent visées') : h('p', { class: 'discret' }, 'Pas encore d’analyse : elle se lance depuis la carte « Pareto et fiches » ci-dessous.'),
+    a ? h('p', { class: 'texte-2' }, 'Chaque panne compte pour son nombre de cas sur 12 mois.') : null,
+    trous.length ? h('div', {}, h('p', { class: 'petit-titre-synthese' }, 'Sans fiche, à viser en premier :'),
+      h('ul', { class: 'liste-synthese' }, trous.map((p) => h('li', {}, h('a', { href: `#/analyse/${p.machine}`, class: 'mono' }, p.repere), ` ${p.symptome} `, h('span', { class: 'discret' }, `(${p.nombre} cas)`))))) : a ? verdict('vert', 'Toutes les grosses pannes ont une fiche.') : null)
+
+  // Tendance : les 3 derniers mois de correctifs, comparés à la moyenne des 12.
+  const valeurs = (d.tendance || []).map((x) => x.n)
+  const sens = valeurs.length ? tendance(valeurs) : null
+  const ecart = valeurs.length ? ecartTendance(valeurs) : 0
+  const moyenne = valeurs.length ? valeurs.reduce((s, n) => s + n, 0) / valeurs.length : 0
+  const courbeTendance = colonne('graphique', 'Correctifs, 12 mois',
+    valeurs.length ? h('div', { class: 'courbe-synthese' }, courbe(valeurs, { largeur: 300, hauteur: 56 })) : null,
+    valeurs.length ? h('p', {}, h('b', { class: 'grand-synthese' }, `${ecart > 0 ? '+' : ''}${Math.round(ecart * 100)} %`), ' sur les 3 derniers mois') : h('p', { class: 'discret' }, 'Pas d’intervention corrective connue.'),
+    valeurs.length ? h('p', { class: 'texte-2' }, `Moyenne : ${arrondi(moyenne)} correctif${moyenne > 1 ? 's' : ''} par mois.`) : null,
+    sens === 'hausse' ? verdict('rouge', 'En hausse : les fiches ne suffisent pas.') : sens === 'baisse' ? verdict('vert', 'En baisse : les fiches portent leurs fruits.') : sens ? verdict('orange', 'Stable.') : null)
+
+  // À faire : les filtres rapides des fiches qui demandent une action, et les ETH dépassés.
+  const choses = [
+    ['aanalyser', 'fiche à analyser', 'fiches à analyser'],
+    ['sanscible', 'fiche sans cible', 'fiches sans cible'],
+    ['demandes', 'fiche avec des demandes malgré elle', 'fiches avec des demandes malgré elles'],
+    ['sansfi', 'fiche sans FI', 'fiches sans FI'],
+  ].map(([cle, un, plusieurs]) => [cle, compter(cle), un, plusieurs]).filter(([, n]) => n)
+  const depasses = d.erreurCharge ? [] : d.charge.eths.filter((e) => e.taux > 1 + 1e-9)
+  const aFaire = colonne('coche', 'À faire',
+    choses.length || depasses.length ? h('ul', { class: 'liste-synthese a-faire' },
+      depasses.map((e) => h('li', {}, h('span', { class: 'etiquette rouge' }, e.libelle), ' dépasse son maximum')),
+      choses.map(([cle, n, un, plusieurs]) => h('li', {}, h('button', { class: 'lien-synthese', onclick: () => filtrer(cle) }, h('b', {}, String(n)), ` ${n > 1 ? plusieurs : un}`)))) : verdict('vert', 'Rien d’urgent.'))
+
+  return h('div', { class: 'carte synthese-parc' }, charge, pertinence, courbeTendance, aFaire)
 }
