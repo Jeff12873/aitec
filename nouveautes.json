@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.12",
+      "date": "2026-10-31",
+      "points": [
+        "Analyse d'une machine : les conseils de l'IA sont des questions ouvertes (« Est-ce qu'un préventif … serait opportun ? »), chacune avec la donnée qui la fait naître"
+      ]
+    },
+    {
       "version": "0.6.11",
       "date": "2026-10-31",
       "points": [

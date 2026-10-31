@@ -118,7 +118,7 @@ function decouperResume(texte) {
       if (quoi === 'formation') formations.push(geste[2].replace(/\*\*/g, '').trim())
       // Le niveau 1 est fait par la production ; un geste de technicien repart dans les conseils.
       else if (quoi === 'production') gestes.push({ pour: 'Production', action, frequence, evite })
-      else parties.conseils.push(`- **Maintenance** : ${action}${frequence ? ` (${frequence})` : ''}${evite ? ` — évite : ${evite}` : ''}`)
+      else parties.conseils.push(`- Est-ce qu’un passage de la maintenance pour « ${action.replace(/\.$/, '')} »${frequence ? ` (${frequence})` : ''} serait utile${evite ? `, pour éviter : ${evite}` : ''} ?`)
       continue
     }
     // Un titre « **En bref** : … » (ou « ### Conseils ») ouvre une partie ; ce qui suit sur la ligne lui appartient.
