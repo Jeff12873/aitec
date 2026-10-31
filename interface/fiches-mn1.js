@@ -7,7 +7,7 @@
 //   soit 5 ; mensuelle : 1 par mois ; trimestrielle : 1 par trimestre…). Quotidienne : trop fréquent pour une
 //   fiche, à voir avec le responsable de production ou en focus maintenance.
 
-import { h, ic, nombreFr } from '/socle/ui.js'
+import { h, ic, nombreFr, fenetre } from '/socle/ui.js'
 
 export const LOGO_MN1 = new URL('mn1.webp', import.meta.url).href
 export const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
@@ -60,12 +60,14 @@ export function points(texte) {
 
 // Une fiche à l'écran : étiquette et zone, points à vérifier, fréquence préconisée (et le nombre de fiches qu'elle
 // donne), panne évitée, ETH, machine. options.enPlus : boutons en bas ; un clic ailleurs ouvre l'impression.
-export function carteFiche(f, { enPlus = null } = {}) {
+// Un clic sur une fiche : elle s'ouvre au centre de l'écran, en grand, avec le pourquoi de chaque information
+// (pourquoi : des explications en plus, données par l'écran qui la montre). L'impression est un bouton de la fenêtre.
+export function carteFiche(f, { enPlus = null, pourquoi = [], statique = false } = {}) {
   const quotidienne = f.frequence === 'Quotidienne'
-  const ouvrir = () => imprimerFiches([f])
+  const ouvrir = () => (statique ? null : montrerFiche(f, pourquoi))
   const n = fichesPour(f.frequence)
   const liste = points(f.action)
-  return h('div', { class: `geste-mn1 production${quotidienne ? ' trop-frequente' : ''}`, role: 'button', tabindex: '0', title: quotidienne ? TROP_FREQUENT : 'Ouvrir la fiche à imprimer (A5 paysage)',
+  return h('div', { class: `geste-mn1 production${quotidienne ? ' trop-frequente' : ''}${statique ? ' statique' : ''}`, role: statique ? null : 'button', tabindex: statique ? null : '0', title: statique ? '' : quotidienne ? TROP_FREQUENT : 'Voir la fiche en grand, avec le pourquoi de ses informations',
     onclick: (ev) => !ev.target.closest('.enplus-mn1') && ouvrir(),
     onkeydown: (ev) => ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), ouvrir()) },
     h('div', { class: 'tete-geste' }, h('img', { src: LOGO_MN1, alt: '' }),
@@ -82,6 +84,37 @@ export function carteFiche(f, { enPlus = null } = {}) {
       f.eth ? h('span', {}, h('b', {}, 'ETH'), f.eth) : null,
       h('span', {}, h('b', {}, 'Machine'), nomMachine(f))),
     enPlus ? h('div', { class: 'enplus-mn1' }, enPlus) : null)
+}
+
+// La fiche en grand, avec le pourquoi : d'où vient chaque information et ce qu'elle veut dire. Les phrases sont
+// des explications, pas des ordres : c'est l'équipe qui décide.
+export function montrerFiche(f, pourquoi = []) {
+  const n = fichesPour(f.frequence)
+  const raisons = [
+    ['Le geste', f.etiquette ? `La fiche « ${f.etiquette} » regroupe les points à vérifier sur cette zone ; l’opérateur les suit dans l’ordre.` : 'Ce que l’opérateur fait, sans démontage ni habilitation : regarder, écouter, toucher, nettoyer, resserrer.'],
+    ['La fréquence', f.frequence
+      ? `${f.frequence}${n ? `, soit ${n} fiche${n > 1 ? 's' : ''} par ${PERIODES[f.frequence][1]}` : ''}. ${f.aAnalyser ? 'Elle vient de l’import du classeur et reste provisoire tant que la machine n’a pas été analysée.' : 'Elle a été choisie pour voir venir la panne avant qu’elle n’arrive, sans charger les opérateurs.'}`
+      : 'Pas encore précisée.'],
+    f.frequence === 'Quotidienne' ? ['Pourquoi « trop fréquent » ?', TROP_FREQUENT] : null,
+    f.evite ? ['Ce qu’elle évite', `${f.evite} : la panne relevée dans les rapports d’intervention que ce geste doit prévenir.`] : null,
+    ['Qui la fait', `${f.eth ? `L’équipe de production « ${f.eth} »` : 'L’équipe de production de la machine'}, sur ${nomMachine(f) || 'la machine'}.`],
+    f.fi_gmao !== undefined ? ['Dans la GMAO', f.fi_gmao ? `Portée par la FI ${f.fi_gmao} : elle apparaît dans les FI de niveau 1 et compte dans la charge des opérateurs.` : 'Pas encore dans une FI de la GMAO : tant qu’elle n’y est pas, les opérateurs ne la voient pas dans leurs FI.'] : null,
+    f.sansCible ? ['Sans cible', `L’analyse de corrélation ne lui trouve aucune panne du Pareto du parc à prévenir.${f.suggestion ? ` Passer en ${f.suggestion.frequence.toLowerCase()} libérerait du temps : est-ce envisageable ?` : ' Vise-t-elle une panne qui ne revient plus, ou une panne pas encore relevée ?'}`] : null,
+    f.demandes ? ['Des demandes malgré la fiche', `${f.demandes} demande${f.demandes > 1 ? 's' : ''} de niveau 1 sur cette machine ces 12 derniers mois. Le geste est-il fait comme prévu, ou la fiche mérite-t-elle d’être revue ?`] : null,
+    ...pourquoi,
+  ].filter(Boolean)
+  return fenetre({
+    titre: f.etiquette ? `Fiche ${f.etiquette}` : 'Fiche de maintenance de niveau 1',
+    large: true,
+    contenu: h('div', { class: 'fiche-agrandie' },
+      carteFiche(f, { statique: true }),
+      h('div', { class: 'pourquoi-fiche' }, h('h3', {}, ic('aide', 16), 'Le pourquoi de ses informations'),
+        h('dl', {}, raisons.map(([titre, texte]) => [h('dt', {}, titre), h('dd', {}, texte)])))),
+    boutons: [
+      { texte: 'Imprimer (A5)', classe: 'discret', action: () => { imprimerFiches([f]); return false } },
+      { texte: 'Fermer', classe: 'principal' },
+    ],
+  })
 }
 
 // Une seule fiche : toutes ses feuilles (5 pour un contrôle hebdomadaire, une par semaine du mois).

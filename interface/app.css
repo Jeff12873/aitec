@@ -478,3 +478,16 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 /* Analyse d'une machine : la pastille MN1+ d'un conseil qui pourrait devenir une fiche focus */
 .pastille-mn1-plus { margin-left: 6px; padding: 1px 8px; border-radius: 99px; border: 1px solid #facc15; background: color-mix(in srgb, #facc15 16%, transparent); color: #facc15; font-size: 11px; font-weight: 700; letter-spacing: .03em; cursor: pointer; vertical-align: middle; }
 .pastille-mn1-plus:hover { background: color-mix(in srgb, #facc15 30%, transparent); }
+
+/* Une fiche MN1 en grand, avec le pourquoi de ses informations */
+.fiche-agrandie { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 24px; align-items: start; }
+/* La carte en grand : la même mise en page que dans la liste des fiches, en plus gros. */
+.fiche-agrandie .geste-mn1 { display: flex; flex-direction: column; gap: 8px; min-width: 0; white-space: normal; overflow-wrap: anywhere; color: var(--texte); font-size: 16px; padding: 16px 18px; cursor: default; }
+.fiche-agrandie .geste-mn1 > * { min-width: 0; }
+.fiche-agrandie .geste-mn1 img { width: 30px; height: 30px; }
+@media (max-width: 760px) { .fiche-agrandie { grid-template-columns: 1fr; } }
+.pourquoi-fiche h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 15px; }
+.pourquoi-fiche h3 svg { color: var(--accent); }
+.pourquoi-fiche dl { margin: 0; display: grid; gap: 8px; }
+.pourquoi-fiche dt { font-weight: 700; font-size: 13px; color: var(--texte); }
+.pourquoi-fiche dd { margin: 0; font-size: 13px; color: var(--texte-2); }

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.14",
+      "date": "2026-10-31",
+      "points": [
+        "Un clic sur une fiche de niveau 1 l'ouvre en grand au centre de l'écran, avec le pourquoi de chaque information ; l'impression devient un bouton de cette fenêtre"
+      ]
+    },
+    {
       "version": "0.6.13",
       "date": "2026-10-31",
       "points": [

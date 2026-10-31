@@ -163,7 +163,9 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     if (tri.value === 'utilite') visibles.sort((x, y) => (u.get(x.id) || 0) - (u.get(y.id) || 0))
     if (tri.value === 'sans') visibles.sort((x, y) => Boolean(x.fi_gmao) - Boolean(y.fi_gmao))
     if (tri.value === 'alertes') visibles.sort((x, y) => alertes(y) - alertes(x))
-    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans ce parc : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
+    // Le pourquoi en plus, propre au parc : combien de pannes du Pareto la fiche vise (analyse de corrélation).
+    const pourquoi = (f) => (a ? [['Les pannes visées', (u.get(f.id) || 0) ? `Elle vise ${u.get(f.id)} panne${u.get(f.id) > 1 ? 's' : ''} du Pareto du parc, d’après l’analyse de corrélation du ${dateFr(a.date)}.` : 'L’analyse de corrélation ne la relie à aucune panne du Pareto du parc.']] : [])
+    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f), pourquoi: pourquoi(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans ce parc : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
   }
   // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
   allerAFiche = (id) => {
