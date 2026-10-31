@@ -7,7 +7,7 @@ import { peutModifier } from '/socle/etat.js'
 import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
-import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres } from '../../interface/fiches-mn1.js'
+import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres, FREQUENCES } from '../../interface/fiches-mn1.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
@@ -154,9 +154,41 @@ function rendreResume(texte, d) {
     vide(parties.bref) ? null : h('div', { class: 'bref-analyse' }, h('div', { class: 'titre-bref' }, ic('etincelle', 15), 'En bref'), html(parties.bref)),
     h('div', { class: 'colonnes-analyse' },
       section('Pannes qui reviennent', 'alerte', parties.pannes),
-      section('Conseils', 'coche', parties.conseils)),
+      conseilsAvecMN1(section('Conseils', 'coche', parties.conseils), d)),
     vide(parties.mn1) ? null : html(parties.mn1),
     blocMN1(gestes, formations, d))
+}
+
+// Les conseils qui portent sur un contrôle (l'IA les marque « [MN1+] ») reçoivent la pastille MN1+ : ils
+// pourraient devenir une fiche focus. Un clic (administrateur) propose de créer la fiche, à partir du conseil.
+function conseilsAvecMN1(section, d) {
+  if (!section) return section
+  for (const li of section.querySelectorAll('li')) {
+    if (!li.textContent.includes('[MN1+]')) continue
+    li.innerHTML = li.innerHTML.replace(/\s*\[MN1\+\]\s*/g, ' ')
+    const conseil = li.textContent.trim()
+    li.append(h('button', { class: 'pastille-mn1-plus', title: peutModifier() ? 'Ce contrôle pourrait devenir une fiche focus : cliquer pour la préparer' : 'Ce contrôle pourrait devenir une fiche focus (maintenance de niveau 1)', onclick: () => peutModifier() && creerFicheDepuisConseil(conseil, d) }, 'MN1+'))
+  }
+  return section
+}
+
+async function creerFicheDepuisConseil(conseil, d) {
+  // Le geste proposé : la question sans sa forme interrogative ni la donnée entre parenthèses.
+  const geste = conseil.replace(/\(.*?\)/g, '').replace(/^est-ce qu[’']?(un|une|il)?\s*/i, '').replace(/\s*serait\s+(utile|opportun|pertinent|nécessaire)\s*\??\s*$/i, '').replace(/\?\s*$/, '').trim()
+  const action = h('input', { type: 'text', value: geste.charAt(0).toUpperCase() + geste.slice(1) })
+  const frequence = h('select', {}, FREQUENCES.map((f) => h('option', { value: f, selected: f === (/hebdo/i.test(conseil) ? 'Hebdomadaire' : 'Mensuelle') }, f)))
+  const evite = h('input', { type: 'text', value: (conseil.match(/\((.*?)\)/) || [])[1] || '' })
+  const ok = await fenetre({
+    titre: 'Préparer une fiche focus',
+    contenu: h('div', { class: 'grille', style: { gap: '10px' } },
+      h('p', { class: 'texte-2', style: { margin: 0 } }, conseil),
+      h('label', { class: 'champ' }, h('span', {}, 'Geste de l’opérateur'), action),
+      h('label', { class: 'champ' }, h('span', {}, 'Fréquence'), frequence),
+      h('label', { class: 'champ' }, h('span', {}, 'Panne qu’il évite'), evite)),
+    boutons: [{ texte: 'Annuler', classe: 'discret', valeur: false }, { texte: 'Garder dans les fiches MN1', classe: 'principal', valeur: true }],
+  })
+  if (!ok || !action.value.trim()) return
+  await essayer(() => api('/api/mn1/fiches', { methode: 'POST', corps: { machine_id: d.machine.id, pour: 'Production', action: action.value.trim(), frequence: frequence.value, evite: evite.value.trim(), eth: d.place?.eth || '', ligne: d.place?.ligne || '' } }), 'Fiche gardée dans « Maintenance de niveau 1 »')
 }
 
 // L'encadré MN1 : en tête, la formation des opérateurs s'il y en a ; puis 3 fiches au plus, côte à côte.
