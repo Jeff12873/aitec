@@ -72,8 +72,11 @@ export async function dialogueFi(fiche, detail) {
     try {
       plan = await api('/api/mn1/fi/plan', { methode: 'POST', corps: demande() })
     } catch (e) {
-      vider(zonePlan, h('div', { class: 'bandeau' }, ic('alerte'), e.message))
       boutonSimuler.disabled = true
+      // « Remplacer » sans FI cochée : on garde le plan précédent pour montrer la liste des FI à cocher
+      // (sinon le message prendrait sa place et il n'y aurait plus rien à cocher).
+      if (cible === 'remplacer' && !cochees.size && plan) return dessinerPlan()
+      vider(zonePlan, h('div', { class: 'bandeau' }, ic('alerte'), e.message))
       return
     }
     // Premier calcul : réactiver une FI suspendue s'il y en a, sinon une nouvelle, sinon remplacer.
@@ -105,8 +108,10 @@ export async function dialogueFi(fiche, detail) {
           h('span', { class: 'discret' }, `${arrondi(a.poids)} / sem.`),
           h('span', { class: `etiquette ${utilite ? '' : 'orange'}` }, utilite ? `vise ${utilite} cas` : detail.analyse ? 'sans cible' : 'non analysée'))
       })) : null,
-      plan.respecte ? null : h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), `Au-dessus du maximum : ${cible === 'remplacer' ? 'cochez d’autres FI à libérer' : 'remplacez une FI active, ou augmentez le maximum du parc'}.`))
-    boutonSimuler.disabled = !plan.respecte
+      cible === 'remplacer' && !cochees.size
+        ? h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), 'Cet ETH est au maximum : cochez la FI qui reçoit cette fiche (les moins utiles sont en haut), ou choisissez « Nouvelle FI » et augmentez le maximum du parc.')
+        : plan.respecte ? null : h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), `Au-dessus du maximum : ${cible === 'remplacer' ? 'cochez d’autres FI à libérer' : 'remplacez une FI active, ou augmentez le maximum du parc'}.`))
+    boutonSimuler.disabled = !plan.respecte || (cible === 'remplacer' && !cochees.size)
   }
 
   const montrer = (r, ecrit) => {

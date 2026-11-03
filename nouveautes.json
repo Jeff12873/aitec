@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.16",
+      "date": "2026-11-03",
+      "points": [
+        "FI de niveau 1 : quand l'ETH est au maximum, la fenêtre montre la liste des FI actives à cocher (celle qui reçoit la fiche) au lieu de rester bloquée sur « Cochez la FI qui reçoit la fiche »"
+      ]
+    },
+    {
       "version": "0.6.15",
       "date": "2026-11-03",
       "points": [
