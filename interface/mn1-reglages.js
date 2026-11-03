@@ -55,7 +55,8 @@ export async function reglerGmao() {
       }),
       [['tpsPrevu', 'Temps prévu (h)', 'number'], ['delai', 'Retard admissible (jours)', 'number'], ['parSemaine', 'Maximum de fiches par semaine et par ETH', 'number'], ['numero', 'Modèle du numéro ({parc} {eth} {eth_fiche} {nnn})'], ['titre', 'Modèle du titre ({machine} {etiquette} {zone} {repere})']]
         .map(([cle, libelle, type]) => {
-          champs[cle] = h('input', { type: type || 'text', value: r[cle] ?? '', step: type === 'number' ? 'any' : null })
+          // Le temps prévu se règle au dixième d'heure (0,1 h = 6 min).
+          champs[cle] = h('input', { type: type || 'text', value: r[cle] ?? '', step: cle === 'tpsPrevu' ? '0.1' : type === 'number' ? 'any' : null, min: cle === 'tpsPrevu' ? '0.1' : null })
           return h('label', { class: 'champ' }, h('span', {}, libelle), champs[cle])
         })))
 
@@ -129,7 +130,7 @@ export async function reglerParc(parc) {
   const champs = {
     parSemaine: h('input', { type: 'number', min: 0.25, step: 0.25, value: r.propres.parSemaine ?? '', placeholder: `général : ${g.parSemaine}` }),
     ...Object.fromEntries(PARAMETRES.map(([cle]) => [cle, choixGmao(listes[cle], r.propres[cle], { vide: `— général : ${libelleListe(cle, g[cle])} —` })])),
-    tpsPrevu: h('input', { type: 'number', step: 'any', value: r.propres.tpsPrevu ?? '', placeholder: `général : ${g.tpsPrevu}` }),
+    tpsPrevu: h('input', { type: 'number', step: '0.1', min: '0.1', value: r.propres.tpsPrevu ?? '', placeholder: `général : ${g.tpsPrevu}` }),
     delai: h('input', { type: 'number', value: r.propres.delai ?? '', placeholder: `général : ${g.delai}` }),
     numero: h('input', { type: 'text', value: r.propres.numero ?? '', placeholder: `général : ${g.numero}` }),
     titre: h('input', { type: 'text', value: r.propres.titre ?? '', placeholder: `général : ${g.titre}` }),

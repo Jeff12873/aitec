@@ -38,6 +38,8 @@ const REGLAGES = {
 export const PROPRES_AU_PARC = ['modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'tpsPrevu', 'delai', 'numero', 'titre', 'parSemaine']
 const TEXTES = ['sql', 'sqlLecture', 'sqlModification', 'sqlSuspension', 'modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'numero', 'titre']
 const NOMBRES = ['tpsPrevu', 'periot', 'valPeriot', 'delai', 'parSemaine']
+// Le temps prévu au dixième d'heure près (0,1 au moins) ; les autres nombres tels quels.
+const dixieme = (cle, n) => (cle === 'tpsPrevu' ? Math.max(0.1, Math.round(n * 10) / 10) : n)
 
 export const reglagesGmao = () => {
   const lus = reglageJson('mn1_gmao', {}) || {}
@@ -55,7 +57,7 @@ export function enregistrerReglagesGmao(entree) {
   const avant = reglagesGmao()
   const propres = { ...avant }
   for (const cle of TEXTES) if (cle in entree) propres[cle] = String(entree[cle] ?? '').trim()
-  for (const cle of NOMBRES) if (cle in entree) propres[cle] = Number(entree[cle]) > 0 ? Number(entree[cle]) : REGLAGES[cle]
+  for (const cle of NOMBRES) if (cle in entree) propres[cle] = Number(entree[cle]) > 0 ? dixieme(cle, Number(entree[cle])) : REGLAGES[cle]
   if (entree.unites && typeof entree.unites === 'object') {
     propres.unites = Object.fromEntries(Object.entries(entree.unites).map(([code, u]) => [String(code).trim(), { nom: String(u?.nom || '').trim(), jours: Number(u?.jours) || 0 }]).filter(([code, u]) => code && u.jours > 0))
   }
@@ -76,7 +78,7 @@ export function enregistrerReglagesDuParc(parcId, entree) {
   for (const cle of PROPRES_AU_PARC) {
     const v = entree[cle]
     if (v === '' || v === null || v === undefined) continue
-    propres[cle] = NOMBRES.includes(cle) ? Number(v) || undefined : String(v).trim()
+    propres[cle] = NOMBRES.includes(cle) ? (Number(v) > 0 ? dixieme(cle, Number(v)) : undefined) : String(v).trim()
   }
   const parcs = { ...(r.parcs || {}), [parcId]: Object.fromEntries(Object.entries(propres).filter(([, v]) => v !== undefined)) }
   const { propres: _, ...general } = r

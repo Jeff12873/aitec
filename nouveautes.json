@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.17",
+      "date": "2026-11-03",
+      "points": [
+        "Maintenance de niveau 1 : le temps prévu des FI se règle au dixième d'heure (0,1 h au moins), en général comme par parc"
+      ]
+    },
+    {
       "version": "0.6.16",
       "date": "2026-11-03",
       "points": [
