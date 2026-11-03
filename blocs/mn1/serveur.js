@@ -13,7 +13,7 @@ import { lireDemandes, close } from './demandes.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
-import { lireParcs } from '../../lib/parcs.js'
+import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
@@ -136,7 +136,8 @@ async function tableau(parcVoulu = '') {
   const avecFiche = new Set(db().prepare('SELECT machine_id, machine_prod FROM fiches_mn1 WHERE archivee = 0').all().flatMap((f) => [f.machine_id, f.machine_prod, p?.liens?.[f.machine_prod]]).filter(Boolean))
   const machines = compter(annee, 'machine').slice(0, 8).map(([repere, nombre]) => {
     const m = parRepere.get(repere)
-    return { repere, nombre, id: m?.id || null, designation: m?.designation || '', fiche: m ? avecFiche.has(m.id) : false }
+    // analyse : la machine du parc maintenance à ouvrir (une machine de production n'est pas analysée).
+    return { repere, nombre, id: m?.id || null, analyse: machineAnalysable(p, m?.id), designation: m?.designation || '', fiche: m ? avecFiche.has(m.id) : false }
   })
   return {
     reglee: true,

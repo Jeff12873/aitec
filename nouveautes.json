@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.20",
+      "date": "2026-11-03",
+      "points": [
+        "Maintenance de niveau 1 : seules les machines du parc maintenance ouvrent leur analyse ; une machine de production renvoie à sa machine de maintenance liée, sinon elle n'est pas cliquable (demandes « sans fiche », Pareto, fiches, synthèse)"
+      ]
+    },
+    {
       "version": "0.6.19",
       "date": "2026-11-03",
       "points": [

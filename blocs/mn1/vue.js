@@ -241,7 +241,11 @@ async function afficherDemandes(zone) {
       h('div', { class: 'carte' }, entete('reseau', 'Par ETH', '12 mois'), d.eth.length ? barresHorizontales(d.eth.map((x) => ({ etiquette: x.nom, valeur: x.nombre })), { couleur: COULEURS.turquoise }) : h('div', { class: 'vide' }, 'ETH inconnus (arborescence).')),
       d.sansFiche.length ? h('div', { class: 'carte pleine sans-fiche-mn1' }, entete('coche', 'Sans fiche de niveau 1', 'machines souvent demandées'),
         h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Ces machines reviennent souvent dans les demandes de niveau 1 mais n’ont pas encore de fiche : leur analyse propose les gestes qui éviteraient ces demandes.'),
-        h('div', { class: 'liste-sans-fiche' }, d.sansFiche.map((m) => h('a', { class: 'bouton', href: `#/analyse/${m.id}` }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
+        // Seule une machine du parc maintenance s'ouvre (l'analyse) ; une machine de production sans machine de
+        // maintenance liée reste une simple étiquette.
+        h('div', { class: 'liste-sans-fiche' }, d.sansFiche.map((m) => m.analyse
+          ? h('a', { class: 'bouton', href: `#/analyse/${m.analyse}` }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)
+          : h('span', { class: 'etiquette' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
       h('div', { class: 'carte pleine' }, entete('historique', 'Dernières demandes'), listeDemandes(d.dernieres)),
     ))
   animer(zone)

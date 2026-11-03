@@ -16,6 +16,10 @@ const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 10
 
 // integre : le parc choisi en haut d'AITEC, affiché directement à la place des vignettes (sans « Tous les parcs »),
 // avec un bandeau qui explique sa charge, sa pertinence, sa tendance et ce qu'il reste à faire.
+// Un lien vers l'analyse, seulement pour une machine du parc maintenance (ou la machine de maintenance liée à une
+// machine de production) ; sinon le texte seul, pas cliquable.
+const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: `#/analyse/${d.analysables[id]}` }, contenu) : contenu)
+
 export async function afficherParc(zone, id, { integre = false } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture du parc et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
@@ -100,7 +104,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
         const trou = a && x && !x.fiches.length
         return h('tr', { class: trou ? 'trou-pareto' : '' },
           h('td', { class: 'mono discret' }, p.code),
-          h('td', {}, h('a', { href: `#/analyse/${p.machine}`, class: 'mono' }, p.repere), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
+          h('td', {}, lienAnalyse(d, p.machine, h('span', { class: 'mono' }, p.repere)), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
           h('td', { title: x?.commentaire || '' }, p.symptome),
           h('td', { class: 'nombre' }, String(p.nombre)),
           h('td', {}, h('div', { class: 'cumul-pareto', title: `${pct(p.cumul)} des cas du Pareto en comptant jusqu’à cette panne` }, h('i', { style: { width: `${Math.round(p.cumul * 100)}%` } }), h('span', {}, pct(p.cumul)))),
@@ -129,7 +133,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     f.demandes ? h('span', { class: 'etiquette violet', title: 'Demandes de niveau 1 sur cette machine ces 12 mois, malgré la fiche : geste mal fait, ou fiche à revoir ?' }, `${f.demandes} demande${f.demandes > 1 ? 's' : ''} malgré la fiche`) : null,
     avantApres(f.avantApres),
     h('div', { class: 'actions-fiche-mn1' },
-      f.machine_id ? h('a', { href: `#/analyse/${f.machine_id}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : null,
+      d.analysables?.[f.machine_id] || d.analysables?.[f.machine_prod] ? h('a', { href: `#/analyse/${d.analysables[f.machine_id] || d.analysables[f.machine_prod]}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : null,
       admin ? h('button', { class: 'petit', title: f.fi_gmao ? 'Mettre cette fiche dans une autre FI' : 'Créer ou choisir la FI de cette fiche dans la GMAO (simulation d’abord)', onclick: () => dialogueFi(f, d) }, ic('base', 13), f.fi_gmao ? 'Changer de FI' : 'Créer la FI') : null,
       admin ? h('button', { class: 'discret petit icone-seule', title: 'Corriger la fiche', onclick: () => corrigerFiche(f) }, ic('crayon', 14)) : null,
       admin && !f.fi_gmao ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null))
@@ -385,7 +389,7 @@ function bandeauSynthese(d, { filtrer, compter }) {
     a ? h('p', {}, h('b', { class: 'grand-synthese' }, pct(a.pertinence)), ' des pannes qui reviennent visées') : h('p', { class: 'discret' }, 'Pas encore d’analyse : elle se lance depuis la carte « Pareto et fiches » ci-dessous.'),
     a ? h('p', { class: 'texte-2' }, 'Chaque panne compte pour son nombre de cas sur 12 mois.') : null,
     trous.length ? h('div', {}, h('p', { class: 'petit-titre-synthese' }, 'Sans fiche, à viser en premier :'),
-      h('ul', { class: 'liste-synthese' }, trous.map((p) => h('li', {}, h('a', { href: `#/analyse/${p.machine}`, class: 'mono' }, p.repere), ` ${p.symptome} `, h('span', { class: 'discret' }, `(${p.nombre} cas)`))))) : a ? verdict('vert', 'Toutes les grosses pannes ont une fiche.') : null)
+      h('ul', { class: 'liste-synthese' }, trous.map((p) => h('li', {}, lienAnalyse(d, p.machine, h('span', { class: 'mono' }, p.repere)), ` ${p.symptome} `, h('span', { class: 'discret' }, `(${p.nombre} cas)`))))) : a ? verdict('vert', 'Toutes les grosses pannes ont une fiche.') : null)
 
   // Tendance : les 3 derniers mois de correctifs, comparés à la moyenne des 12.
   const valeurs = (d.tendance || []).map((x) => x.n)

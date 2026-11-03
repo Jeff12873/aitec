@@ -7,7 +7,7 @@
 import crypto from 'node:crypto'
 import { db, reglage } from '../../lib/base.js'
 import { etatPartage } from 'ktec/partage.js'
-import { lireParcs, NON_CLASSE } from '../../lib/parcs.js'
+import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe, sqlFamille } from '../../lib/types.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { chargeDuParc, etatLecture, parSemaine, periodicite } from './fi.js'
@@ -249,6 +249,8 @@ export async function detailDuParc(parcId) {
     archivees: db().prepare('SELECT count(*) AS n FROM fiches_mn1 WHERE archivee = 1 AND parc = ?').get(parc.id).n,
     charge, erreurCharge, lecture: etatLecture(),
     pareto: liste.map(({ cas, datesCas, ...x }) => x),
+    // id de machine → machine du parc maintenance à analyser (les autres ne sont pas cliquables).
+    analysables: Object.fromEntries([...new Set([...liste.map((x) => x.machine), ...fiches.flatMap((f) => [f.machine_id, f.machine_prod])].filter(Boolean))].map((id) => [id, machineAnalysable(p, id)]).filter(([, a]) => a)),
     analyse: analyse ? { ...analyse, perimee: analyse.signature !== signature(liste, fiches) } : null,
     seuil: seuilPertinence(),
     demandes: demandes ? { total: demandes.length, ouvertes: demandes.filter((d) => !d.close).length, surMachineAvecFiche: demandes.filter((d) => machinesAvecFiche.has(d.machineId)).length, dernieres: demandes.slice(0, 15).map((d) => ({ ...d, fiche: machinesAvecFiche.get(d.machineId) ? { id: machinesAvecFiche.get(d.machineId).id, etiquette: machinesAvecFiche.get(d.machineId).etiquette } : null })) } : null,
