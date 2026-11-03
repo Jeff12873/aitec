@@ -165,7 +165,7 @@ export async function dialogueFi(fiche, detail) {
   if (fermee !== undefined) window.ktec.recharger()
 }
 
-// ---------------------------------------------------------------- suspendre des FI (maximum baissé)
+// ---------------------------------------------------------------- suspendre des FI (à tout moment, ou maximum baissé)
 
 export async function dialogueSuspension(detail, eth) {
   const u = utilites(detail)
@@ -180,7 +180,7 @@ export async function dialogueSuspension(detail, eth) {
   function dessiner() {
     simulee = null
     boutonSuspendre.disabled = true
-    boutonSimuler.disabled = !cochees.size || apres() > eth.max + 1e-9
+    boutonSimuler.disabled = !cochees.size
     vider(zone,
       jaugeCharge(eth.charge, apres(), eth.max),
       h('div', { class: 'liste-remplacer' }, actives.map((a) => h('label', { class: `remplacer-fi${cochees.has(a.numero) ? ' coche' : ''}` },
@@ -213,7 +213,9 @@ export async function dialogueSuspension(detail, eth) {
     titre: `${eth.libelle} : FI à suspendre`,
     large: true,
     contenu: h('div', {},
-      h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'La charge de cet ETH dépasse le maximum du parc. Cochez les FI à suspendre (les moins utiles d’abord) jusqu’à repasser sous le maximum. Les numéros ne changent pas ; une FI suspendue pourra être réactivée.'),
+      h('p', { class: 'texte-2', style: { marginTop: 0 } }, eth.charge > eth.max + 1e-9
+        ? 'La charge de cet ETH dépasse le maximum du parc. Cochez les FI à suspendre (les moins utiles d’abord) jusqu’à repasser sous le maximum. Les numéros ne changent pas ; une FI suspendue pourra être réactivée.'
+        : 'Cochez les FI à suspendre (les moins utiles d’abord). Les numéros ne changent pas ; une FI suspendue pourra être réactivée en y remettant une fiche.'),
       zone, h('div', { class: 'actions', style: { marginTop: '12px' } }, boutonSimuler, boutonSuspendre), resultat),
     boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }],
   })

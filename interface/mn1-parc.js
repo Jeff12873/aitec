@@ -43,7 +43,10 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
       : !d.charge.eths.length ? h('p', { class: 'discret' }, 'Ce parc n’a pas encore de racine de production avec des ETH (Administration › Parcs machines).')
         : h('div', { class: 'eths-parc' }, d.charge.eths.map((e) => h('div', { class: `eth-parc${e.taux > 1 + 1e-9 ? ' depasse' : ''}` },
           h('div', { class: 'tete-eth' }, h('b', {}, e.libelle), h('span', { class: 'discret' }, `${arrondi(e.charge)} / ${arrondi(e.max)} par semaine`),
-            e.taux > 1 + 1e-9 && admin ? h('button', { class: 'petit danger', onclick: () => dialogueSuspension(d, e) }, ic('stop', 13), 'Choisir les FI à suspendre') : null),
+            // Suspendre est possible à tout moment ; le bouton est rouge quand l'ETH dépasse son maximum.
+            admin && e.fi.some((x) => x.actif) ? (e.taux > 1 + 1e-9
+              ? h('button', { class: 'petit danger', onclick: () => dialogueSuspension(d, e) }, ic('stop', 13), 'Choisir les FI à suspendre')
+              : h('button', { class: 'petit discret', title: 'Suspendre une ou plusieurs FI de cet ETH (elles pourront être réactivées)', onclick: () => dialogueSuspension(d, e) }, ic('stop', 13), 'Suspendre des FI')) : null),
           h('div', { class: 'barre-eth' }, h('i', { style: { width: `${Math.min(100, e.taux * 100)}%` } })),
           e.fi.length ? h('div', { class: 'fi-eth' }, e.fi.map((x) => h('span', { class: `puce-fi${x.actif ? '' : ' suspendue'}`, title: `${x.numero}${x.actif ? '' : ' (suspendue)'} — ${x.fiche ? [x.fiche.etiquette, x.fiche.machine_nom, x.fiche.zone].filter(Boolean).join(' · ') : 'fiche inconnue (FI faite à la main)'} — ${arrondi(x.poids)} / semaine` }, x.numero.replace(/^.*?(\d+)$/, 'n° $1'), x.fiche?.etiquette ? h('small', {}, x.fiche.etiquette) : null))) : h('span', { class: 'discret' }, 'aucune FI'),
           e.inconnues ? h('small', { class: 'rouge' }, `${e.inconnues} FI à la périodicité inconnue (réglages de la GMAO › Périodicités)`) : null))),

@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.6.18",
+      "date": "2026-11-03",
+      "points": [
+        "Maintenance de niveau 1 : « Suspendre des FI » sur chaque ETH qui a des FI actives, à tout moment (rouge quand l'ETH dépasse son maximum) ; toujours simulé avant d'écrire, et la FI suspendue pourra être réactivée",
+        "Après la fermeture d'une fenêtre (FI, suspension), l'écran se recharge en restant au même endroit (avec K.NOVA 0.8.12)"
+      ]
+    },
+    {
       "version": "0.6.17",
       "date": "2026-11-03",
       "points": [
