@@ -237,7 +237,7 @@ async function afficherDemandes(zone) {
     h('div', { class: 'grille grille-3' },
       h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Demandes par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
       h('div', { class: 'carte' }, entete('personne', 'Demandeurs', '12 mois'), d.demandeurs.length ? barresHorizontales(d.demandeurs.map((x) => ({ etiquette: x.nom, valeur: x.nombre })), { couleur: COULEURS.bleu }) : h('div', { class: 'vide' }, 'Personne.')),
-      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus demandées', '12 mois · cliquer pour l’analyse'), machinesDemandees(d.machines)),
+      h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('alerte', 'Machines les plus demandées', '12 mois'), machinesDemandees(d.machines)),
       h('div', { class: 'carte' }, entete('reseau', 'Par ETH', '12 mois'), d.eth.length ? barresHorizontales(d.eth.map((x) => ({ etiquette: x.nom, valeur: x.nombre })), { couleur: COULEURS.turquoise }) : h('div', { class: 'vide' }, 'ETH inconnus (arborescence).')),
       d.sansFiche.length ? h('div', { class: 'carte pleine sans-fiche-mn1' }, entete('coche', 'Sans fiche de niveau 1', 'machines souvent demandées'),
         h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Ces machines reviennent souvent dans les demandes de niveau 1 mais n’ont pas encore de fiche : leur analyse propose les gestes qui éviteraient ces demandes.'),
@@ -267,22 +267,16 @@ function graphiqueMois(parMois) {
     h('div', { class: 'legende ligne', style: { marginTop: '8px' } }, series.map((s) => h('div', {}, h('span', { class: 'point', style: { color: s.couleur } }), s.nom))))
 }
 
+// Les lignes ne mènent nulle part : la fiche de la machine (analyse) n'apporte rien depuis ce tableau de bord.
 function machinesDemandees(machines) {
   if (!machines.length) return h('div', { class: 'vide' }, 'Aucune demande sur 12 mois.')
-  const b = barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere}${m.designation ? ` · ${m.designation}` : ''}${m.fiche ? '' : ' — sans fiche'}`, valeur: m.nombre })), { couleur: COULEURS.orange })
-  ;[...b.children].forEach((ligne, i) => {
-    if (!machines[i].id) return
-    ligne.classList.add('barre-cliquable')
-    ligne.addEventListener('click', () => (location.hash = `#/analyse/${machines[i].id}`))
-  })
-  return b
+  return barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere}${m.designation ? ` · ${m.designation}` : ''}${m.fiche ? '' : ' — sans fiche'}`, valeur: m.nombre })), { couleur: COULEURS.orange })
 }
 
 function listeDemandes(liste) {
   return tableau({
     lignes: liste,
     vide: 'Aucune demande.',
-    surClic: (d) => d.machineId && (location.hash = `#/analyse/${d.machineId}`),
     colonnes: [
       { titre: 'Date', classe: 'col-date', valeur: (d) => h('span', { class: 'discret' }, dateFr(d.date)) },
       { titre: 'N°', valeur: (d) => h('span', { class: 'mono discret' }, d.numero) },

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.19",
+      "date": "2026-11-03",
+      "points": [
+        "Demandes de niveau 1 : les machines les plus demandées et les dernières demandes ne sont plus cliquables (elles ouvraient la fiche de la machine, sans intérêt ici)"
+      ]
+    },
+    {
       "version": "0.6.18",
       "date": "2026-11-03",
       "points": [
