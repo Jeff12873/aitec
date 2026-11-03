@@ -52,8 +52,11 @@ export function routes(r) {
 
 // Lance la synchronisation (une seule à la fois). Renvoie le bilan par cible.
 export function synchroniser() {
-  enCours ??= (async () => {
-    try {
+  if (enCours) return enCours
+  // La fin est notée après coup (finally de la promesse) : une erreur immédiate (aucune requête, pas de connexion)
+  // laisserait sinon « en cours » une synchronisation déjà échouée, et chaque essai suivant renverrait son erreur.
+  enCours = (async () => {
+    {
       const q = requetes()
       if (!q.machines && !q.interventions) throw new ErreurHttp(409, 'Aucune requête réglée : indiquez d’abord comment lire le parc et les interventions dans la base.')
       if (!etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible (réglée par l’administrateur).')
@@ -103,10 +106,10 @@ export function synchroniser() {
       journal(`AITEC : synchronisation avec la GMAO ${JSON.stringify(Object.fromEntries(['machines', 'interventions'].filter((c) => bilan[c]).map((c) => [c, { crees: bilan[c].crees, modifies: bilan[c].modifies, inchanges: bilan[c].inchanges }])))}`)
       derniereAuto = Date.now()
       return bilan
-    } finally {
-      enCours = null
     }
-  })()
+  })().finally(() => {
+    enCours = null
+  })
   return enCours
 }
 

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.6.15",
+      "date": "2026-11-03",
+      "points": [
+        "Synchronisation avec la GMAO : après un premier échec immédiat (requêtes pas encore réglées, connexion fermée), elle restait bloquée sur ce message, même une fois les requêtes enregistrées, jusqu'au redémarrage de K.NOVA. Réparé"
+      ]
+    },
+    {
       "version": "0.6.14",
       "date": "2026-10-31",
       "points": [
