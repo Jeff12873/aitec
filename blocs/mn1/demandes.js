@@ -1,5 +1,6 @@
 // Les demandes d'intervention, lues en direct dans la base de la GMAO avec la requête réglée dans « Données de la
-// GMAO » (colonnes : numero, date, machine, type, description, demandeur, etat, arret) ; rien n'est recopié.
+// GMAO » (colonnes : numero, date, machine, type, description, demandeur, etat, arret ; et, facultatives, la FI et la
+// RI qui suivent la demande : fi, fi_actif, ri, date_ri) ; rien n'est recopié.
 
 import { ErreurHttp } from 'ktec/http.js'
 import { executerRequete, etatConnexion } from 'ktec/mysql.js'
@@ -8,7 +9,7 @@ import { requetes } from '../import-gmao/synchronisation.js'
 let cache = { cle: '', quand: 0, lignes: [] }
 
 // AAAAMMJJ, AAAA-MM-JJ ou une date : → AAAA-MM-JJ
-function dateIso(v) {
+export function dateIso(v) {
   if (v instanceof Date) return v.toISOString().slice(0, 10)
   const t = String(v ?? '').trim()
   if (/^\d{8}$/.test(t)) return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`
@@ -26,7 +27,7 @@ export async function lireDemandes() {
   if (cache.cle === sql && Date.now() - cache.quand < 60_000) return cache.lignes
   const r = await executerRequete(sql.replace(/--[^\n]*/g, ''), 1_000_000)
   const i = (nom) => r.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
-  const col = Object.fromEntries(['numero', 'date', 'machine', 'type', 'description', 'demandeur', 'etat', 'arret'].map((n) => [n, i(n)]))
+  const col = Object.fromEntries(['numero', 'date', 'machine', 'type', 'description', 'demandeur', 'etat', 'arret', 'fi', 'fi_actif', 'ri', 'date_ri'].map((n) => [n, i(n)]))
   if (col.date < 0 || col.machine < 0 || col.type < 0) throw new ErreurHttp(400, 'Requête des demandes : il faut au moins les colonnes date, machine et type.')
   const v = (l, n) => (col[n] < 0 ? '' : l[col[n]])
   const lignes = r.lignes.map((l) => ({
@@ -38,6 +39,11 @@ export async function lireDemandes() {
     demandeur: String(v(l, 'demandeur') ?? '').trim(),
     etat: String(v(l, 'etat') ?? '').trim(),
     arret: vrai(v(l, 'arret')),
+    fi: String(v(l, 'fi') ?? '').trim(),
+    fiActif: v(l, 'fi_actif') === '' || v(l, 'fi_actif') === null ? null : Number(v(l, 'fi_actif')),
+    ri: String(v(l, 'ri') ?? '').trim(),
+    dateRi: dateIso(v(l, 'date_ri')),
+    suivi: col.fi >= 0, // la requête dit-elle ce que devient la demande ?
   }))
   cache = { cle: sql, quand: Date.now(), lignes }
   return lignes

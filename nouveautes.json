@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "0.7.0",
+      "date": "2026-11-04",
+      "points": [
+        "Maintenance de niveau 1 : trois onglets dans l'ordre du circuit, Demandes d'intervention N1, Fiches d'intervention N1, Rapports d'intervention N1",
+        "Demandes N1 : pastilles FI et RI sur chaque demande (pas encore, programmée, faite, supprimée)",
+        "Fiches d'intervention N1 : les FI issues de demandes à qui il manque l'arborescence de production ou de maintenance, en tête",
+        "Rapports d'intervention N1 : les RI des demandes (délai depuis la demande) et celles des FI focus",
+        "Bandeau : DI par semaine et par poste travaillé (semaines terminées), tendance avec alerte de baisse, alerte de concentration sur une personne, délai DI → RI, DI sans FI depuis 7 jours, FI supprimées, FI sans double arborescence, FI focus en retard, et Hall of fame du mois",
+        "Calendrier des équipes de chaque parc (A, AB, B, BC, C, CA, ABC, semaine exclue), à droite de la page du parc : il pèse sur tous les indicateurs",
+        "Deux requêtes du site de plus (FI et RI de niveau 1) et quatre colonnes facultatives dans celle des demandes (fi, fi_actif, ri, date_ri)",
+        "Analyse d'une machine : l'encart des intervenants est retiré"
+      ]
+    },
+    {
       "version": "0.6.20",
       "date": "2026-11-03",
       "points": [

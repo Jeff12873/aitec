@@ -37,6 +37,33 @@ export const CHAMPS = {
     { nom: 'demandeur', libelle: 'Demandeur' },
     { nom: 'etat', libelle: 'État', aide: 'ouverte, close…' },
     { nom: 'arret', libelle: 'Machine à l’arrêt', aide: 'oui / non' },
+    { nom: 'fi', libelle: 'FI de la demande', aide: 'le numéro de la FI faite de la demande (facultatif)' },
+    { nom: 'fi_actif', libelle: 'État de la FI', aide: 'ACTIF de la FI : 1 vivante, 0 désactivée, 2 archivée (facultatif)' },
+    { nom: 'ri', libelle: 'RI de la demande', aide: 'le numéro de la RI qui clôt la demande (facultatif)' },
+    { nom: 'date_ri', libelle: 'Date de la RI', aide: 'facultatif' },
+  ],
+  // Les FI de niveau 1 (issues d'une demande, ou focus) : une ligne par FI et par équipement.
+  fiN1: [
+    { nom: 'numero', libelle: 'Numéro de la FI', obligatoire: true },
+    { nom: 'titre', libelle: 'Titre' },
+    { nom: 'date', libelle: 'Date de création', obligatoire: true },
+    { nom: 'echeance', libelle: 'Échéance', aide: 'la date de début (ou limite) de la FI' },
+    { nom: 'actif', libelle: 'État (ACTIF)', obligatoire: true, aide: '1 vivante, 0 désactivée, 2 archivée' },
+    { nom: 'di', libelle: 'DI d’origine', aide: 'le numéro de la demande, vide pour une FI focus' },
+    { nom: 'equipement', libelle: 'Équipement', aide: 'l’identifiant du nœud de l’arborescence (une ligne par équipement)' },
+    { nom: 'ri', libelle: 'RI', aide: 'le numéro de la RI qui la clôt' },
+    { nom: 'date_ri', libelle: 'Date de la RI' },
+  ],
+  // Les RI de niveau 1 : celles des FI issues d'une demande, et celles des FI focus.
+  riN1: [
+    { nom: 'numero', libelle: 'Numéro de la RI', obligatoire: true },
+    { nom: 'date', libelle: 'Date de la RI', obligatoire: true },
+    { nom: 'fi', libelle: 'FI', aide: 'le numéro de la FI' },
+    { nom: 'di', libelle: 'DI', aide: 'le numéro de la demande' },
+    { nom: 'date_di', libelle: 'Date de la DI' },
+    { nom: 'machine', libelle: 'Machine', aide: 'le repère' },
+    { nom: 'intervenant', libelle: 'Intervenant' },
+    { nom: 'observation', libelle: 'Observation' },
   ],
 }
 

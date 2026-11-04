@@ -14,6 +14,7 @@ import { reglerGmao, reglerEntete } from '../../interface/mn1-reglages.js'
 import { jauge, courbe, ecartTendance } from '../../interface/mn1-graphiques.js'
 import { avecParc, parcChoisi } from '../../interface/parcs.js'
 import { animer } from '../tableau-de-bord/vue.js'
+import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 let tri = 'nom'
@@ -53,8 +54,10 @@ export default {
       bandeau,
       h('div', { class: 'barre-onglets-mn1' },
         h('div', { class: 'segments' },
-          h('button', { class: !['demandes', 'ancien'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches focus'),
-          h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes de niveau 1')),
+          // Le circuit, dans l'ordre : la demande, la fiche d'intervention, le rapport d'intervention.
+          h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes d’intervention N1'),
+          h('button', { class: !['demandes', 'ancien', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
+          h('button', { class: onglet === 'ri' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/ri') }, ic('coche', 16), 'Rapports d’intervention N1')),
         h('div', { class: 'espace' }),
         admin ? h('button', { class: 'discret petit', title: 'L’ancien écran (fiches par ligne, une FI par machine), le temps que le nouveau fasse ses preuves', onclick: () => (location.hash = '#/mn1/ancien') }, ic('historique', 14), 'Ancien mode') : null,
         admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null),
@@ -64,11 +67,20 @@ export default {
       dessinerBandeau(bandeau, null)
       return afficherDemandes(contenu)
     }
+    if (onglet === 'ri') {
+      dessinerBandeau(bandeau, null)
+      return afficherRi(contenu)
+    }
     if (onglet === 'ancien') {
       dessinerBandeau(bandeau, null)
       return afficherAncien(contenu)
     }
-    await afficherVignettes(contenu, bandeau)
+    // Fiches d'intervention N1 : d'abord les FI issues de DI (arborescences à compléter), puis les fiches focus.
+    const zoneFi = h('div')
+    const zoneFocus = h('div')
+    vider(contenu, zoneFi, zoneFocus)
+    afficherFiIssues(zoneFi)
+    await afficherVignettes(zoneFocus, bandeau)
   },
 }
 
@@ -92,6 +104,8 @@ async function dessinerBandeau(bandeau, v) {
   minuterieIdees = setInterval(() => (bandeau.isConnected ? montrerIdee() : clearInterval(minuterieIdees)), 9000)
   montrerIdee()
   const chiffre = (valeur, libelle, titre = '') => h('div', { class: 'chiffre-mn1', title: titre }, h('b', {}, valeur), h('span', {}, libelle))
+  // Les indicateurs du circuit DI → FI → RI et le Hall of fame, lus à part (ils n'attendent pas le reste).
+  const zoneIndicateurs = h('div', { class: 'zone-indicateurs-mn1' })
   const parcs = v?.parcs || []
   const analyses = parcs.filter((p) => p.pertinence?.taux !== null && p.pertinence?.taux !== undefined)
   const fiches = parcs.reduce((s, p) => s + p.fiches, 0)
@@ -108,7 +122,9 @@ async function dessinerBandeau(bandeau, v) {
         chiffre(analyses.length ? `${Math.round((analyses.reduce((s, p) => s + p.pertinence.taux, 0) / analyses.length) * 100)} %` : '—', 'pertinence moyenne', 'Part du Pareto des pannes couverte par les fiches, en moyenne sur les parcs analysés'),
         chiffre(nombreFr(parcs.reduce((s, p) => s + p.pareto.cas, 0)), 'pannes qui reviennent', 'Cas des 12 derniers mois dans les Pareto des parcs'),
         chiffre(nombreFr(parcs.filter((p) => p.alertes.length).length), 'parcs en alerte')) : null,
-      idee))
+      idee),
+    zoneIndicateurs)
+  indicateursBandeau(zoneIndicateurs)
 }
 
 // ---------------------------------------------------------------- vignettes
@@ -246,7 +262,7 @@ async function afficherDemandes(zone) {
         h('div', { class: 'liste-sans-fiche' }, d.sansFiche.map((m) => m.analyse
           ? h('a', { class: 'bouton', href: `#/analyse/${m.analyse}` }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)
           : h('span', { class: 'etiquette' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
-      h('div', { class: 'carte pleine' }, entete('historique', 'Dernières demandes'), listeDemandes(d.dernieres)),
+      h('div', { class: 'carte pleine' }, entete('historique', 'Demandes de niveau 1', d.liste ? 'ouvertes, et 12 derniers mois' : ''), listeDemandes(d.liste || d.dernieres, d.suivi)),
     ))
   animer(zone)
 }
@@ -277,7 +293,7 @@ function machinesDemandees(machines) {
   return barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere}${m.designation ? ` · ${m.designation}` : ''}${m.fiche ? '' : ' — sans fiche'}`, valeur: m.nombre })), { couleur: COULEURS.orange })
 }
 
-function listeDemandes(liste) {
+function listeDemandes(liste, suivi = false) {
   return tableau({
     lignes: liste,
     vide: 'Aucune demande.',
@@ -289,6 +305,8 @@ function listeDemandes(liste) {
       { titre: 'Description', classe: 'col-description', valeur: (d) => h('span', { class: 'texte-2', title: d.description }, d.description) },
       { titre: 'Demandeur', classe: 'col-intervenants', valeur: (d) => d.demandeur || '—' },
       { titre: 'État', valeur: (d) => h('span', { class: `etiquette ${d.close ? '' : 'violet'}` }, d.etat || (d.close ? 'Close' : 'Ouverte'), d.arret && !d.close ? ' · arrêt' : '') },
-    ],
+      // La suite donnée à la demande : sa FI et sa RI (si la requête des demandes les donne).
+      suivi ? { titre: 'FI · RI', valeur: (d) => pastillesSuivi(d) } : null,
+    ].filter(Boolean),
   })
 }

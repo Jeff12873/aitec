@@ -9,6 +9,7 @@ import { texteIA } from '/socle/texte-ia.js'
 import { LOGO_MN1, FREQUENCES, carteFiche, imprimerFiches, nomMachine } from './fiches-mn1.js'
 import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
 import { reglerParc } from './mn1-reglages.js'
+import { encartCalendrier } from './mn1-circuit.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
@@ -224,7 +225,8 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     carteFiches.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   const synthese = integre ? bandeauSynthese(d, { filtrer, compter: (cle) => d.fiches.filter(FILTRES.find(([c]) => c === cle)[2]).length }) : null
-  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, synthese, carteChargeParc), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
+  // À droite, le calendrier des équipes du parc : il pèse sur tous les indicateurs de la maintenance N1.
+  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, h('div', { class: 'haut-parc' }, h('div', { class: 'colonne-parc' }, synthese, carteChargeParc), encartCalendrier(d.parc, admin))), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.

@@ -135,7 +135,9 @@ async function carteSynchronisation() {
   const machines = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS repere, … AS designation, … AS famille, … AS emplacement … FROM …' }, s.requetes.machines)
   const interventions = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS machine, … AS type, … AS description … FROM …' }, s.requetes.interventions)
   const demandes = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS machine, … AS type, … AS description, … AS demandeur, … AS etat, … AS arret FROM …' }, s.requetes.demandes || '')
-  const corpsRequetes = () => ({ machines: machines.value, interventions: interventions.value, demandes: demandes.value })
+  const fiN1 = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS titre, … AS date, … AS echeance, … AS actif, … AS di, … AS equipement, … AS ri, … AS date_ri FROM …' }, s.requetes.fiN1 || '')
+  const riN1 = h('textarea', { class: 'sql', rows: 8, spellcheck: false, placeholder: 'SELECT … AS numero, … AS date, … AS fi, … AS di, … AS date_di, … AS machine, … AS intervenant, … AS observation FROM …' }, s.requetes.riN1 || '')
+  const corpsRequetes = () => ({ machines: machines.value, interventions: interventions.value, demandes: demandes.value, fiN1: fiN1.value, riN1: riN1.value })
   const bilan = h('div')
   const montrer = (b) => {
     if (!b) return vider(bilan, h('p', { class: 'discret' }, 'Pas encore de synchronisation.'))
@@ -145,7 +147,7 @@ async function carteSynchronisation() {
   montrer(s.derniere)
   async function synchroniser() {
     // Requêtes modifiées dans les cases mais pas encore enregistrées : on les enregistre d'abord.
-    if (machines.value.trim() !== (s.requetes.machines || '').trim() || interventions.value.trim() !== (s.requetes.interventions || '').trim() || demandes.value.trim() !== (s.requetes.demandes || '').trim()) {
+    if (['machines', 'interventions', 'demandes', 'fiN1', 'riN1'].some((cle) => corpsRequetes()[cle].trim() !== (s.requetes[cle] || '').trim())) {
       const ok = await essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: corpsRequetes() }))
       if (!ok) return
       s.requetes = ok
@@ -169,7 +171,9 @@ async function carteSynchronisation() {
       h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),
       h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Machines — colonnes : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes'), boutonAssistant(machines, { titre: 'Requête des machines', champs: CHAMPS.machines, consigne: 'Une ligne par machine du parc.' })), machines),
       h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Interventions — colonnes : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut'), boutonAssistant(interventions, { titre: 'Requête des interventions', champs: CHAMPS.interventions, consigne: 'Une ligne par intervention (bon de travail réalisé).' })), interventions),
-      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Demandes d’intervention (facultatif, pour le tableau de bord de la maintenance de niveau 1, lu en direct) — colonnes : numero, date, machine (repère), type, description, demandeur, etat, arret'), boutonAssistant(demandes, { titre: 'Requête des demandes d’intervention', champs: CHAMPS.demandes, consigne: 'Une ligne par demande d’intervention.' })), demandes),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'Demandes d’intervention (facultatif, pour la maintenance de niveau 1, lu en direct) — colonnes : numero, date, machine (repère), type, description, demandeur, etat, arret ; et, pour suivre la demande : fi, fi_actif, ri, date_ri'), boutonAssistant(demandes, { titre: 'Requête des demandes d’intervention', champs: CHAMPS.demandes, consigne: 'Une ligne par demande d’intervention.' })), demandes),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'FI de niveau 1 (facultatif, lu en direct) — colonnes : numero, titre, date, echeance, actif, di, equipement (une ligne par équipement), ri, date_ri'), boutonAssistant(fiN1, { titre: 'Requête des FI de niveau 1', champs: CHAMPS.fiN1, consigne: 'Une ligne par FI de niveau 1 et par équipement.' })), fiN1),
+      h('div', { class: 'champ', style: { marginTop: '10px' } }, h('span', { class: 'tete-requete' }, h('span', {}, 'RI de niveau 1 (facultatif, lu en direct) — colonnes : numero, date, fi, di, date_di, machine, intervenant, observation'), boutonAssistant(riN1, { titre: 'Requête des RI de niveau 1', champs: CHAMPS.riN1, consigne: 'Une ligne par RI de niveau 1.' })), riN1),
       h('div', { class: 'actions', style: { marginTop: '10px' } },
         h('button', { onclick: () => essayer(() => api('/api/gmao/requetes', { methode: 'POST', corps: corpsRequetes() }), 'Requêtes enregistrées') }, ic('coche', 16), 'Enregistrer les requêtes')),
     ),

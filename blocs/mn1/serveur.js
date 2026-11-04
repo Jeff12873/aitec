@@ -10,6 +10,7 @@ import { executerRequete } from 'ktec/mysql.js'
 import { lireTableur } from '../../lib/tableurs.js'
 import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir, reglagesDuParc, enregistrerReglagesDuParc, PROPRES_AU_PARC } from './gmao.js'
 import { lireDemandes, close } from './demandes.js'
+import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
@@ -93,9 +94,11 @@ function moisDe(date) {
 }
 
 // ?parc=… : les demandes des machines du parc choisi en haut d'AITEC (jamais celles des machines masquées).
-async function tableau(parcVoulu = '') {
+// Les DI de niveau 1 retenues (type réglé, parc choisi, sans les machines masquées), avec la place de chaque
+// machine ; et de quoi classer les nœuds de l'arborescence (production / maintenance, parc).
+async function demandesN1(parcVoulu = '') {
   const demandes = await lireDemandes()
-  if (!demandes) return { reglee: false }
+  if (!demandes) return null
   const types = [...demandes.reduce((c, d) => (d.type ? c.set(d.type, (c.get(d.type) || 0) + 1) : c), new Map())].sort((a, b) => b[1] - a[1]).map(([nom, nombre]) => ({ nom, nombre }))
   const voulu = reglage('mn1_type_demande', '')
   // Par défaut : le type dont le nom parle de maintenance, sinon le plus fréquent.
@@ -121,6 +124,31 @@ async function tableau(parcVoulu = '') {
     })
     .filter((d) => !(d.machineId && masquees.has(d.machineId)) && (!parcVoulu || place.get(d.machineId)?.parc === parcVoulu))
     .sort((a, b) => b.date.localeCompare(a.date) || b.numero.localeCompare(a.numero, 'fr', { numeric: true }))
+  // Les nœuds des racines de chaque parc : leur parc et leur genre (production ou maintenance).
+  const noeuds = new Map()
+  for (const parc of p?.parcs || []) {
+    for (const [genre, racines] of [['production', parc.production], ['maintenance', parc.maintenance]]) {
+      for (const racine of racines) for (const n of p.detail(racine)) if (n.noeud && !noeuds.has(String(n.noeud))) noeuds.set(String(n.noeud), { parc: parc.id, genre })
+    }
+  }
+  const parcs = parcVoulu ? [parcVoulu] : (p?.parcs || []).filter((x) => !x.nonClasse).map((x) => x.id)
+  return { demandes, types, type, retenues, parRepere, place, p, depuis12Mois, noeuds, parcs, ilYa }
+}
+
+// Les numéros des DI de niveau 1 (type réglé, parc choisi) : les FI et RI « issues de DI » en viennent ; null si
+// la requête des demandes n'est pas réglée (on garde alors toutes les FI et RI qui ont une DI).
+const numerosN1 = (n1) => (n1 ? new Set(n1.retenues.map((d) => d.numero)) : null)
+
+// Les FI d'un parc (par leurs équipements) ; tous les parcs si aucun n'est choisi.
+function filtrerParc(fi, n1) {
+  if (!n1 || n1.parcs.length !== 1) return fi
+  return fi.filter((f) => f.equipements.some((e) => n1.noeuds.get(String(e))?.parc === n1.parcs[0]))
+}
+
+async function tableau(parcVoulu = '') {
+  const n1 = await demandesN1(parcVoulu)
+  if (!n1) return { reglee: false }
+  const { types, type, retenues, parRepere, p, depuis12Mois, ilYa } = n1
   const annee = retenues.filter((d) => d.date >= depuis12Mois)
 
   const compter = (liste, cle) => [...liste.reduce((c, d) => (d[cle] ? c.set(d[cle], (c.get(d[cle]) || 0) + 1) : c), new Map())].sort((a, b) => b[1] - a[1])
@@ -156,7 +184,10 @@ async function tableau(parcVoulu = '') {
     demandeurs: compter(annee, 'demandeur').slice(0, 8).map(([nom, nombre]) => ({ nom, nombre })),
     // Les machines qui ont des demandes de niveau 1 mais pas encore de fiche : par où commencer.
     sansFiche: machines.filter((m) => m.id && !m.fiche).slice(0, 6),
-    dernieres: retenues.slice(0, 12).map(({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c }) => ({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c })),
+    dernieres: retenues.slice(0, 12).map(({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi, suivi }) => ({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi, suivi })),
+    // Les DI de niveau 1 encore ouvertes ou des 12 derniers mois, pour la liste avec leurs pastilles FI et RI.
+    suivi: retenues.some((d) => d.suivi),
+    liste: retenues.filter((d) => !d.close || d.date >= depuis12Mois).slice(0, 300).map(({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi }) => ({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi })),
   }
 }
 
@@ -285,6 +316,60 @@ export function routes(r) {
 
   // Le tableau de bord des demandes de niveau 1 : ?parc=…
   r.get('/api/mn1/demandes', (ctx) => tableau(String(ctx.query.parc || '')))
+
+  // ---- circuit DI → FI → RI et FI focus (requêtes du site « FI N1 » et « RI N1 »)
+
+  // Le bandeau : DI par semaine (par poste), tendance, concentration, Hall of fame, délais, FI à reprendre.
+  r.get('/api/mn1/indicateurs', async (ctx) => {
+    const n1 = await demandesN1(String(ctx.query.parc || ''))
+    if (!n1) return { reglee: false }
+    const fi = await lireFiN1().catch(() => null)
+    const ri = await lireRiN1().catch(() => null)
+    const classer = (noeud) => n1.noeuds.get(String(noeud))?.genre || null
+    const n1Di = numerosN1(n1)
+    const fiN1 = fi && filtrerParc(fi, n1).filter((f) => !f.di || n1Di.has(f.di))
+    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }) }
+  })
+
+  // L'onglet FI N1 : les FI issues de DI (celles à qui il manque une arborescence d'abord).
+  r.get('/api/mn1/circuit/fi', async (ctx) => {
+    const n1 = await demandesN1(String(ctx.query.parc || ''))
+    const fi = await lireFiN1()
+    if (!fi) return { reglee: false }
+    const classer = (noeud) => n1?.noeuds.get(String(noeud))?.genre || null
+    const ilYa = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10)
+    const n1Di = numerosN1(n1)
+    const issues = filtrerParc(fi, n1).filter((f) => f.di && (!n1Di || n1Di.has(f.di)) && (f.actif === 1 || f.date >= ilYa))
+      .map((f) => {
+        const genres = new Set(f.equipements.map(classer).filter(Boolean))
+        return { ...f, production: genres.has('production'), maintenance: genres.has('maintenance'), manque: manqueArbo(f, classer), supprimee: f.actif === 2 && !f.ri }
+      })
+      .sort((a, b) => Number(b.manque && !b.supprimee) - Number(a.manque && !a.supprimee) || b.date.localeCompare(a.date))
+    return { reglee: true, fi: issues.slice(0, 400) }
+  })
+
+  // L'onglet RI N1 : les RI des FI issues de DI, puis celles des FI focus (12 derniers mois).
+  r.get('/api/mn1/circuit/ri', async (ctx) => {
+    const ri = await lireRiN1()
+    if (!ri) return { reglee: false }
+    const n1Di = numerosN1(await demandesN1(String(ctx.query.parc || '')))
+    const ilYa = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10)
+    const recentes = ri.filter((x) => x.date >= ilYa).sort((a, b) => b.date.localeCompare(a.date))
+    const delai = (x) => (x.dateDi && x.date >= x.dateDi ? Math.round((new Date(x.date) - new Date(x.dateDi)) / 86_400_000) : null)
+    return {
+      reglee: true,
+      issuesDeDi: recentes.filter((x) => x.di && (!n1Di || n1Di.has(x.di))).slice(0, 300).map((x) => ({ ...x, delai: delai(x) })),
+      focus: recentes.filter((x) => !x.di).slice(0, 300),
+    }
+  })
+
+  // Le calendrier d'un parc : régime par défaut et semaines particulières (régime des équipes, ou exclue).
+  r.get('/api/mn1/calendrier/:parc', (ctx) => ({ ...calendrierDuParc(ctx.params.parc), regimes: REGIMES }))
+  admin.post('/api/mn1/calendrier/:parc', async (ctx) => {
+    ctx.exigerAdmin()
+    exigerEcriture()
+    return { ...enregistrerCalendrier(ctx.params.parc, await ctx.json()), regimes: REGIMES }
+  })
 
   // ---- Parcs : vignettes, fiche du parc, analyse de corrélation
 

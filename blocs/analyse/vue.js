@@ -4,7 +4,7 @@
 import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier, tableau } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
-import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
+import { barres, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
 import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres, FREQUENCES } from '../../interface/fiches-mn1.js'
@@ -41,7 +41,6 @@ export default {
       h('div', { class: 'grille grille-3' },
         h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
         carteResume(d),
-        h('div', { class: 'carte' }, entete('personne', 'Intervenants', '12 mois'), d.intervenants.length ? barresHorizontales(d.intervenants.map((i) => ({ etiquette: i.nom, valeur: i.nombre })), { couleur: COULEURS.bleu }) : h('div', { class: 'vide' }, 'Personne sur 12 mois.')),
         d.pannes.length || !d.repetees.length
           ? h('div', { class: 'carte pleine' }, entete('historique', 'Pannes connues', `${d.pannes.length} panne${d.pannes.length > 1 ? 's' : ''} qui reviennent`), listePannes(d.pannes))
           : h('div', { class: 'carte pleine' }, entete('historique', 'Pannes qui reviennent', 'regroupées depuis les rapports'), listeRepetees(d.repetees)),
