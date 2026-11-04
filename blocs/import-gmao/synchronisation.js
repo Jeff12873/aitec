@@ -24,7 +24,8 @@ let enCours = null // promesse de la synchronisation en cours
 // demandes : les demandes d'intervention, lues en direct par le tableau de bord de la maintenance de niveau 1
 // (elles ne sont pas recopiées dans le fichier de connaissances).
 // fiN1, riN1 : les FI et les RI de niveau 1 (circuit DI → FI → RI, et FI focus), lues en direct elles aussi.
-export const requetes = () => ({ machines: '', interventions: '', demandes: '', fiN1: '', riN1: '', ...reglageJson('requetes_mysql', {}) })
+// riConducteurs : les RI exécutées par les conducteurs, classées par catégorie (activités de la maintenance N1).
+export const requetes = () => ({ machines: '', interventions: '', demandes: '', fiN1: '', riN1: '', riConducteurs: '', ...reglageJson('requetes_mysql', {}) })
 
 export function routes(r) {
   r.get('/api/gmao/synchronisation', (ctx) => ({
@@ -37,11 +38,11 @@ export function routes(r) {
   r.post('/api/gmao/requetes', async (ctx) => {
     ctx.exigerAdmin()
     const avant = requetes()
-    const { machines = '', interventions = '', demandes = avant.demandes, fiN1 = avant.fiN1, riN1 = avant.riN1 } = await ctx.json()
-    for (const sql of [machines, interventions, demandes, fiN1, riN1]) {
+    const { machines = '', interventions = '', demandes = avant.demandes, fiN1 = avant.fiN1, riN1 = avant.riN1, riConducteurs = avant.riConducteurs } = await ctx.json()
+    for (const sql of [machines, interventions, demandes, fiN1, riN1, riConducteurs]) {
       if (sql.trim() && !/^(\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)*(select|with)\b/i.test(sql)) throw new ErreurHttp(400, 'Chaque requête doit être une lecture (SELECT).')
     }
-    modifierReglage('requetes_mysql', { machines: machines.trim(), interventions: interventions.trim(), demandes: demandes.trim(), fiN1: fiN1.trim(), riN1: riN1.trim() })
+    modifierReglage('requetes_mysql', { machines: machines.trim(), interventions: interventions.trim(), demandes: demandes.trim(), fiN1: fiN1.trim(), riN1: riN1.trim(), riConducteurs: riConducteurs.trim() })
     noterModification()
     return requetes()
   })

@@ -511,6 +511,26 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .marche { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 99px; background: color-mix(in srgb, #2dd4bf 9%, transparent); }
 .marche .rang { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #04201b; background: #2dd4bf; }
 .marche-2 .rang { background: color-mix(in srgb, #2dd4bf 55%, #c9d6cf); }
+.podiums { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+.podium-titre { display: grid; gap: 4px; }
+.podium-titre > .discret { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* Activités des conducteurs (onglet RI N1) */
+.activites-conducteurs .carte-entete { flex-wrap: wrap; gap: 8px 14px; }
+.choix-periode { display: flex; gap: 4px; margin-left: auto; }
+.choix-periode .choisi { background: var(--accent-doux); color: var(--accent); border-color: var(--accent); }
+.profil-parc { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 10px; }
+.profil-parc input { width: 220px; padding: 5px 10px; }
+.legende-activites { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--texte-2); margin-bottom: 10px; }
+.legende-activites i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.legende-activites b { color: var(--texte); }
+.barres-activites { display: grid; gap: 5px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+.ligne-activite { display: grid; grid-template-columns: minmax(120px, 220px) 1fr 44px; gap: 10px; align-items: center; font-size: 13px; }
+.nom-activite { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--texte-2); }
+.piste-activite { height: 14px; border-radius: 7px; background: var(--carte-2); overflow: hidden; }
+.barre-activite { display: flex; height: 100%; min-width: 4px; border-radius: 7px; overflow: hidden; transition: width .3s; }
+.barre-activite span { min-width: 2px; }
+.total-activite { text-align: right; font-variant-numeric: tabular-nums; }
 .merci-mn1 { margin: 0; font-size: 13px; font-style: italic; color: var(--texte-2); opacity: 0; transition: opacity .25s; }
 .merci-mn1.visible { opacity: 1; }
 .pastilles-suivi { display: inline-flex; gap: 4px; flex-wrap: wrap; }

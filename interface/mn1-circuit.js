@@ -1,9 +1,10 @@
 // Le circuit de la maintenance de niveau 1 : les indicateurs du bandeau (et le Hall of fame), les pastilles FI / RI
 // des demandes, l'onglet FI N1 (FI issues de DI, arborescences manquantes) et l'onglet RI N1.
 
-import { h, vider, ic, dateFr, nombreFr, tableau } from '/socle/ui.js'
+import { h, vider, ic, dateFr, nombreFr, tableau, notifier } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { avecParc } from './parcs.js'
+import { avecParc, parcChoisi, nomParcChoisi } from './parcs.js'
+import { peutModifier } from '/socle/etat.js'
 
 const jours = (n) => (n === null || n === undefined ? '—' : `${Math.round(n)} j`)
 const pourcent = (x) => `${x > 0 ? '+' : ''}${Math.round(x * 100)} %`
@@ -48,10 +49,19 @@ export async function indicateursBandeau(zone) {
       tuile(i.sansDoubleArbo ?? '—', 'FI sans double arbo', { titre: i.fiReglee ? 'FI issues de DI qui n’ont pas à la fois un équipement de production et un de maintenance' : 'Réglez la requête « FI de niveau 1 »', alerte: i.sansDoubleArbo > 0 }),
       tuile(i.focusEnRetard ?? '—', 'FI focus en retard', { titre: `FI focus dont l’échéance est passée sans RI. Retard médian des FI focus faites : ${jours(i.retardFocus)}`, alerte: i.focusEnRetard > 0 })),
     alertes.length ? h('div', { class: 'alertes-mn1' }, alertes) : null,
-    i.podium.length ? h('div', { class: 'hall-of-fame' },
+    i.podium.length || i.podiumRi?.length ? h('div', { class: 'hall-of-fame' },
       h('div', { class: 'titre-hof' }, ic('etincelle', 16), `Hall of fame · ${nomMois}`),
-      h('div', { class: 'podium' }, i.podium.map((p, k) => h('div', { class: `marche marche-${k + 1}` }, h('span', { class: 'rang' }, k ? '2' : '1'), h('b', {}, p.nom), h('span', { class: 'discret' }, `${p.nombre} DI`)))),
+      h('div', { class: 'podiums' },
+        podium(i.podium, 'DI', 'Demandes'),
+        podium(i.podiumRi || [], 'RI', 'Exécutions')),
       merci) : null)
+}
+
+// Un podium du Hall of fame : les deux premiers, et ce qu'ils ont fait.
+function podium(liste, unite, titre) {
+  if (!liste.length) return null
+  return h('div', { class: 'podium-titre' }, h('span', { class: 'discret' }, titre),
+    h('div', { class: 'podium' }, liste.map((p, k) => h('div', { class: `marche marche-${k + 1}` }, h('span', { class: 'rang' }, k ? '2' : '1'), h('b', {}, p.nom), h('span', { class: 'discret' }, `${p.nombre} ${unite}`)))))
 }
 
 // ---------------------------------------------------------------- pastilles FI / RI d'une demande
@@ -108,9 +118,11 @@ export async function afficherFiIssues(zone) {
 
 export async function afficherRi(zone) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture des RI dans la base de la GMAO'))
+  const activites = h('div')
+  encartActivites(activites)
   const r = await api(avecParc('/api/mn1/circuit/ri')).catch((e) => ({ erreur: e.message }))
-  if (r.erreur) return vider(zone, h('div', { class: 'carte vide' }, ic('alerte', 28), h('p', {}, r.erreur)))
-  if (!r.reglee) return vider(zone, h('div', { class: 'carte vide' }, ic('base', 28), h('p', {}, 'Pas encore de requête « RI de niveau 1 » : réglez-la dans Administration › Données de la GMAO › « Les requêtes ».')))
+  if (r.erreur) return vider(zone, activites, h('div', { class: 'carte vide' }, ic('alerte', 28), h('p', {}, r.erreur)))
+  if (!r.reglee) return vider(zone, activites, h('div', { class: 'carte vide' }, ic('base', 28), h('p', {}, 'Pas encore de requête « RI de niveau 1 » : réglez-la dans Administration › Données de la GMAO › « Les requêtes ».')))
   const colonnes = (avecDi) => [
     { titre: 'Date', classe: 'col-date', valeur: (x) => h('span', { class: 'discret' }, dateFr(x.date)) },
     { titre: 'RI', valeur: (x) => h('b', { class: 'mono' }, x.numero) },
@@ -121,13 +133,54 @@ export async function afficherRi(zone) {
     { titre: 'Intervenant', classe: 'col-intervenants', valeur: (x) => x.intervenant || '—' },
     { titre: 'Observation', classe: 'col-description', valeur: (x) => h('span', { class: 'texte-2', title: x.observation }, x.observation || '—') },
   ].filter(Boolean)
-  vider(zone,
+  vider(zone, activites,
     h('div', { class: 'carte', style: { marginBottom: '16px' } },
       h('div', { class: 'carte-entete' }, h('h2', {}, ic('coche', 18), 'RI des demandes (avec ou sans FI)'), h('span', { class: 'discret' }, `${nombreFr(r.issuesDeDi.length)} · 12 mois`)),
       tableau({ lignes: r.issuesDeDi, vide: 'Aucune RI de demande de niveau 1 sur 12 mois.', colonnes: colonnes(true) })),
     h('div', { class: 'carte' },
       h('div', { class: 'carte-entete' }, h('h2', {}, ic('usine', 18), 'RI des FI focus'), h('span', { class: 'discret' }, `${nombreFr(r.focus.length)} · 12 mois`)),
       tableau({ lignes: r.focus, vide: 'Aucune RI de FI focus sur 12 mois.', colonnes: colonnes(false) })))
+}
+
+// ---------------------------------------------------------------- activités des conducteurs
+
+// Les RI exécutées par les conducteurs, par personne (barres empilées par catégorie, la plus active en haut) et par
+// catégorie, sur 1, 3 ou 12 mois. Le parc d'une personne se reconnaît à son profil de la GMAO (réglé par parc).
+const TEINTES = ['#2dd4bf', '#0d9488', '#a3e635', '#65a30d', '#f59e0b', '#8b5cf6', '#3b82f6', '#f05252']
+let moisActivites = 3
+async function encartActivites(zone) {
+  const a = await api(avecParc(`/api/mn1/activites?mois=${moisActivites}`)).catch((e) => ({ erreur: e.message }))
+  if (a.erreur) return vider(zone, h('div', { class: 'carte', style: { marginBottom: '16px' } }, h('div', { class: 'bandeau' }, ic('alerte'), `Activités des conducteurs : ${a.erreur}`)))
+  if (!a.reglee) return vider(zone, h('div', { class: 'carte discret', style: { marginBottom: '16px' } }, ic('personne', 18), ' Activités des conducteurs : réglez la requête « RI des conducteurs » dans Administration › Données de la GMAO.'))
+  const couleur = new Map(a.categories.map((c, k) => [c.cle, TEINTES[k % TEINTES.length]]))
+  const max = Math.max(1, ...a.personnes.map((p) => p.total))
+  const periode = h('div', { class: 'choix-periode' }, [[1, 'Mois en cours'], [3, '3 mois'], [12, '12 mois']].map(([m, texte]) =>
+    h('button', { class: `petit${m === moisActivites ? ' choisi' : ' discret'}`, onclick: () => { moisActivites = m; encartActivites(zone) } }, texte)))
+  const parc = parcChoisi()
+  const reglageProfil = parc && peutModifier()
+    ? h('label', { class: 'profil-parc discret', title: 'Le texte contenu dans le profil de la GMAO des conducteurs de ce parc' }, 'Profil des conducteurs de ce parc',
+      h('input', { type: 'text', value: a.profil, placeholder: 'ex. LIGNE 2', onchange: async (e) => {
+        try {
+          await api(`/api/mn1/profils/${encodeURIComponent(parc)}`, { methode: 'POST', corps: { profil: e.target.value } })
+          encartActivites(zone)
+        } catch (erreur) { notifier(erreur.message, 'erreur') }
+      } }))
+    : null
+  const avertissement = parc && !a.profil
+    ? h('p', { class: 'discret', style: { margin: '0 0 8px' } }, `Aucun profil réglé pour ${nomParcChoisi()} : toutes les personnes de la requête sont comptées.`)
+    : !parc && !a.profilsRegles ? h('p', { class: 'discret', style: { margin: '0 0 8px' } }, 'Aucun profil réglé sur les parcs : toutes les personnes de la requête sont comptées. Choisissez un parc pour régler le sien.') : null
+  vider(zone, h('div', { class: 'carte activites-conducteurs', style: { marginBottom: '16px' } },
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('personne', 18), 'Activités des conducteurs'),
+      h('span', { class: 'discret' }, `${nombreFr(a.total)} exécutions · ${nombreFr(a.ri)} RI · depuis le ${dateFr(a.depuis)}`), periode),
+    reglageProfil, avertissement,
+    a.personnes.length ? [
+      h('div', { class: 'legende-activites' }, a.categories.map((c) => h('span', {}, h('i', { style: { background: couleur.get(c.cle) } }), `${c.nom} `, h('b', {}, nombreFr(c.total))))),
+      h('div', { class: 'barres-activites' }, a.personnes.map((p) => h('div', { class: 'ligne-activite' },
+        h('span', { class: 'nom-activite', title: p.nom }, p.nom),
+        h('div', { class: 'piste-activite' }, h('div', { class: 'barre-activite', style: { width: `${(p.total / max) * 100}%` } },
+          a.categories.filter((c) => p.parCategorie[c.cle]).map((c) => h('span', { style: { flex: String(p.parCategorie[c.cle]), background: couleur.get(c.cle) }, title: `${c.nom} : ${p.parCategorie[c.cle]}` })))),
+        h('b', { class: 'total-activite' }, nombreFr(p.total))))),
+    ] : h('p', { class: 'discret' }, 'Aucune RI exécutée par les conducteurs sur la période.')))
 }
 
 // ---------------------------------------------------------------- calendrier d'un parc

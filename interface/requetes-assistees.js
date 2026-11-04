@@ -65,6 +65,14 @@ export const CHAMPS = {
     { nom: 'intervenant', libelle: 'Intervenant' },
     { nom: 'observation', libelle: 'Observation' },
   ],
+  // Les RI exécutées par les conducteurs : une ligne par RI et par personne.
+  riConducteurs: [
+    { nom: 'numero', libelle: 'Numéro de la RI', obligatoire: true },
+    { nom: 'date', libelle: 'Date de la RI', obligatoire: true },
+    { nom: 'personne', libelle: 'Exécutant', obligatoire: true, aide: 'nom et prénom' },
+    { nom: 'profil', libelle: 'Profil', aide: 'rattache la personne à son parc (réglé sur chaque parc)' },
+    { nom: 'categorie', libelle: 'Catégorie', obligatoire: true, aide: '« 01.Libellé » : le numéro range les catégories' },
+  ],
 }
 
 export function boutonAssistant(zone, { titre, champs, consigne = '' }) {

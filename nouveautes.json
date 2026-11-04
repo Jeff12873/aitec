@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.7.1",
+      "date": "2026-11-04",
+      "points": [
+        "Rapports d'intervention N1 : encart « Activités des conducteurs », les RI qu'ils ont exécutées par personne et par catégorie, sur le mois en cours, 3 ou 12 mois",
+        "Profil des conducteurs réglé sur chaque parc (administrateur) : l'encart ne compte que les siens",
+        "Hall of fame : un second podium, les deux premiers exécutants de RI du mois",
+        "Nouvelle requête du site facultative « RI des conducteurs » (numero, date, personne, profil, categorie)"
+      ]
+    },
+    {
       "version": "0.7.0",
       "date": "2026-11-04",
       "points": [

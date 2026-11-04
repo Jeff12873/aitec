@@ -55,6 +55,71 @@ export async function lireRiN1() {
   return lignes.map((l) => ({ numero: String(l.numero).trim(), date: dateIso(l.date), fi: String(l.fi).trim(), di: String(l.di).trim(), dateDi: dateIso(l.date_di), machine: String(l.machine).trim(), intervenant: String(l.intervenant).trim(), observation: texteSeul(l.observation).slice(0, 500) })).filter((r) => r.numero)
 }
 
+// ---------------------------------------------------------------- activités des conducteurs
+
+// Les RI exécutées par les conducteurs (requête du site « RI des conducteurs ») : une ligne par RI et par personne.
+// → [{ numero, date, personne, profil, categorie }] ; la catégorie « 01.Libellé » garde son numéro pour le rang.
+export async function lireActivites() {
+  const lignes = await lire('riConducteurs', ['numero', 'date', 'personne', 'profil', 'categorie'])
+  if (!lignes) return null
+  return lignes.map((l) => ({ numero: String(l.numero).trim(), date: dateIso(l.date), personne: String(l.personne).trim(), profil: String(l.profil).trim(), categorie: String(l.categorie).trim() || 'Autre' }))
+    .filter((x) => x.numero && x.personne && x.date)
+}
+
+// Le profil des conducteurs de chaque parc (un texte contenu dans le profil de la GMAO) : { parcId: 'texte' }.
+export const profilsDesParcs = () => reglageJson('mn1_profils', {}) || {}
+export function enregistrerProfil(parcId, texte) {
+  const tout = profilsDesParcs()
+  if (String(texte || '').trim()) tout[parcId] = String(texte).trim()
+  else delete tout[parcId]
+  modifierReglage('mn1_profils', JSON.stringify(tout))
+  noterModification()
+  return { profil: tout[parcId] || '' }
+}
+const sansAccent = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+// Les lignes d'un parc (son profil), ou de tous les parcs réglés ; sans profil réglé, toutes les lignes.
+export function activitesDuParc(lignes, parcId) {
+  const profils = profilsDesParcs()
+  const voulus = parcId ? [profils[parcId]].filter(Boolean) : Object.values(profils)
+  if (!voulus.length) return lignes
+  return lignes.filter((l) => voulus.some((p) => sansAccent(l.profil).includes(sansAccent(p))))
+}
+// Une RI par personne (deux conducteurs sur la même RI : une exécution chacun).
+const uniques = (lignes) => [...new Map(lignes.map((l) => [`${l.numero}|${l.personne}`, l])).values()]
+const debutDuMois = (decalage) => {
+  const d = new Date()
+  const m = new Date(d.getFullYear(), d.getMonth() - decalage, 1)
+  return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-01`
+}
+// Les exécutions des n derniers mois (le mois en cours compris) : par catégorie, et par personne (la plus active
+// d'abord, les ex aequo par nom).
+export function activites(lignes, mois) {
+  const depuis = debutDuMois(mois - 1)
+  const retenues = uniques(lignes.filter((l) => l.date >= depuis))
+  const categories = [...new Set(retenues.map((l) => l.categorie))].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }))
+  const parPersonne = new Map()
+  for (const l of retenues) {
+    const p = parPersonne.get(l.personne) || { nom: l.personne, total: 0, parCategorie: {} }
+    p.total++
+    p.parCategorie[l.categorie] = (p.parCategorie[l.categorie] || 0) + 1
+    parPersonne.set(l.personne, p)
+  }
+  return {
+    depuis,
+    total: retenues.length,
+    ri: new Set(retenues.map((l) => l.numero)).size,
+    categories: categories.map((cle) => ({ cle, nom: cle.replace(/^\d+\s*[.\-:]\s*/, ''), total: retenues.filter((l) => l.categorie === cle).length })),
+    personnes: [...parPersonne.values()].sort((a, b) => b.total - a.total || a.nom.localeCompare(b.nom, 'fr')),
+  }
+}
+// Les deux premiers exécutants du mois écoulé.
+export function podiumExecutants(lignes) {
+  const debut = debutDuMois(1), fin = debutDuMois(0)
+  const compte = new Map()
+  for (const l of uniques(lignes.filter((x) => x.date >= debut && x.date < fin))) compte.set(l.personne, (compte.get(l.personne) || 0) + 1)
+  return [...compte].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr')).slice(0, 2).map(([nom, nombre]) => ({ nom, nombre }))
+}
+
 // L'observation d'une RI est écrite en HTML par la GMAO : le texte seul, sans le rappel « ------- FI : … ------- ».
 function texteSeul(v) {
   return String(v ?? '')

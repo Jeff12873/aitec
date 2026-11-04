@@ -10,7 +10,7 @@ import { executerRequete } from 'ktec/mysql.js'
 import { lireTableur } from '../../lib/tableurs.js'
 import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir, reglagesDuParc, enregistrerReglagesDuParc, PROPRES_AU_PARC } from './gmao.js'
 import { lireDemandes, close } from './demandes.js'
-import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES } from './circuit.js'
+import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, profilsDesParcs, enregistrerProfil } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
@@ -328,7 +328,24 @@ export function routes(r) {
     const classer = (noeud) => n1.noeuds.get(String(noeud))?.genre || null
     const n1Di = numerosN1(n1)
     const fiN1 = fi && filtrerParc(fi, n1).filter((f) => !f.di || n1Di.has(f.di))
-    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }) }
+    const execs = await lireActivites().catch(() => null)
+    const podiumRi = execs ? podiumExecutants(activitesDuParc(execs, String(ctx.query.parc || ''))) : []
+    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }), podiumRi }
+  })
+
+  // Les activités des conducteurs (RI qu'ils ont exécutées, par catégorie) : ?parc=…&mois=1|3|12
+  r.get('/api/mn1/activites', async (ctx) => {
+    const parc = String(ctx.query.parc || '')
+    const mois = [1, 3, 12].includes(Number(ctx.query.mois)) ? Number(ctx.query.mois) : 3
+    const lignes = await lireActivites()
+    if (!lignes) return { reglee: false }
+    return { reglee: true, mois, profil: parc ? profilsDesParcs()[parc] || '' : '', profilsRegles: Object.keys(profilsDesParcs()).length, ...activites(activitesDuParc(lignes, parc), mois) }
+  })
+  // Le profil des conducteurs d'un parc (texte contenu dans leur profil de la GMAO).
+  admin.post('/api/mn1/profils/:parc', async (ctx) => {
+    ctx.exigerAdmin()
+    exigerEcriture()
+    return enregistrerProfil(ctx.params.parc, (await ctx.json()).profil)
   })
 
   // L'onglet FI N1 : les FI issues de DI (celles à qui il manque une arborescence d'abord).
