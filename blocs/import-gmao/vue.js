@@ -163,10 +163,10 @@ async function carteSynchronisation() {
   }
   return h('div', { class: 'carte' },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('base', 18), 'Directement depuis la base de la GMAO')),
-    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC lit le parc et les interventions dans la base de la GMAO (la connexion MySQL de KTEC, réglée une fois dans les Réglages du portail), puis se tient à jour tout seul tous les quarts d’heure.'),
+    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC lit le parc et les interventions dans la base de la GMAO (la connexion MySQL de KTEC, réglée une fois dans les Réglages du portail), puis se met à jour tout seul à chaque lancement de K.NOVA.'),
     h('ol', { class: 'texte-2', style: { fontSize: '14px', marginTop: 0 } },
       h('li', {}, 'Deux requêtes SELECT disent où trouver les données : une ligne par machine, une ligne par intervention. Leurs colonnes portent les noms des champs d’AITEC (« AS repere », « AS date »…). La colonne « machine » des interventions (le repère de la machine) rattache chaque intervention à sa machine : sans elle, l’IA ne sait pas sur quoi porte une intervention.'),
-      h('li', {}, '« Synchroniser maintenant » enregistre les requêtes dans le fichier de connaissances et lit la base une première fois. Ensuite, c’est automatique.')),
+      h('li', {}, '« Synchroniser maintenant » enregistre les requêtes dans le fichier de connaissances et lit la base une première fois. Ensuite, la mise à jour se fait à chaque lancement ; entre deux, « Synchroniser maintenant ».')),
     s.requetes.machines || s.requetes.interventions ? null : h('div', { class: 'bandeau info' }, ic('base'), 'Aucune requête pour l’instant : ouvrez « Les requêtes » ci-dessous.'),
     h('details', { open: !(s.requetes.machines && s.requetes.interventions) },
       h('summary', { class: 'discret' }, 'Les requêtes (rangées dans le fichier de connaissances)'),

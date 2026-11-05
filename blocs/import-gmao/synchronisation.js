@@ -6,8 +6,8 @@
 //   machines      : repere, designation, famille, marque, modele, numero_serie, emplacement, mise_en_service, etat, notes
 //   interventions : numero, date, machine (repère), type, description, cause, intervenant, duree_h, statut
 // Seules les lignes nouvelles ou changées sont écrites (et réindexées pour la recherche).
-// Automatique : tous les quarts d'heure, quand la connexion MySQL est ouverte et que ce poste peut modifier
-// le fichier sans mot de passe (ou est en mode administrateur).
+// Automatique : une seule fois par lancement, dès que la connexion MySQL est ouverte et que ce poste peut modifier
+// le fichier sans mot de passe (ou est en mode administrateur). Ensuite, « Synchroniser maintenant ».
 
 import crypto from 'node:crypto'
 import { reglageJson, modifierReglage } from '../../lib/base.js'
@@ -17,7 +17,6 @@ import { noterModification, exigerEcriture, etatPartage, motDePasseDefini } from
 import { journal } from 'ktec/installation.js'
 import { CIBLES, importer, normaliser } from './serveur.js'
 
-const PERIODE = 15 * 60_000
 const LIGNES_MAX = 2_000_000
 let enCours = null // promesse de la synchronisation en cours
 
@@ -155,9 +154,9 @@ function sansCommentaires(sql) {
 
 // ---------------------------------------------------------------- automatique
 
-let derniereAuto = 0
-setInterval(() => {
-  if (enCours || Date.now() - derniereAuto < PERIODE) return
+// Vérifié chaque minute jusqu'à ce que la synchronisation du démarrage ait pu partir.
+const auDemarrage = setInterval(() => {
+  if (enCours) return
   try {
     if (!etatConnexion().ouverte) return
     const p = etatPartage()
@@ -168,6 +167,7 @@ setInterval(() => {
   } catch {
     return
   }
-  derniereAuto = Date.now()
-  synchroniser().catch((e) => journal(`AITEC : synchronisation automatique impossible : ${e.message}`))
-}, 60_000).unref()
+  clearInterval(auDemarrage)
+  synchroniser().catch((e) => journal(`AITEC : synchronisation du démarrage impossible : ${e.message}`))
+}, 60_000)
+auDemarrage.unref()

@@ -8,7 +8,7 @@ aux questions **en français**, en citant ses sources.
   tout fonctionne hors ligne après l'installation. Moteur et modèle sont ceux de KTEC, partagés avec les autres
   applications.
 - **Données de la GMAO en direct** : le parc et les interventions sont lus dans la base de la GMAO (connexion MySQL
-  de KTEC) et tenus à jour tout seuls, tous les quarts d'heure ; seules les lignes nouvelles ou changées sont écrites
+  de KTEC) et mis à jour tout seuls à chaque lancement ; seules les lignes nouvelles ou changées sont écrites
   et réindexées. L'import d'exports CSV, Excel ou LibreOffice reste possible.
 - **Documents de tout type** (PDF même scannés, schémas et plans, Word, Excel, photos…), notices en langue étrangère
   traduites à la volée.

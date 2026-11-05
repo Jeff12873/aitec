@@ -1,7 +1,7 @@
 <h1>Données de la GMAO</h1>
 <p>Dans <b>Administration › Données de la GMAO</b>.</p>
 <h2>Directement depuis la base (le plus simple)</h2>
-<p>AITEC lit le parc et les interventions dans la base de la GMAO, par la connexion MySQL de KTEC, puis se tient à jour tout seul <b>tous les quarts d'heure</b> (seules les lignes nouvelles ou changées sont écrites). Deux requêtes, rangées dans le fichier de connaissances, disent où trouver les données : chacune renvoie une ligne par machine ou par intervention, avec des colonnes nommées comme les champs d'AITEC :</p>
+<p>AITEC lit le parc et les interventions dans la base de la GMAO, par la connexion MySQL de KTEC, puis se met à jour tout seul <b>à chaque lancement de K.NOVA</b> (entre deux : « Synchroniser maintenant ») (seules les lignes nouvelles ou changées sont écrites). Deux requêtes, rangées dans le fichier de connaissances, disent où trouver les données : chacune renvoie une ligne par machine ou par intervention, avec des colonnes nommées comme les champs d'AITEC :</p>
 <ul>
 <li><b>Machines</b> : <code>repere</code>, <code>designation</code> (obligatoires), <code>famille</code>, <code>marque</code>, <code>modele</code>, <code>numero_serie</code>, <code>emplacement</code>, <code>mise_en_service</code>, <code>etat</code>, <code>notes</code>.</li>
 <li><b>Interventions</b> : <code>date</code>, <code>description</code> (obligatoires), <code>numero</code>, <code>machine</code> (le repère), <code>type</code>, <code>cause</code>, <code>intervenant</code>, <code>duree_h</code>, <code>statut</code>.</li>

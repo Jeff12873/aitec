@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.11",
+      "date": "2026-11-05",
+      "points": [
+        "Synchronisation avec la GMAO : automatique une seule fois, au lancement de K.NOVA (plus tous les quarts d'heure) ; entre deux, « Synchroniser maintenant »"
+      ]
+    },
+    {
       "version": "0.7.10",
       "date": "2026-11-05",
       "points": [
