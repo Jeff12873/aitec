@@ -34,6 +34,7 @@ export default {
   titre: 'Assistant IA',
   icone: 'etincelle',
   menu: true,
+  beta: true, // encore en travaux : pastille « Bêta » dans le menu
   aide: 'assistant',
   rafraichir: false, // ne pas recharger l'écran pendant une discussion
 

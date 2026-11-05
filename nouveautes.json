@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.14",
+      "date": "2026-11-05",
+      "points": [
+        "Assistant IA : pastille « Bêta » dans le menu, l'écran est encore en travaux (avec K.NOVA 0.8.30 ou plus)"
+      ]
+    },
+    {
       "version": "0.7.13",
       "date": "2026-11-05",
       "points": [
