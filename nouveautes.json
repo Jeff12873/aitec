@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.10",
+      "date": "2026-11-05",
+      "points": [
+        "Corriger une fiche : réaffectation à un autre équipement de production du parc (machine et ETH), avec une liste qui se filtre en tapant"
+      ]
+    },
+    {
       "version": "0.7.9",
       "date": "2026-11-05",
       "points": [

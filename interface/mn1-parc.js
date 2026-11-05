@@ -248,6 +248,23 @@ export async function corrigerFiche(f) {
   const frequence = h('select', {}, h('option', { value: '' }, 'À préciser'), FREQUENCES.map((x) => h('option', { value: x, selected: x === f.frequence }, x)))
   const confirmerFrequence = h('input', { type: 'checkbox', checked: f.frequence_source === 'analyse' || f.frequence_source === 'manuelle' })
   const evite = h('input', { type: 'text', value: f.evite })
+  // Réaffecter la fiche à un autre équipement de production du parc (machine et ETH) : la liste se filtre en tapant.
+  let equipements = []
+  if (f.parc) equipements = (await api(`/api/mn1/parcs/${encodeURIComponent(f.parc)}/equipements`).catch(() => [])).filter((e) => e.niveau >= 3 || e.machine)
+  const libelleEquipement = (e) => `${e.code}${e.designation ? ' — ' + e.designation : ''}${e.eth ? ` · ETH ${e.eth}` : ''}`
+  const actuel = equipements.find((e) => String(e.noeud) === String(f.noeud))
+  const filtre = h('input', { type: 'search', placeholder: 'Chercher un code ou une désignation…' })
+  const choixEquipement = h('select', { size: 6 })
+  const remplirChoix = () => {
+    const mots = filtre.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const garde = choixEquipement.value
+    vider(choixEquipement,
+      h('option', { value: '' }, actuel ? `Garder : ${libelleEquipement(actuel)}` : `Garder : ${nomMachine(f) || 'machine actuelle'}${f.eth ? ` · ETH ${f.eth}` : ''}`),
+      equipements.filter((e) => mots.every((m) => libelleEquipement(e).toLowerCase().includes(m))).slice(0, 300).map((e) => h('option', { value: String(e.noeud) }, libelleEquipement(e))))
+    choixEquipement.value = garde
+  }
+  filtre.addEventListener('input', remplirChoix)
+  remplirChoix()
   const ok = await fenetre({
     titre: `Fiche de niveau 1 — ${nomMachine(f) || f.etiquette}`,
     large: true,
@@ -259,10 +276,11 @@ export async function corrigerFiche(f) {
       h('div', { class: 'grille grille-2', style: { gap: '10px' } },
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'case' }, confirmerFrequence, ' Fréquence confirmée (d’après l’analyse de la machine)')),
-      h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite)),
+      h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite),
+      equipements.length ? h('div', { class: 'champ' }, h('span', {}, 'Machine et ETH : réaffecter à un équipement de production du parc'), filtre, choixEquipement) : null),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
-      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { etiquette: etiquette.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, confirmerFrequence: confirmerFrequence.checked } }); return true } },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { etiquette: etiquette.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, confirmerFrequence: confirmerFrequence.checked, equipement: choixEquipement.value || null } }); return true } },
     ],
   })
   if (ok) {

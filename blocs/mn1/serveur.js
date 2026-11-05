@@ -280,7 +280,22 @@ export function routes(r) {
     const avant = db().prepare('SELECT frequence, frequence_source FROM fiches_mn1 WHERE id = ?').get(ctx.params.id)
     if (!avant) throw new ErreurHttp(404, 'Fiche introuvable')
     const source = entree.confirmerFrequence || avant.frequence !== propre.frequence ? (propre.frequence ? 'manuelle' : avant.frequence_source) : avant.frequence_source
-    db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, frequence_source = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, source, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
+    // Réaffectation : l'équipement de production du parc (nœud de l'arborescence) dit la machine et l'ETH.
+    let place = null
+    if (entree.equipement) {
+      const { parc } = db().prepare('SELECT parc FROM fiches_mn1 WHERE id = ?').get(ctx.params.id)
+      const { equipements } = await equipementsDuParc(parc)
+      const n = equipements.find((x) => String(x.noeud) === String(entree.equipement) && x.niveau >= 2)
+      if (!n) throw new ErreurHttp(400, 'Équipement introuvable dans le parc de la fiche.')
+      place = n
+    }
+    transaction(() => {
+      db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, frequence_source = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, source, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
+      if (place) {
+        db().prepare('UPDATE fiches_mn1 SET machine_id = ?, machine_prod = ?, noeud = ?, eth = ?, machine_nom = ? WHERE id = ?')
+          .run(place.machine ?? null, place.machine ?? null, String(place.noeud), place.ethCode || '', place.designation || place.code, ctx.params.id)
+      }
+    })
     noterModification()
     return lireFiches('WHERE f.id = ?', Number(ctx.params.id))[0]
   })
