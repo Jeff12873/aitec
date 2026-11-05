@@ -242,7 +242,7 @@ function avantApres(x) {
 // ---------------------------------------------------------------- actions sur les fiches
 
 export async function corrigerFiche(f) {
-  const etiquette = h('input', { type: 'text', value: f.etiquette || '' })
+  const etiquette = h('input', { type: 'text', value: f.etiquette || '', readOnly: true, title: 'Ligne-ETH-numéro, calculée par AITEC : elle suit la fiche si on la réaffecte' })
   const zoneMachine = h('input', { type: 'text', value: f.zone || '' })
   const action = h('textarea', { rows: 8 }, f.action)
   const frequence = h('select', {}, h('option', { value: '' }, 'À préciser'), FREQUENCES.map((x) => h('option', { value: x, selected: x === f.frequence }, x)))
@@ -270,7 +270,7 @@ export async function corrigerFiche(f) {
     large: true,
     contenu: h('div', { class: 'grille', style: { gap: '10px' } },
       h('div', { class: 'grille grille-2', style: { gap: '10px' } },
-        h('label', { class: 'champ' }, h('span', {}, 'Étiquette (code de la carte)'), etiquette),
+        h('label', { class: 'champ' }, h('span', {}, 'Étiquette (ligne-ETH-numéro, automatique)'), etiquette),
         h('label', { class: 'champ' }, h('span', {}, 'Zone de la machine'), zoneMachine)),
       h('label', { class: 'champ' }, h('span', {}, 'Points à vérifier (un par ligne ; « Porte : » pour un intertitre)'), action),
       h('div', { class: 'grille grille-2', style: { gap: '10px' } },
@@ -280,7 +280,7 @@ export async function corrigerFiche(f) {
       equipements.length ? h('div', { class: 'champ' }, h('span', {}, 'Machine et ETH : réaffecter à un équipement de production du parc'), filtre, choixEquipement) : null),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
-      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { etiquette: etiquette.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, confirmerFrequence: confirmerFrequence.checked, equipement: choixEquipement.value || null } }); return true } },
+      { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, confirmerFrequence: confirmerFrequence.checked, equipement: choixEquipement.value || null } }); return true } },
     ],
   })
   if (ok) {
@@ -329,7 +329,6 @@ async function proposerFiche(d, panne) {
   const admin = peutModifier()
   const machine = h('input', { type: 'text', value: b.machine_nom })
   const zoneMachine = h('input', { type: 'text', value: b.zone })
-  const etiquette = h('input', { type: 'text', value: '' , placeholder: 'code de la carte, si vous en avez un' })
   const action = h('textarea', { rows: 7 }, b.action)
   const frequence = h('select', {}, FREQUENCES.filter((x) => x !== 'Quotidienne').map((x) => h('option', { value: x, selected: x === b.frequence }, x)))
   const evite = h('input', { type: 'text', value: b.evite })
@@ -338,16 +337,15 @@ async function proposerFiche(d, panne) {
     large: true,
     contenu: h('div', { class: 'grille', style: { gap: '10px' } },
       h('p', { class: 'texte-2', style: { margin: 0 } }, `Rédigé par l’IA pour la panne ${panne.code} (${panne.nombre} cas en 12 mois). Relisez et corrigez : rien n’est enregistré sans vous.`),
-      h('div', { class: 'grille grille-3', style: { gap: '10px' } },
+      h('div', { class: 'grille grille-2', style: { gap: '10px' } },
         h('label', { class: 'champ' }, h('span', {}, 'Machine'), machine),
-        h('label', { class: 'champ' }, h('span', {}, 'Zone'), zoneMachine),
-        h('label', { class: 'champ' }, h('span', {}, 'Étiquette'), etiquette)),
+        h('label', { class: 'champ' }, h('span', {}, 'Zone'), zoneMachine)),
       h('label', { class: 'champ' }, h('span', {}, 'Points à vérifier (un par ligne)'), action),
       h('div', { class: 'grille grille-2', style: { gap: '10px' } },
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite))),
     boutons: admin
-      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans le parc', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: d.parc.id, machine_nom: machine.value, zone: zoneMachine.value, etiquette: etiquette.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
+      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans le parc', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: d.parc.id, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
       : [{ texte: 'Fermer', classe: 'principal', valeur: null }],
   })
   if (ok) {

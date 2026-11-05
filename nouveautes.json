@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.7.12",
+      "date": "2026-11-05",
+      "points": [
+        "Étiquette des vignettes automatique : ligne-ETH-numéro au hasard (par exemple L2-ROUE-4827), pour toutes les fiches, y compris celles déjà importées",
+        "Une fiche réaffectée garde son numéro ; sa ligne et son ETH suivent",
+        "Le code du classeur importé est gardé à part : réimporter le même classeur met les fiches à jour sans les doubler"
+      ]
+    },
+    {
       "version": "0.7.11",
       "date": "2026-11-05",
       "points": [

@@ -12,6 +12,7 @@ import { familleDe, sqlFamille } from '../../lib/types.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { chargeDuParc, etatLecture, fiConnues, etatDeLaFi, parSemaine, periodicite } from './fi.js'
 import { reglagesDuParc } from './gmao.js'
+import { recalerEtiquettes } from './etiquettes.js'
 import { lireDemandes, close } from './demandes.js'
 
 export const SEUIL_PERTINENCE = 0.6 // par défaut : alerte sous 60 % du Pareto couvert
@@ -23,6 +24,7 @@ const sansPrefixe = (code) => String(code || '').replace(/^[A-Z]{1,3}_/i, '').to
 
 // Une fiche est dans un parc si on l'y a rangée ; sinon d'après sa machine, son équipement ou le nom de sa ligne.
 export function fichesDesParcs(p, { archivees = false } = {}) {
+  recalerEtiquettes()
   const fiches = db().prepare(`SELECT f.*, m.repere, m.designation FROM fiches_mn1 f LEFT JOIN machines m ON m.id = f.machine_id WHERE f.archivee = ? ORDER BY f.eth, coalesce(m.repere, f.machine_nom), f.etiquette, f.id`).all(archivees ? 1 : 0)
   const parcs = p.parcs.filter((x) => !x.nonClasse)
   const codes = new Map(parcs.map((x) => [x.id, new Set([x.nom.toLowerCase(), ...[...x.production, ...x.maintenance, ...x.autres].map((id) => sansPrefixe(p.racines.find((r) => r.id === id)?.code))])]))

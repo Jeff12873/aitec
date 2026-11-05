@@ -14,6 +14,7 @@ import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregist
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
+import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
@@ -28,6 +29,7 @@ function parametres() {
 }
 
 function lireFiches(where = '', ...valeurs) {
+  recalerEtiquettes()
   return db()
     .prepare(`SELECT f.*, m.repere, m.designation FROM fiches_mn1 f LEFT JOIN machines m ON m.id = f.machine_id ${where} ORDER BY f.ligne, f.eth, coalesce(m.repere, f.machine_nom), f.etiquette, f.id`)
     .all(...valeurs)
@@ -38,7 +40,7 @@ function nettoyerFiche(f) {
   const propre = {
     pour: 'Production',
     action: String(f.action || '').trim().slice(0, 4000),
-    etiquette: String(f.etiquette || '').trim().slice(0, 30),
+    etiquette: String(f.etiquette || '').trim().slice(0, 30), // gardée seulement par l'import d'un parc ; sinon calculée
     zone: String(f.zone || '').trim().slice(0, 120),
     frequence: FREQUENCES.includes(f.frequence) ? f.frequence : '',
     evite: String(f.evite || '').trim().slice(0, 300),
@@ -257,7 +259,7 @@ export function routes(r) {
       if (!f.parc) throw new ErreurHttp(400, 'Machine ou parc obligatoire.')
       const id = db()
         .prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, parc, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'ia', ?, ?, 'manuelle', ?, '', '', ?, ?, ?)")
-        .run(propre.etiquette, String(f.machine_nom || '').trim().slice(0, 120), propre.zone, propre.action, propre.frequence, propre.evite, String(f.parc), maintenant, maintenant).lastInsertRowid
+        .run('', String(f.machine_nom || '').trim().slice(0, 120), propre.zone, propre.action, propre.frequence, propre.evite, String(f.parc), maintenant, maintenant).lastInsertRowid
       noterModification()
       return lireFiches('WHERE f.id = ?', Number(id))[0]
     }
@@ -290,7 +292,7 @@ export function routes(r) {
       place = n
     }
     transaction(() => {
-      db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, frequence_source = ?, evite = ?, etiquette = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, source, propre.evite, propre.etiquette, propre.zone, new Date().toISOString(), ctx.params.id)
+      db().prepare('UPDATE fiches_mn1 SET pour = ?, action = ?, frequence = ?, frequence_source = ?, evite = ?, zone = ?, modifie_le = ? WHERE id = ?').run(propre.pour, propre.action, propre.frequence, source, propre.evite, propre.zone, new Date().toISOString(), ctx.params.id)
       if (place) {
         db().prepare('UPDATE fiches_mn1 SET machine_id = ?, machine_prod = ?, noeud = ?, eth = ?, machine_nom = ? WHERE id = ?')
           .run(place.machine ?? null, place.machine ?? null, String(place.noeud), place.ethCode || '', place.designation || place.code, ctx.params.id)
@@ -302,7 +304,8 @@ export function routes(r) {
 
   // Import d'un classeur de fiches de contrôle (Excel, LibreOffice, CSV) : une ligne par point à vérifier, avec
   // les colonnes ligne, ETH, machine, zone, action et étiquette (code de la carte). Les points d'une même étiquette
-  // forment une fiche ; une étiquette déjà importée est mise à jour. Nom du fichier dans l'en-tête X-Nom.
+  // forment une fiche ; une étiquette déjà importée est mise à jour (son code reste dans « code_import », la
+  // vignette prend une étiquette ligne-ETH-numéro). Nom du fichier dans l'en-tête X-Nom.
   admin.post('/api/mn1/import', async (ctx) => {
     exigerEcriture()
     const nom = decodeURIComponent(ctx.req.headers['x-nom'] || 'fiches.xlsx')
@@ -310,9 +313,9 @@ export function routes(r) {
     const fiches = fichesDuClasseur(lireTableur(nom, await ctx.octets()))
     if (!fiches.length) throw new ErreurHttp(400, 'Aucune fiche trouvée : il faut une feuille avec au moins les colonnes « action » et « étiquette » (ou « zone »).')
     const maintenant = new Date().toISOString()
-    const existante = db().prepare("SELECT id FROM fiches_mn1 WHERE origine = 'import' AND ligne = ? AND etiquette = ? AND machine_nom = ?")
+    const existante = db().prepare("SELECT id FROM fiches_mn1 WHERE origine = 'import' AND ligne = ? AND code_import = ? AND machine_nom = ?")
     const modifier = db().prepare('UPDATE fiches_mn1 SET eth = ?, zone = ?, action = ?, modifie_le = ? WHERE id = ?')
-    const creer = db().prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'import', ?, ?, 'import', '', ?, ?, ?, ?)")
+    const creer = db().prepare("INSERT INTO fiches_mn1 (machine_id, pour, code_import, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'import', ?, ?, 'import', '', ?, ?, ?, ?)")
     let creees = 0
     let modifiees = 0
     transaction(() => {
