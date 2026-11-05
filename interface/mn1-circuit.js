@@ -50,7 +50,8 @@ export async function indicateursBandeau(zone) {
       tuile(i.focusEnRetard ?? '—', 'FI focus en retard', { titre: `FI focus dont l’échéance est passée sans RI. Retard médian des FI focus faites : ${jours(i.retardFocus)}`, alerte: i.focusEnRetard > 0 })),
     alertes.length ? h('div', { class: 'alertes-mn1' }, alertes) : null,
     i.podium.length || i.podiumRi?.length ? h('div', { class: 'hall-of-fame' },
-      h('div', { class: 'titre-hof' }, ic('etincelle', 16), `Hall of fame · ${nomMois}`),
+      // Tous les parcs ensemble : le titre le dit, sinon on le croit propre au parc choisi.
+      h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `Usine complète · ${nomMois}`)),
       h('div', { class: 'podiums' },
         podium(i.podium, 'DI', 'Demandes'),
         podium(i.podiumRi || [], 'RI', 'Exécutions')),

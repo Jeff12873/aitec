@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.3",
+      "date": "2026-11-05",
+      "points": [
+        "Hall of fame : titre plus grand et animé, marqué « Usine complète » (il compte tous les parcs, pas seulement celui choisi)"
+      ]
+    },
+    {
       "version": "0.7.2",
       "date": "2026-11-05",
       "points": [
