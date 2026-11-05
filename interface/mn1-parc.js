@@ -77,17 +77,14 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     ['machine', 'Machine', (l) => l.p.repere || ''],
     ['panne', 'Panne qui revient', (l) => l.p.symptome || ''],
     ['cas', 'Cas (12 mois)', (l) => l.p.nombre],
-    ['cumul', 'Cumul', (l) => l.p.cumul, [
-      'Cumul : la part des cas du Pareto atteinte en comptant cette panne et toutes celles qui ont plus de cas qu’elle (le tableau rangé par nombre de cas).',
+    ['part', 'Part des pannes', (l) => l.p.part, [
+      'Part des pannes : ce que pèse cette panne parmi toutes les pannes qui reviennent dans le tableau (ses cas sur 12 mois, divisés par le total des cas).',
       '',
-      '% bas (ex. 20 % sur la 1re ligne) : cette panne pèse lourd à elle seule, 1 cas sur 5 des pannes qui reviennent. C’est elle qu’une fiche doit viser en premier.',
-      '% haut (ex. 95 %) : avec les pannes au-dessus, on a déjà 95 % des cas ; celle-ci n’ajoute que peu. Une fiche pour elle est moins prioritaire.',
-      '',
-      'Repère : des fiches qui visent toutes les pannes jusqu’à 80 % de cumul couvrent l’essentiel ; une panne sous 80 % marquée « aucune » est un trou à combler.',
+      'Ex. 50 % : une panne sur deux du parc, c’est celle-là. Une fiche qui la vise évite beaucoup ; c’est elle à couvrir en premier.',
     ].join('\n')],
     ['fiches', 'Fiches qui la visent', (l) => l.x?.fiches.length ?? -1],
   ]
-  let triPareto = { col: 'cumul', sens: 1 }
+  let triPareto = { col: 'code', sens: 1 }
   const dessinerPareto = () => {
     const [, , valeur] = COLONNES.find(([c]) => c === triPareto.col)
     const triees = [...lignes].sort((l1, l2) => {
@@ -108,7 +105,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
           h('td', {}, lienAnalyse(d, p.machine, h('span', { class: 'mono' }, p.repere)), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
           h('td', { title: x?.commentaire || '' }, p.symptome),
           h('td', { class: 'nombre' }, String(p.nombre)),
-          h('td', {}, h('div', { class: 'cumul-pareto', title: `${pct(p.cumul)} des cas du Pareto en comptant jusqu’à cette panne` }, h('i', { style: { width: `${Math.round(p.cumul * 100)}%` } }), h('span', {}, pct(p.cumul)))),
+          h('td', {}, h('div', { class: 'part-pareto', title: `${p.nombre} cas sur 12 mois : ${pct(p.part)} des pannes qui reviennent` }, h('i', { style: { width: `${Math.round(p.part * 100)}%` } }), h('span', {}, pct(p.part)))),
           h('td', {}, x ? (x.fiches.length ? x.fiches.map((fid) => h('button', { class: 'etiquette lien-fiche', title: 'Descendre jusqu’à la fiche', onclick: () => allerAFiche(fid) }, etiquetteFiche(fid))) : h('span', { class: 'etiquette orange' }, 'aucune')) : h('span', { class: 'discret' }, '—'),
             x?.demandes?.length ? h('span', { class: 'discret petit-texte' }, ` · ${x.demandes.length} demande${x.demandes.length > 1 ? 's' : ''}`) : null),
           h('td', {}, trou ? h('button', { class: 'petit', title: 'L’IA rédige un brouillon de fiche pour cette panne', onclick: () => proposerFiche(d, p) }, ic('etincelle', 13), 'Proposer une fiche') : null))

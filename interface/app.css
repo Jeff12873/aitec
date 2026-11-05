@@ -399,9 +399,9 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .pareto-mn1 td.nombre { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .pareto-mn1 .etiquette { margin: 0 4px 4px 0; font-size: 12px; padding: 2px 8px; }
 .pareto-mn1 tr.trou-pareto td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
-.cumul-pareto { position: relative; width: 70px; height: 16px; border-radius: 4px; background: var(--carte-3); overflow: hidden; }
-.cumul-pareto i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, #a78bfa 45%, transparent); }
-.cumul-pareto span { position: relative; display: block; font-size: 11px; line-height: 16px; text-align: center; }
+.part-pareto { position: relative; width: 70px; height: 16px; border-radius: 4px; background: var(--carte-3); overflow: hidden; }
+.part-pareto i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, #a78bfa 45%, transparent); }
+.part-pareto span { position: relative; display: block; font-size: 11px; line-height: 16px; text-align: center; }
 .badges-fiche { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .badges-fiche .etiquette { font-size: 11.5px; padding: 2px 8px; }
 .badges-fiche .actions-fiche-mn1 { width: 100%; }
