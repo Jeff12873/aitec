@@ -3,7 +3,7 @@
 import { ErreurHttp } from 'ktec/http.js'
 import { db } from '../../lib/base.js'
 import { exigerEcriture } from 'ktec/partage.js'
-import { reglagesParcs, enregistrerParcs, lireParcs, listeParcs, NON_CLASSE } from '../../lib/parcs.js'
+import { reglagesParcs, enregistrerParcs, lireParcs, listeParcs, sansPrefixe, NON_CLASSE } from '../../lib/parcs.js'
 
 export function routes(r) {
   // Pour le sélecteur : [{ id, nom, machines }].
@@ -38,7 +38,6 @@ export function routes(r) {
     const aPlat = (racines) => racines.flatMap((id) => p.detail(id)).filter((n) => n.machine && n.niveau > 1)
     const production = aPlat(parc.production)
     const maintenance = aPlat(parc.maintenance)
-    const sansPrefixe = (code) => String(code).replace(/^[A-Z]{1,3}_/i, '').toLowerCase()
     const parCode = new Map(maintenance.map((n) => [sansPrefixe(n.code), n.machine]))
     const vus = new Set()
     return {

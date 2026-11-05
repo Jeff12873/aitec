@@ -257,11 +257,11 @@ async function afficherDemandes(zone) {
       h('div', { class: 'carte' }, entete('reseau', 'Par ETH', '12 mois'), d.eth.length ? barresHorizontales(d.eth.map((x) => ({ etiquette: x.nom, valeur: x.nombre })), { couleur: COULEURS.turquoise }) : h('div', { class: 'vide' }, 'ETH inconnus (arborescence).')),
       d.sansFiche.length ? h('div', { class: 'carte pleine sans-fiche-mn1' }, entete('coche', 'Sans fiche de niveau 1', 'machines souvent demandées'),
         h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Ces machines reviennent souvent dans les demandes de niveau 1 mais n’ont pas encore de fiche : leur analyse propose les gestes qui éviteraient ces demandes.'),
-        // Seule une machine du parc maintenance s'ouvre (l'analyse) ; une machine de production sans machine de
-        // maintenance liée reste une simple étiquette.
+        // Un clic ouvre l'analyse de la machine de maintenance (reliée, ou au même code sans préfixe) ; sans elle, la
+        // machine reste une simple étiquette.
         h('div', { class: 'liste-sans-fiche' }, d.sansFiche.map((m) => m.analyse
-          ? h('a', { class: 'bouton', href: `#/analyse/${m.analyse}` }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)
-          : h('span', { class: 'etiquette' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
+          ? h('a', { class: 'bouton', href: `#/analyse/${m.analyse}`, title: 'Ouvrir la fiche de la machine de maintenance' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)
+          : h('span', { class: 'etiquette', title: 'Aucune machine de maintenance reliée : Administration › Parcs machines › production ↔ maintenance' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
       h('div', { class: 'carte pleine' }, entete('historique', 'Demandes de niveau 1', d.liste ? 'ouvertes, et 12 derniers mois' : ''), listeDemandes(d.liste || d.dernieres, d.suivi)),
     ))
   animer(zone)

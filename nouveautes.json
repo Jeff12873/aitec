@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.5",
+      "date": "2026-11-05",
+      "points": [
+        "« Sans fiche de niveau 1 », Pareto, fiches : une machine de production non reliée ouvre quand même la fiche de sa machine de maintenance, trouvée au même code sans le préfixe (rien n'est relié sans l'administrateur)"
+      ]
+    },
+    {
       "version": "0.7.4",
       "date": "2026-11-05",
       "points": [
