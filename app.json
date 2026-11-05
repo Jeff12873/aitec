@@ -2,8 +2,8 @@
   "id": "aitec",
   "nom": "AITEC",
   "couleur": "#2dd4bf",
-  "sousTitre": "Assistant IA",
-  "description": "L’assistant IA de l’atelier : parc, historique des interventions et documents, réponses en français avec leurs sources.",
+  "sousTitre": "Maintenance de niveau 1",
+  "description": "La maintenance de premier niveau, dynamique et évolutive : demandes, fiches et rapports d’intervention, indicateurs, avec une IA locale.",
   "icone": "interface/icone.svg",
   "besoins": ["ia", "java"]
 }

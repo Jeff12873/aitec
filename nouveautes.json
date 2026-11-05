@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.16",
+      "date": "2026-11-05",
+      "points": [
+        "AITEC présentée comme la maintenance de premier niveau, dynamique et évolutive, avec une IA locale"
+      ]
+    },
+    {
       "version": "0.7.15",
       "date": "2026-11-05",
       "points": [
