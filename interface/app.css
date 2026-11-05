@@ -574,3 +574,10 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 /* Les listes du circuit N1 : description plus courte, pastilles FI / RI l'une sous l'autre (pas de défilement) */
 .pastilles-suivi { flex-direction: column; align-items: flex-start; }
 .carte.pleine:has(.pastilles-suivi) td.col-description, .carte:has(.pastille-etat) td.col-description { max-width: 300px; }
+
+/* Carte refermable (FI issues de DI) : l'en-tête entier ouvre et referme. */
+.entete-repli { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: none; color: var(--texte); font: inherit; cursor: pointer; text-align: left; }
+.entete-repli .titre-repli { font-size: 18px; font-weight: 700; }
+.entete-repli .fleche-repli { width: 14px; color: var(--texte-2); }
+.entete-repli:hover .titre-repli { color: var(--accent); }
+.entete-repli[aria-expanded="true"] { margin-bottom: 14px; }

@@ -105,13 +105,27 @@ export async function afficherFiIssues(zone) {
     }))
   }
   const aReprendre = r.fi.filter((f) => f.manque && !f.supprimee).length
-  vider(zone, h('div', { class: 'carte', style: { marginBottom: '16px' } },
-    h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'FI issues de DI'),
+  // Refermé au départ : l'en-tête dit combien sont à reprendre, un clic l'ouvre.
+  let ouvert = false
+  const contenu = h('div', { hidden: true },
+    h('div', { class: 'actions', style: { marginBottom: '8px' } },
       h('label', { class: 'discret', style: { display: 'flex', gap: '6px', alignItems: 'center' } },
         h('input', { type: 'checkbox', checked: true, style: { width: 'auto' }, onchange: (e) => { seulementAReprendre = e.target.checked; dessiner() } }),
         `seulement celles à reprendre (${aReprendre})`)),
     h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Une FI faite d’une demande doit porter l’équipement de l’arborescence de production et celui de l’arborescence de maintenance. Celles à qui il en manque un sont en tête : à compléter dans la GMAO.'),
-    corps))
+    corps)
+  const fleche = h('span', { class: 'fleche-repli' }, '▸')
+  const basculer = () => {
+    ouvert = !ouvert
+    contenu.hidden = !ouvert
+    fleche.textContent = ouvert ? '▾' : '▸'
+  }
+  vider(zone, h('div', { class: 'carte', style: { marginBottom: '16px' } },
+    h('button', { class: 'entete-repli', 'aria-expanded': 'false', onclick: (e) => { basculer(); e.currentTarget.setAttribute('aria-expanded', String(ouvert)) } },
+      fleche, ic('document', 18), h('span', { class: 'titre-repli' }, 'FI issues de DI'),
+      h('span', { class: `etiquette ${aReprendre ? 'orange' : ''}` }, aReprendre ? `${aReprendre} à reprendre` : 'rien à reprendre'),
+      h('span', { class: 'discret' }, `${r.fi.length} FI`)),
+    contenu))
   dessiner()
 }
 

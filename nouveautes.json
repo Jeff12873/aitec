@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.7",
+      "date": "2026-11-05",
+      "points": [
+        "FI issues de DI : le tableau se replie, fermé au départ ; l'en-tête dit combien de FI sont à reprendre"
+      ]
+    },
+    {
       "version": "0.7.6",
       "date": "2026-11-05",
       "points": [
