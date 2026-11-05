@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.13",
+      "date": "2026-11-05",
+      "points": [
+        "Le bandeau d'indicateurs de la maintenance de niveau 1 et le Hall of fame s'affichent de nouveau (ils avaient disparu depuis le podium « usine complète »)"
+      ]
+    },
+    {
       "version": "0.7.12",
       "date": "2026-11-05",
       "points": [

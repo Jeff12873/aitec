@@ -198,11 +198,16 @@ const jours = (de, a) => Math.round((jourUtc(a) - jourUtc(de)) / 86_400_000)
 //   demandes : les DI de niveau 1 retenues (avec .parc) ; parcs : les id des parcs pris en compte ;
 //   fi, ri : les FI et RI de niveau 1 (ou null) ; parcDuNoeud : nœud de l'arborescence → parc ;
 //   classer(noeud) → 'production' | 'maintenance' | null.
-// Hall of fame : les deux premiers demandeurs du mois écoulé.
-export function podiumDemandeurs(di) {
+// Le mois écoulé, en « AAAA-MM ».
+function moisEcoule() {
   const m = new Date()
   const moisPasse = new Date(m.getFullYear(), m.getMonth() - 1, 1)
-  const cleMois = `${moisPasse.getFullYear()}-${String(moisPasse.getMonth() + 1).padStart(2, '0')}`
+  return `${moisPasse.getFullYear()}-${String(moisPasse.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Hall of fame : les deux premiers demandeurs du mois écoulé.
+export function podiumDemandeurs(di) {
+  const cleMois = moisEcoule()
   const duMois = di.filter((d) => d.date.startsWith(cleMois) && d.demandeur)
   return [...duMois.reduce((mm, d) => mm.set(d.demandeur, (mm.get(d.demandeur) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([nom, nombre]) => ({ nom, nombre }))
 }
@@ -267,7 +272,7 @@ export function indicateurs({ demandes, parcs, fi, ri, parcDuNoeud, classer }) {
     alerteBaisse: tendance !== null && tendance < -0.2,
     concentration,
     podium,
-    mois: cleMois,
+    mois: moisEcoule(),
     delaiMedian: mediane(delais),
     enAttente,
     supprimees,
