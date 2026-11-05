@@ -12,7 +12,7 @@ import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, r
 import { lireDemandes, close } from './demandes.js'
 import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, podiumDemandeurs, profilsDesParcs, enregistrerProfil } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
-import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao } from './fi.js'
+import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -529,8 +529,19 @@ export function routes(r) {
     const maintenant = new Date().toISOString()
     if (parc !== undefined) db().prepare('UPDATE fiches_mn1 SET parc = ?, modifie_le = ? WHERE id = ?').run(String(parc || ''), maintenant, f.id)
     if (archivee !== undefined) {
-      if (archivee && f.fi_gmao) throw new ErreurHttp(409, `Cette fiche porte la FI ${f.fi_gmao} : remplacez-la ou suspendez la FI d’abord.`)
-      db().prepare('UPDATE fiches_mn1 SET archivee = ?, archivee_le = ?, modifie_le = ? WHERE id = ?').run(archivee ? 1 : 0, archivee ? maintenant : null, maintenant, f.id)
+      // Une FI qui n'existe plus dans la GMAO (relue à l'instant) ne retient pas la fiche : elle est retirée de la fiche.
+      let fiDisparue = false
+      if (archivee && f.fi_gmao) {
+        fiDisparue = etatDeLaFi(await fiConnues({ force: true }), f.fi_gmao) === 'supprimee'
+        if (!fiDisparue) throw new ErreurHttp(409, `Cette fiche porte la FI ${f.fi_gmao} : remplacez-la ou suspendez la FI d’abord.`)
+      }
+      transaction(() => {
+        if (fiDisparue) {
+          db().prepare("UPDATE fiches_mn1_fi SET fin = ?, motif = 'supprimée dans la GMAO' WHERE fiche_id = ? AND numero = ? AND fin IS NULL").run(maintenant.slice(0, 10), f.id, f.fi_gmao)
+          db().prepare("UPDATE fiches_mn1 SET fi_gmao = '' WHERE id = ?").run(f.id)
+        }
+        db().prepare('UPDATE fiches_mn1 SET archivee = ?, archivee_le = ?, modifie_le = ? WHERE id = ?').run(archivee ? 1 : 0, archivee ? maintenant : null, maintenant, f.id)
+      })
     }
     noterModification()
     return lireFiches('WHERE f.id = ?', f.id)[0]

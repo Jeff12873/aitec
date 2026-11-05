@@ -125,7 +125,10 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
 
   // ---- fiches
   const enPlus = (f) => h('div', { class: 'enplus-mn1 badges-fiche' },
-    f.fi_gmao ? h('span', { class: 'fi-gmao', title: 'La FI de la GMAO qui porte cette fiche' }, ic('coche', 13), f.fi_gmao) : h('span', { class: 'etiquette' }, 'sans FI'),
+    !f.fi_gmao ? h('span', { class: 'etiquette' }, 'sans FI')
+      : f.etatFi === 'supprimee' ? h('span', { class: 'etiquette rouge fi-disparue', title: 'Cette FI n’existe plus dans la GMAO : créez-en une autre, ou archivez la fiche' }, ic('alerte', 13), `${f.fi_gmao} · supprimée dans la GMAO`)
+      : f.etatFi === 'inactive' ? h('span', { class: 'etiquette orange', title: 'Cette FI est inactive (suspendue ou archivée) dans la GMAO : la fiche n’est plus faite' }, ic('alerte', 13), `${f.fi_gmao} · inactive dans la GMAO`)
+      : h('span', { class: 'fi-gmao', title: f.etatFi ? 'La FI de la GMAO qui porte cette fiche, active' : 'La FI de la GMAO qui porte cette fiche (GMAO non lue : état inconnu)' }, ic('coche', 13), f.fi_gmao),
     f.aAnalyser ? h('span', { class: 'etiquette orange', title: 'Fréquence de l’import, provisoire : analysez la machine, puis confirmez la fréquence' }, 'à analyser') : null,
     f.sansCible ? h('span', { class: 'etiquette orange', title: f.suggestion ? `Ne vise aucune panne du Pareto : passer en ${f.suggestion.frequence} libérerait ${arrondi(f.suggestion.gain)} fiche par semaine` : 'Ne vise aucune panne du Pareto' }, 'sans cible', f.suggestion ? ` · ${f.suggestion.frequence.toLowerCase()} ? (−${arrondi(f.suggestion.gain)}/sem.)` : '') : null,
     f.demandes ? h('span', { class: 'etiquette violet', title: 'Demandes de niveau 1 sur cette machine ces 12 mois, malgré la fiche : geste mal fait, ou fiche à revoir ?' }, `${f.demandes} demande${f.demandes > 1 ? 's' : ''} malgré la fiche`) : null,
@@ -134,7 +137,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
       d.analysables?.[f.machine_id] || d.analysables?.[f.machine_prod] ? h('a', { href: `#/analyse/${d.analysables[f.machine_id] || d.analysables[f.machine_prod]}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : null,
       admin ? h('button', { class: 'petit', title: f.fi_gmao ? 'Mettre cette fiche dans une autre FI' : 'Créer ou choisir la FI de cette fiche dans la GMAO (simulation d’abord)', onclick: () => dialogueFi(f, d) }, ic('base', 13), f.fi_gmao ? 'Changer de FI' : 'Créer la FI') : null,
       admin ? h('button', { class: 'discret petit icone-seule', title: 'Corriger la fiche', onclick: () => corrigerFiche(f) }, ic('crayon', 14)) : null,
-      admin && !f.fi_gmao ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null))
+      admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null))
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : étiquette, machine, zone, geste…' })
   const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
@@ -143,8 +146,8 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
   const FILTRES = [
     ['', 'Toutes', () => true, ''],
     ['nouvelles', 'Nouvelles', (f) => ilYaJours(f.cree_le, 30), 'Créées ces 30 derniers jours'],
-    ['utilisees', 'Utilisées', (f) => Boolean(f.fi_gmao), 'Portées par une FI de la GMAO'],
-    ['sansfi', 'Sans FI', (f) => !f.fi_gmao, 'Pas encore dans une FI : les opérateurs ne la font pas'],
+    ['utilisees', 'Utilisées', (f) => Boolean(f.fi_gmao) && f.etatFi !== 'supprimee' && f.etatFi !== 'inactive', 'Portées par une FI active de la GMAO'],
+    ['sansfi', 'Sans FI', (f) => !f.fi_gmao || f.etatFi === 'supprimee' || f.etatFi === 'inactive', 'Pas dans une FI active : les opérateurs ne la font pas (FI supprimée ou inactive dans la GMAO comprises)'],
     ['utiles', 'Visent le Pareto', (f) => (u.get(f.id) || 0) > 0, 'Visent au moins une panne du Pareto (d’après l’analyse de corrélation)'],
     ['sanscible', 'Sans cible', (f) => f.sansCible, 'Ne visent aucune panne du Pareto'],
     ['aanalyser', 'À analyser', (f) => f.aAnalyser, 'Fréquence de l’import, encore provisoire'],

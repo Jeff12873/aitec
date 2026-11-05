@@ -67,6 +67,23 @@ export function lireFiGmao({ force = false } = {}) {
   lecture.promesse.catch((e) => { lecture = { ...lecture, erreur: e.message, promesse: null } })
   return lecture.promesse
 }
+// Les FI lues dans la GMAO (moins de 2 minutes), et si un numéro suit l'un des modèles lus : une FI absente de la
+// lecture n'est « supprimée » que si elle aurait dû y être. null sans lecture possible.
+export async function fiConnues({ force = false } = {}) {
+  const liste = await lireFiGmao({ force }).catch(() => null)
+  if (!liste) return null
+  const p = await lireParcs()
+  const modeles = (p?.parcs || []).filter((x) => !x.nonClasse).map((x) => motifs(reglagesDuParc(x.id).numero).regex)
+  const parNumero = new Map(liste.map((x) => [x.numero, x]))
+  return { parNumero, suitUnModele: (numero) => modeles.some((r) => r.test(numero)) }
+}
+// L'état d'une FI dans la GMAO : 'active', 'inactive', 'supprimee', ou null (inconnu).
+export function etatDeLaFi(connues, numero) {
+  if (!numero || !connues) return null
+  const fi = connues.parNumero.get(numero)
+  if (!fi) return connues.suitUnModele(numero) ? 'supprimee' : null
+  return fi.actif ? 'active' : 'inactive'
+}
 export const etatLecture = () => ({ date: lecture.date ? new Date(lecture.date).toISOString() : null, erreur: lecture.erreur })
 
 // Le poids d'une FI en fiches par semaine (null : unité de périodicité inconnue).

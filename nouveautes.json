@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.7.8",
+      "date": "2026-11-05",
+      "points": [
+        "Fiches du parc : la FI est relue dans la GMAO ; supprimée là-bas, elle passe en « supprimée dans la GMAO » (rouge), inactive en orange",
+        "Une fiche dont la FI a été supprimée dans la GMAO peut être archivée ; les filtres « Utilisées » et « Sans FI » en tiennent compte"
+      ]
+    },
+    {
       "version": "0.7.7",
       "date": "2026-11-05",
       "points": [

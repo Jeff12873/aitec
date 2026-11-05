@@ -10,7 +10,7 @@ import { etatPartage } from 'ktec/partage.js'
 import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe, sqlFamille } from '../../lib/types.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
-import { chargeDuParc, etatLecture, parSemaine, periodicite } from './fi.js'
+import { chargeDuParc, etatLecture, fiConnues, etatDeLaFi, parSemaine, periodicite } from './fi.js'
 import { reglagesDuParc } from './gmao.js'
 import { lireDemandes, close } from './demandes.js'
 
@@ -229,6 +229,10 @@ export async function detailDuParc(parcId) {
     for (const id of [f.machine_prod, f.machine_id, f.machine_prod && p.liens[f.machine_prod]].filter(Boolean)) machinesAvecFiche.set(id, f)
   }
   const sansCible = new Set(analyse?.fichesSansCible || [])
+  // L'état de la FI de chaque fiche dans la GMAO (lue il y a moins de 2 minutes) : supprimée, inactive ou active ;
+  // inconnu sans lecture de la GMAO.
+  const connues = await fiConnues()
+  const etatFi = (numero) => etatDeLaFi(connues, numero)
   const fichesDetail = fiches.map((f) => {
     const per = periodicite(f.frequence, r)
     const poids = per ? parSemaine(per[0], per[1], r) : null
@@ -237,6 +241,7 @@ export async function detailDuParc(parcId) {
       ...f,
       poids: poids === null ? null : Math.round(poids * 100) / 100,
       aAnalyser: aAnalyserFiche(f),
+      etatFi: etatFi(f.fi_gmao),
       sansCible: sansCible.has(f.id),
       suggestion,
       avantApres: avantApres(f, debutDe(f.id), p.liens, analyse, liste),
