@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.7.9",
+      "date": "2026-11-05",
+      "points": [
+        "Fiches du parc : une corbeille supprime la FI dans la GMAO (simulée d'abord) ; la fiche reste dans AITEC, sans FI",
+        "Nouveau SQL du site « Suppression » dans les réglages de la GMAO"
+      ]
+    },
+    {
       "version": "0.7.8",
       "date": "2026-11-05",
       "points": [

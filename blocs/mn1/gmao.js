@@ -16,6 +16,7 @@ const REGLAGES = {
   sqlLecture: '', // les FI de niveau 1 de la GMAO (paramètre :motif, un LIKE sur le numéro)
   sqlModification: '', // remplacement de la fiche d'une FI, ou réactivation (ACTIF à 1)
   sqlSuspension: '', // ACTIF à 0
+  sqlSuppression: '', // la FI supprimée comme le fait la GMAO (la fiche reste dans AITEC, sans FI)
   modele: '', // la FI dont la structure est copiée
   intervenant: '',
   emetteur: '',
@@ -36,7 +37,7 @@ const REGLAGES = {
 }
 // Ce qu'un parc peut régler pour lui seul (vide : les réglages généraux).
 export const PROPRES_AU_PARC = ['modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'tpsPrevu', 'delai', 'numero', 'titre', 'parSemaine']
-const TEXTES = ['sql', 'sqlLecture', 'sqlModification', 'sqlSuspension', 'modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'numero', 'titre']
+const TEXTES = ['sql', 'sqlLecture', 'sqlModification', 'sqlSuspension', 'sqlSuppression', 'modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'numero', 'titre']
 const NOMBRES = ['tpsPrevu', 'periot', 'valPeriot', 'delai', 'parSemaine']
 // Le temps prévu au dixième d'heure près (0,1 au moins) ; les autres nombres tels quels.
 const dixieme = (cle, n) => (cle === 'tpsPrevu' ? Math.max(0.1, Math.round(n * 10) / 10) : n)

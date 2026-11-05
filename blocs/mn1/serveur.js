@@ -12,7 +12,7 @@ import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, r
 import { lireDemandes, close } from './demandes.js'
 import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, podiumDemandeurs, profilsDesParcs, enregistrerProfil } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
-import { planifier, executer, suspendre, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
+import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -562,6 +562,13 @@ export function routes(r) {
     const demande = await ctx.json()
     return executer(demande, { valider: Boolean(demande.valider) })
   })
+  // Supprimer la FI d'une fiche dans la GMAO (la fiche reste). { fiche, valider }
+  admin.post('/api/mn1/fi/supprimer', async (ctx) => {
+    ctx.exigerAdmin()
+    const demande = await ctx.json()
+    return supprimerFi(demande, { valider: Boolean(demande.valider) })
+  })
+
   // Maximum baissé : suspendre des FI. { parc, numeros, valider }
   admin.post('/api/mn1/fi/suspendre', async (ctx) => {
     ctx.exigerAdmin()

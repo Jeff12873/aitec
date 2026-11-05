@@ -581,3 +581,5 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .entete-repli .fleche-repli { width: 14px; color: var(--texte-2); }
 .entete-repli:hover .titre-repli { color: var(--accent); }
 .entete-repli[aria-expanded="true"] { margin-bottom: 14px; }
+.actions-fiche-mn1 .supprimer-fi { margin-left: auto; }
+.actions-fiche-mn1 .supprimer-fi:hover { color: var(--rouge); border-color: color-mix(in srgb, var(--rouge) 45%, transparent); }

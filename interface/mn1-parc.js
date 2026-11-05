@@ -137,7 +137,8 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
       d.analysables?.[f.machine_id] || d.analysables?.[f.machine_prod] ? h('a', { href: `#/analyse/${d.analysables[f.machine_id] || d.analysables[f.machine_prod]}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : null,
       admin ? h('button', { class: 'petit', title: f.fi_gmao ? 'Mettre cette fiche dans une autre FI' : 'Créer ou choisir la FI de cette fiche dans la GMAO (simulation d’abord)', onclick: () => dialogueFi(f, d) }, ic('base', 13), f.fi_gmao ? 'Changer de FI' : 'Créer la FI') : null,
       admin ? h('button', { class: 'discret petit icone-seule', title: 'Corriger la fiche', onclick: () => corrigerFiche(f) }, ic('crayon', 14)) : null,
-      admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null))
+      admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null,
+      admin && f.fi_gmao && f.etatFi !== 'supprimee' ? h('button', { class: 'discret petit icone-seule supprimer-fi', title: `Supprimer la FI ${f.fi_gmao} dans la GMAO (la fiche reste ici, sans FI)`, onclick: () => supprimerFiGmao(f) }, ic('poubelle', 14)) : null))
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : étiquette, machine, zone, geste…' })
   const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
@@ -268,6 +269,16 @@ export async function corrigerFiche(f) {
     notifier('Fiche enregistrée')
     window.ktec.recharger()
   }
+}
+
+// Supprimer la FI d'une fiche dans la GMAO : simulée d'abord, puis écrite après confirmation. La fiche reste.
+async function supprimerFiGmao(f) {
+  const simulation = await essayer(() => api('/api/mn1/fi/supprimer', { methode: 'POST', corps: { fiche: f.id } }))
+  if (!simulation) return
+  if (!simulation.modifiees) return notifier(`La simulation ne modifierait rien pour ${f.fi_gmao} : vérifiez le SQL de suppression.`, 'erreur')
+  if (!(await confirmer(`Supprimer la FI ${f.fi_gmao} dans la GMAO ? Ce sera réellement écrit. La fiche reste dans AITEC, sans FI.`, { texte: 'Supprimer la FI', danger: true }))) return
+  const r = await essayer(() => api('/api/mn1/fi/supprimer', { methode: 'POST', corps: { fiche: f.id, valider: true } }), `FI ${f.fi_gmao} supprimée dans la GMAO`)
+  if (r) window.ktec.recharger()
 }
 
 async function archiver(f) {

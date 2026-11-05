@@ -271,6 +271,29 @@ function noterDansLeFichier(plan, parcId, debut) {
   lecture = { ...lecture, promesse: null } // relire la GMAO au prochain affichage
 }
 
+// Supprimer la FI d'une fiche dans la GMAO : { fiche, valider }. La fiche reste dans AITEC, sans FI ; son historique
+// note la fin de la FI (motif « suppression »).
+export async function supprimerFi({ fiche: ficheId }, { valider = false } = {}) {
+  const f = db().prepare('SELECT id, parc, fi_gmao FROM fiches_mn1 WHERE id = ?').get(Number(ficheId))
+  if (!f) throw new ErreurHttp(404, 'Fiche introuvable')
+  if (!f.fi_gmao) throw new ErreurHttp(400, 'Cette fiche n’a pas de FI.')
+  const r = reglagesDuParc(f.parc)
+  if (!r.sqlSuppression) throw new ErreurHttp(409, 'Le SQL de suppression d’une FI n’est pas réglé (Maintenance de niveau 1 › réglages de la GMAO › SQL du site).')
+  const lot = instructions(r.sqlSuppression, { ...valeursSql(r, { numero: f.fi_gmao }), numero: f.fi_gmao })
+  const reponse = await mysql.ecrireDansLaBase(lot, { valider })
+  const modifiees = reponse.resultats.filter((x) => 'modifiees' in x).reduce((s, x) => s + x.modifiees, 0)
+  if (valider && modifiees) {
+    const maintenant = new Date().toISOString()
+    transaction(() => {
+      db().prepare("UPDATE fiches_mn1_fi SET fin = ?, motif = 'suppression' WHERE fiche_id = ? AND numero = ? AND fin IS NULL").run(aujourdhui(), f.id, f.fi_gmao)
+      db().prepare("UPDATE fiches_mn1 SET fi_gmao = '', modifie_le = ? WHERE id = ?").run(maintenant, f.id)
+    })
+    noterModification()
+    lecture = { ...lecture, promesse: null }
+  }
+  return { valide: reponse.valide, modifiees, numero: f.fi_gmao }
+}
+
 // Suspendre des FI (maximum baissé) : { parc, numeros, valider }. Leurs fiches sont archivées.
 export async function suspendre({ parc: parcId, numeros = [] }, { valider = false } = {}) {
   const c = await chargeDuParc(parcId, { force: valider })
