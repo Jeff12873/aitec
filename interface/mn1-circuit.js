@@ -23,9 +23,13 @@ const RECONNAISSANCE = [
 // ---------------------------------------------------------------- bandeau
 
 let minuterieMerci = null
-export async function indicateursBandeau(zone) {
+// zone : les indicateurs, dans le bandeau ; zoneHof : l'encart du Hall of fame, sous le choix de la zone.
+export async function indicateursBandeau(zone, zoneHof = null) {
   const i = await api(avecParc('/api/mn1/indicateurs')).catch(() => null)
-  if (!i?.reglee) return vider(zone)
+  if (!i?.reglee) {
+    if (zoneHof) vider(zoneHof)
+    return vider(zone)
+  }
   const tuile = (valeur, libelle, { titre = '', alerte = false } = {}) => h('div', { class: `indicateur-mn1${alerte ? ' alerte' : ''}`, title: titre }, h('b', {}, valeur), h('span', {}, libelle))
   const alertes = [
     i.alerteBaisse ? h('div', { class: 'alerte-mn1' }, ic('alerte', 15), `Les DI baissent : ${pourcent(i.tendance)} par poste sur les 4 dernières semaines terminées, par rapport aux 4 précédentes.`) : null,
@@ -39,6 +43,14 @@ export async function indicateursBandeau(zone) {
   tourner()
   const [annee, mois] = i.mois.split('-')
   const nomMois = new Date(Number(annee), Number(mois) - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
+  const hof = i.podium.length || i.podiumRi?.length ? h('div', { class: 'hall-of-fame' },
+    // La portée dite dans le titre : la zone choisie, ou l'usine complète.
+    h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${parcChoisi() ? nomParcChoisi() : 'Usine complète'} · ${nomMois}`)),
+    h('div', { class: 'podiums' },
+      podium(i.podium, 'DI', 'Demandes'),
+      podium(i.podiumRi || [], 'RI', 'Exécutions')),
+    merci) : null
+  if (zoneHof) vider(zoneHof, hof)
   vider(zone,
     h('div', { class: 'indicateurs-mn1' },
       tuile(i.diSemaine === null ? '—' : (Math.round(i.diSemaine * 10) / 10).toLocaleString('fr-FR'), 'DI par semaine', { titre: `Moyenne des 4 dernières semaines terminées (la semaine en cours n’est pas comptée).${i.tauxParPoste !== null ? ` Soit ${(Math.round(i.tauxParPoste * 100) / 100).toLocaleString('fr-FR')} DI par poste travaillé.` : ''}${i.semainesExclues ? ` ${i.semainesExclues} semaine(s) exclue(s) par le calendrier.` : ''}` }),
@@ -49,13 +61,7 @@ export async function indicateursBandeau(zone) {
       tuile(i.sansDoubleArbo ?? '—', 'FI sans double arbo', { titre: i.fiReglee ? 'FI issues de DI qui n’ont pas à la fois un équipement de production et un de maintenance' : 'Réglez la requête « FI de niveau 1 »', alerte: i.sansDoubleArbo > 0 }),
       tuile(i.focusEnRetard ?? '—', 'FI focus en retard', { titre: `FI focus dont l’échéance est passée sans RI. Retard médian des FI focus faites : ${jours(i.retardFocus)}`, alerte: i.focusEnRetard > 0 })),
     alertes.length ? h('div', { class: 'alertes-mn1' }, alertes) : null,
-    i.podium.length || i.podiumRi?.length ? h('div', { class: 'hall-of-fame' },
-      // Tous les parcs ensemble : le titre le dit, sinon on le croit propre au parc choisi.
-      h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `Usine complète · ${nomMois}`)),
-      h('div', { class: 'podiums' },
-        podium(i.podium, 'DI', 'Demandes'),
-        podium(i.podiumRi || [], 'RI', 'Exécutions')),
-      merci) : null)
+    zoneHof ? null : hof)
 }
 
 // Un podium du Hall of fame : les deux premiers, et ce qu'ils ont fait.

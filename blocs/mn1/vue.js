@@ -49,18 +49,23 @@ export default {
     const contenu = h('div')
     const admin = peutModifier()
     const bandeau = h('div', { class: 'bandeau-mn1' })
+    // Sous le bandeau : le choix de la zone (posé par le menu), le Hall of fame dans son encart, puis les onglets centrés.
+    const zoneHof = h('div', { class: 'zone-hof-mn1' })
+    bandeau.zoneHof = zoneHof
     vider(
       zone,
       bandeau,
+      zoneHof,
       h('div', { class: 'barre-onglets-mn1' },
+        h('div'),
         h('div', { class: 'segments' },
           // Le circuit, dans l'ordre : la demande, la fiche d'intervention, le rapport d'intervention.
           h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes d’intervention N1'),
           h('button', { class: !['demandes', 'ancien', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
           h('button', { class: onglet === 'ri' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/ri') }, ic('coche', 16), 'Rapports d’intervention N1')),
-        h('div', { class: 'espace' }),
-        admin ? h('button', { class: 'discret petit', title: 'L’ancien écran (fiches par ligne, une FI par machine), le temps que le nouveau fasse ses preuves', onclick: () => (location.hash = '#/mn1/ancien') }, ic('historique', 14), 'Ancien mode') : null,
-        admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null),
+        h('div', { class: 'actions-onglets-mn1' },
+          admin ? h('button', { class: 'discret petit', title: 'L’ancien écran (fiches par ligne, une FI par machine), le temps que le nouveau fasse ses preuves', onclick: () => (location.hash = '#/mn1/ancien') }, ic('historique', 14), 'Ancien mode') : null,
+          admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null)),
       contenu,
     )
     if (onglet === 'demandes') {
@@ -124,7 +129,7 @@ async function dessinerBandeau(bandeau, v) {
         chiffre(nombreFr(parcs.filter((p) => p.alertes.length).length), 'parcs en alerte')) : null,
       idee),
     zoneIndicateurs)
-  indicateursBandeau(zoneIndicateurs)
+  indicateursBandeau(zoneIndicateurs, bandeau.zoneHof)
 }
 
 // ---------------------------------------------------------------- vignettes

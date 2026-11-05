@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.7.15",
+      "date": "2026-11-05",
+      "points": [
+        "Hall of fame : il suit la zone choisie (l'usine complète quand aucune n'est choisie) et a son propre encart, sous le choix de la zone",
+        "Les onglets DI / FI / RI de niveau 1 sont centrés, sous le Hall of fame"
+      ]
+    },
+    {
       "version": "0.7.14",
       "date": "2026-11-05",
       "points": [

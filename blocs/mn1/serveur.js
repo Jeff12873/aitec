@@ -377,10 +377,9 @@ export function routes(r) {
     const n1Di = numerosN1(n1)
     const fiN1 = fi && filtrerParc(fi, n1).filter((f) => !f.di || n1Di.has(f.di))
     const execs = await lireActivites().catch(() => null)
-    // Le Hall of fame compte toujours l'usine complète, quel que soit le parc choisi.
-    const usine = ctx.query.parc ? await demandesN1('') : n1
-    const podiumRi = execs ? podiumExecutants(activitesDuParc(execs, '')) : []
-    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }), podium: podiumDemandeurs(usine.retenues), podiumRi }
+    // Le Hall of fame suit la zone choisie (l'usine complète sans choix) ; les exécutants : les profils de conducteurs réglés sur le parc.
+    const podiumRi = execs ? podiumExecutants(activitesDuParc(execs, String(ctx.query.parc || ''))) : []
+    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }), podium: podiumDemandeurs(n1.retenues), podiumRi }
   })
 
   // Les activités des conducteurs (RI qu'ils ont exécutées, par catégorie) : ?parc=…&mois=1|3|12

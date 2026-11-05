@@ -329,7 +329,11 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .idee-mn1 { display: flex; gap: 10px; align-items: baseline; min-height: 22px; font-size: 14px; color: var(--texte-2); opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; }
 .idee-mn1.visible { opacity: 1; transform: none; }
 .source-idee { flex: none; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #e9e54a; }
-.barre-onglets-mn1 { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.barre-onglets-mn1 { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 16px; }
+.actions-onglets-mn1 { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+@media (max-width: 900px) { .barre-onglets-mn1 { grid-template-columns: 1fr; justify-items: center; } .barre-onglets-mn1 > div:first-child:empty { display: none; } }
+.zone-hof-mn1 { margin-bottom: 18px; }
+.zone-hof-mn1:empty { display: none; }
 .barre-onglets-mn1 .espace, .barre-vignettes .espace, .entete-parc .espace { flex: 1; }
 
 /* Vignettes des parcs */
