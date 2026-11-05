@@ -293,9 +293,24 @@ function machinesDemandees(machines) {
   return barresHorizontales(machines.map((m) => ({ etiquette: `${m.repere}${m.designation ? ` · ${m.designation}` : ''}${m.fiche ? '' : ' — sans fiche'}`, valeur: m.nombre })), { couleur: COULEURS.orange })
 }
 
+// La suite donnée à une demande : terminée (une RI), supprimée (FI archivée sans RI, ou DI close sans FI ni RI),
+// prise en compte (une FI, pas encore de RI), non prise en compte (ouverte, sans FI).
+const SUITES = [
+  ['', 'Toutes', null],
+  ['sans-fi', 'Non prises en compte', 'Créées, sans FI : l’appui technique ne les a pas encore transformées'],
+  ['fi', 'Prises en compte', 'Une FI a été créée, pas encore de RI'],
+  ['terminee', 'Terminées', 'FI et RI : la demande est traitée'],
+  ['supprimee', 'Supprimées', 'FI archivée sans RI, ou demande close sans FI ni RI (doublon, erreur…)'],
+]
+function suiteDe(d) {
+  if (d.ri) return 'terminee'
+  if ((d.fi && d.fiActif === 2) || (d.close && !d.fi)) return 'supprimee'
+  return d.fi ? 'fi' : 'sans-fi'
+}
+
 function listeDemandes(liste, suivi = false) {
-  return tableau({
-    lignes: liste,
+  const table = (lignes) => tableau({
+    lignes,
     vide: 'Aucune demande.',
     colonnes: [
       { titre: 'Date', classe: 'col-date', valeur: (d) => h('span', { class: 'discret' }, dateFr(d.date)) },
@@ -305,8 +320,21 @@ function listeDemandes(liste, suivi = false) {
       { titre: 'Description', classe: 'col-description', valeur: (d) => h('span', { class: 'texte-2', title: d.description }, d.description) },
       { titre: 'Demandeur', classe: 'col-intervenants', valeur: (d) => d.demandeur || '—' },
       { titre: 'État', valeur: (d) => h('span', { class: `etiquette ${d.close ? '' : 'violet'}` }, d.etat || (d.close ? 'Close' : 'Ouverte'), d.arret && !d.close ? ' · arrêt' : '') },
-      // La suite donnée à la demande : sa FI et sa RI (si la requête des demandes les donne).
+      // La suite donnée à la demande : sa FI et sa RI (requête des demandes, ou requêtes FI et RI de niveau 1).
       suivi ? { titre: 'FI · RI', valeur: (d) => pastillesSuivi(d) } : null,
     ].filter(Boolean),
   })
+  if (!suivi) return table(liste)
+  let choix = ''
+  const boutons = h('div', { class: 'segments petits' })
+  const zoneTable = h('div')
+  const dessiner = () => {
+    vider(boutons, SUITES.map(([cle, texte, aide]) => {
+      const n = cle ? liste.filter((d) => suiteDe(d) === cle).length : liste.length
+      return h('button', { class: choix === cle ? 'choisi' : '', title: aide || 'Toutes les demandes de la liste', onclick: () => { choix = cle; dessiner() } }, texte, h('span', { class: 'nombre-filtre' }, String(n)))
+    }))
+    vider(zoneTable, table(choix ? liste.filter((d) => suiteDe(d) === choix) : liste))
+  }
+  dessiner()
+  return h('div', {}, h('div', { class: 'filtres-mn1' }, boutons), zoneTable)
 }

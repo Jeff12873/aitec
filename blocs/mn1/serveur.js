@@ -145,11 +145,40 @@ function filtrerParc(fi, n1) {
   return fi.filter((f) => f.equipements.some((e) => n1.noeuds.get(String(e))?.parc === n1.parcs[0]))
 }
 
+// La FI et la RI de chaque DI, prises dans les requêtes « FI de niveau 1 » et « RI de niveau 1 » quand la requête
+// des demandes ne les donne pas. connue : au moins une des deux requêtes est lue.
+async function suiteDesDemandes() {
+  const fis = await lireFiN1().catch(() => null)
+  const ris = await lireRiN1().catch(() => null)
+  const fiParDi = new Map()
+  for (const f of fis || []) {
+    // Plusieurs FI pour une DI : celle qui a une RI, sinon la plus récente.
+    const avant = fiParDi.get(f.di)
+    if (f.di && (!avant || (!avant.ri && (f.ri || f.date > avant.date)))) fiParDi.set(f.di, f)
+  }
+  const riParDi = new Map((ris || []).filter((r) => r.di).map((r) => [r.di, r]))
+  return {
+    connue: Boolean(fis || ris),
+    completer: (d) => {
+      const f = d.fi ? null : fiParDi.get(d.numero)
+      const r = d.ri ? null : riParDi.get(d.numero)
+      return {
+        ...d,
+        fi: d.fi || f?.numero || '',
+        fiActif: d.fi ? d.fiActif : f ? f.actif : null,
+        ri: d.ri || f?.ri || r?.numero || '',
+        dateRi: d.ri ? d.dateRi : f?.ri ? f.dateRi : r?.date || '',
+      }
+    },
+  }
+}
+
 async function tableau(parcVoulu = '') {
   const n1 = await demandesN1(parcVoulu)
   if (!n1) return { reglee: false }
   const { types, type, retenues, parRepere, p, depuis12Mois, ilYa } = n1
   const annee = retenues.filter((d) => d.date >= depuis12Mois)
+  const suite = await suiteDesDemandes()
 
   const compter = (liste, cle) => [...liste.reduce((c, d) => (d[cle] ? c.set(d[cle], (c.get(d[cle]) || 0) + 1) : c), new Map())].sort((a, b) => b[1] - a[1])
   const parMois = []
@@ -185,9 +214,10 @@ async function tableau(parcVoulu = '') {
     // Les machines qui ont des demandes de niveau 1 mais pas encore de fiche : par où commencer.
     sansFiche: machines.filter((m) => m.id && !m.fiche).slice(0, 6),
     dernieres: retenues.slice(0, 12).map(({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi, suivi }) => ({ numero, date, machine, machineId, designation, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi, suivi })),
-    // Les DI de niveau 1 encore ouvertes ou des 12 derniers mois, pour la liste avec leurs pastilles FI et RI.
-    suivi: retenues.some((d) => d.suivi),
-    liste: retenues.filter((d) => !d.close || d.date >= depuis12Mois).slice(0, 300).map(({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi }) => ({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi })),
+    // Les DI de niveau 1 encore ouvertes ou des 12 derniers mois, pour la liste avec leurs pastilles FI et RI (et le
+    // tri par suite donnée : sans FI, FI, FI et RI, supprimée).
+    suivi: retenues.some((d) => d.suivi) || suite.connue,
+    liste: retenues.filter((d) => !d.close || d.date >= depuis12Mois).slice(0, 300).map(suite.completer).map(({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi }) => ({ numero, date, machine, eth, description, demandeur, etat, arret, close: c, fi, fiActif, ri, dateRi })),
   }
 }
 

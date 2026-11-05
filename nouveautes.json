@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.7.6",
+      "date": "2026-11-05",
+      "points": [
+        "Demandes de niveau 1 : tri par suite donnée (non prises en compte, prises en compte, terminées, supprimées), avec leur nombre",
+        "La FI et la RI de chaque demande viennent aussi des requêtes « FI de niveau 1 » et « RI de niveau 1 »"
+      ]
+    },
+    {
       "version": "0.7.5",
       "date": "2026-11-05",
       "points": [
