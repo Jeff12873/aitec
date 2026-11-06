@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.7.18",
+      "date": "2026-11-06",
+      "points": [
+        "Assistant IA : « Ajouter un savoir » — une expérience écrite, un document ou une photo, avec les machines concernées et la personne de la GMAO qui le dit ; tout agent peut en ajouter, l'assistant s'en sert dès la question suivante",
+        "Sous chaque réponse : « Corriger la réponse » (ce qu'il en était vraiment), gardé avec la question",
+        "Les retours d'expérience sont cités comme sources (nom, date, machines), passent un peu devant à score égal, et s'ouvrent d'un clic ; l'administrateur peut les supprimer",
+        "Consignes de l'assistant : des pistes probables et des pistes de vérification, jamais des ordres (seule la sécurité reste ferme)"
+      ]
+    },
+    {
       "version": "0.7.17",
       "date": "2026-11-06",
       "points": [

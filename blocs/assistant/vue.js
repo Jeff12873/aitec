@@ -6,6 +6,7 @@ import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api, flux } from '/socle/api.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { etat, peutModifier } from '/socle/etat.js'
+import { ajouterSavoir, voirSavoir } from '../../interface/savoirs.js'
 
 const SUGGESTIONS = [
   'Quelles machines tombent le plus souvent en panne cette année ?',
@@ -42,6 +43,8 @@ export default {
     const [machines, arborescence] = await Promise.all([api('/api/machines'), api('/api/arborescence').catch(() => null)])
     const arbre = arborescence?.lignes || null
     if (query.machine) { machineChoisie = query.machine; ligneChoisie = ''; ensembleChoisi = '' }
+    // Un retour d'expérience cité en source ailleurs (page de recherche) : on l'affiche.
+    if (query.savoir) setTimeout(() => voirSavoir(query.savoir), 0)
 
     const messages = h('div', { class: 'messages' })
     const saisie = h('textarea', {
@@ -177,7 +180,15 @@ export default {
       dessinerPanneau(numero)
       if (ouvrir) ouvrirTiroir()
     }
-    const rappels = { envoyer, montrerSources }
+    // Les machines à proposer d'office pour un savoir : la machine choisie (pas tout un ensemble).
+    const machinesDuChoix = () => (machineChoisie ? [Number(machineChoisie)] : [])
+    // « Corriger la réponse » : la question qui l'a amenée, et le début de la réponse.
+    function corriger(message) {
+      const i = conversation.indexOf(message)
+      const question = [...conversation.slice(0, i)].reverse().find((m) => m.role === 'agent')?.contenu || ''
+      ajouterSavoir({ machines, preselection: machinesDuChoix(), correction: { question, reponse: String(message.contenu).slice(0, 2000) } })
+    }
+    const rappels = { envoyer, montrerSources, corriger }
 
     // Une question tapée pour commencer une conversation : si elle est courte, ou si la recherche hésite entre
     // plusieurs machines, des cases à cocher pour préciser avant que l'IA réfléchisse. Sinon, réponse directe.
@@ -295,6 +306,7 @@ export default {
           h('div', { class: 'haut-discussion' },
             h('button', { class: 'discret petit', title: 'Aide de l’assistant', onclick: () => { onglet = 'aide'; dessinerPanneau(); ouvrirTiroir() } }, ic('aide', 14), 'Aide'),
             h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation'),
+            h('button', { class: 'petit bouton-savoir', title: 'Une expérience, un document ou une photo : l’assistant s’en sert dès la prochaine question', onclick: () => ajouterSavoir({ machines, preselection: machinesDuChoix() }) }, ic('livre', 14), 'Ajouter un savoir'),
             peutModifier() ? h('button', { class: 'discret petit icone-seule', title: 'Les consignes données à l’IA de l’assistant', onclick: modifierConsignes }, ic('reglages', 14)) : null),
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
           messages,
@@ -357,7 +369,7 @@ function separerChoix(contenu) {
 }
 
 // original : l'objet de la conversation (le message affiché peut en être une copie), pour montrer ses sources.
-function dessinerMessage(message, { envoyer, montrerSources }, original = message) {
+function dessinerMessage(message, { envoyer, montrerSources, corriger }, original = message) {
   if (message.role === 'agent') return h('div', { class: 'message agent' }, message.contenu)
 
   const { texte: contenu, choix } = separerChoix(message.contenu)
@@ -390,18 +402,21 @@ function dessinerMessage(message, { envoyer, montrerSources }, original = messag
       !message.enCours && message.contenu
         ? h('div', { class: 'actions', style: { marginTop: '8px' } },
           message.sources?.length ? h('button', { class: 'discret petit', title: 'Voir les sources de cette réponse', onclick: () => montrerSources(original, null, true) }, ic('document', 14), `${message.sources.length} source${message.sources.length > 1 ? 's' : ''}`) : null,
-          h('button', { class: 'discret petit', onclick: () => navigator.clipboard.writeText(contenu).then(() => notifier('Réponse copiée')) }, 'Copier'))
+          h('button', { class: 'discret petit', onclick: () => navigator.clipboard.writeText(contenu).then(() => notifier('Réponse copiée')) }, 'Copier'),
+          h('button', { class: 'discret petit', title: 'La réponse n’était pas la bonne ? Dites ce qu’il en était : l’assistant s’en servira', onclick: () => corriger(original) }, ic('crayon', 14), 'Corriger la réponse'))
         : null,
     ),
   )
 }
 
 function icone(source) {
-  return { document: 'document', machine: 'usine', intervention: 'cle', panne: 'historique' }[source] || 'document'
+  return { document: 'document', machine: 'usine', intervention: 'cle', panne: 'historique', savoir: 'personne' }[source] || 'document'
 }
 
 function ouvrirSource(source) {
-  if (source.lien.startsWith('#')) location.hash = source.lien
+  const savoir = source.lien.match(/[?&]savoir=(\d+)/)
+  if (savoir) voirSavoir(savoir[1])
+  else if (source.lien.startsWith('#')) location.hash = source.lien
   else window.open(source.lien, '_blank')
 }
 

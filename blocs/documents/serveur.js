@@ -2,7 +2,7 @@
 
 import crypto from 'node:crypto'
 import { db } from '../../lib/base.js'
-import { noterModification, etatPartage } from 'ktec/partage.js'
+import { noterModification, etatPartage, exigerEcriture } from 'ktec/partage.js'
 import { ErreurHttp, envoyerOctets } from 'ktec/http.js'
 import { lireImage, discuter, iaInstallee } from 'ktec/ia.js'
 import { journal } from 'ktec/installation.js'
@@ -11,6 +11,17 @@ import { CONSIGNE_IMAGE, relancerLecteurImages, etatLectureImages } from './lect
 import { ajouterPassages, remplacerPassages, supprimerPassages, changerMachineDesPassages } from '../recherche/passages.js'
 
 const TAILLE_MAX = 900 * 1024 * 1024 // limite d'un champ SQLite (1 Go), avec une marge
+
+// Les documents déposés depuis l'assistant (en-tête X-Contribution) : tout agent peut les envoyer, même en
+// consultation, et finir leur lecture ensuite (pages, images). Les autres dépôts restent à l'administrateur.
+const contributions = new Set()
+function exigerDepot(ctx, id = null) {
+  if (id === null ? ctx.req.headers['x-contribution'] === '1' : contributions.has(Number(id))) return exigerEcriture({ pourTous: true })
+  ctx.exigerAdmin()
+}
+
+// Les autres machines d'un document (la première est documents.machine_id) : ses passages y sont recopiés.
+const autresMachines = (id) => db().prepare('SELECT machine_id FROM documents_machines WHERE document_id = ?').all(id).map((x) => x.machine_id)
 
 export function routes(r) {
   r.get('/api/documents/lecture-images', () => etatLectureImages())
@@ -41,7 +52,7 @@ export function routes(r) {
   // Dépôt d'un fichier. Le corps de la requête est le fichier lui-même ;
   // son nom et la machine arrivent dans les en-têtes (X-Nom, X-Machine).
   r.post('/api/documents', async (ctx) => {
-    ctx.exigerAdmin()
+    exigerDepot(ctx)
     const nom = decodeURIComponent(ctx.req.headers['x-nom'] || 'document')
     const machineId = Number(ctx.req.headers['x-machine']) || null
     const genre = GENRES.includes(ctx.req.headers['x-genre']) ? ctx.req.headers['x-genre'] : 'document'
@@ -55,8 +66,13 @@ export function routes(r) {
 
     const { lastInsertRowid } = db()
       .prepare('INSERT INTO documents (nom, type, taille, contenu, empreinte, machine_id, etat, ajoute_le, ajoute_par, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(nom, ctx.req.headers['content-type'] || '', octets.length, octets, empreinte, machineId, 'a-lire', new Date().toISOString(), etatPartage().admin?.nom || '', genre)
+      .run(nom, ctx.req.headers['content-type'] || '', octets.length, octets, empreinte, machineId, 'a-lire', new Date().toISOString(), decodeURIComponent(ctx.req.headers['x-auteur'] || '') || etatPartage().admin?.nom || '', genre)
     const id = Number(lastInsertRowid)
+    if (ctx.req.headers['x-contribution'] === '1') contributions.add(id)
+    // X-Machines : d'autres machines concernées (ids séparés par des virgules).
+    const autres = String(ctx.req.headers['x-machines'] || '').split(',').map(Number).filter((m) => m && m !== machineId)
+    const inserer = db().prepare('INSERT OR IGNORE INTO documents_machines (document_id, machine_id) SELECT ?, id FROM machines WHERE id = ?')
+    for (const m of autres) inserer.run(id, m)
     const lecture = lireSurLeServeur(id, nom, octets, machineId)
     noterModification()
     return { id, lecture }
@@ -124,18 +140,19 @@ export function routes(r) {
 
   // ---- lecture par le navigateur (PDF, images) : il envoie le texte de chaque page…
   r.post('/api/documents/:id/pages', async (ctx) => {
-    ctx.exigerAdmin()
+    exigerDepot(ctx, ctx.params.id)
     const pages = await ctx.json()
     const d = db().prepare('SELECT machine_id FROM documents WHERE id = ?').get(ctx.params.id)
     if (!d) throw new ErreurHttp(404, 'Document introuvable')
     ajouterPassages('document', Number(ctx.params.id), d.machine_id, pages)
+    for (const m of autresMachines(Number(ctx.params.id))) ajouterPassages('document', Number(ctx.params.id), m, pages)
     noterModification()
   })
 
   // … et l'image des pages à analyser plus tard par l'IA : folios de schémas et de plans (page entière
   // et deux moitiés agrandies), pages de notices qui contiennent des photos.
   r.post('/api/documents/:id/rendu', async (ctx) => {
-    ctx.exigerAdmin()
+    exigerDepot(ctx, ctx.params.id)
     const page = Number(ctx.query.page)
     const partie = ['page', 'gauche', 'droite'].includes(ctx.query.partie) ? ctx.query.partie : 'page'
     const image = await ctx.octets()
@@ -152,14 +169,14 @@ export function routes(r) {
 
   // … ou l'image d'une page sans texte (scan, photo), que l'IA lit tout de suite.
   r.post('/api/documents/:id/image', async (ctx) => {
-    ctx.exigerAdmin()
+    exigerDepot(ctx, ctx.params.id)
     const image = await ctx.octets()
     const texte = await lireImage(image, CONSIGNE_IMAGE)
     return { texte }
   })
 
   r.post('/api/documents/:id/fin', async (ctx) => {
-    ctx.exigerAdmin()
+    exigerDepot(ctx, ctx.params.id)
     const { pages, erreur } = await ctx.json()
     const id = Number(ctx.params.id)
     const { nombre } = db().prepare("SELECT count(*) AS nombre FROM passages WHERE source = 'document' AND source_id = ?").get(id)
@@ -224,6 +241,7 @@ function lireSurLeServeur(id, nom, octets, machineId) {
     return 'aucune'
   }
   remplacerPassages('document', id, machineId, resultat.pages)
+  for (const m of autresMachines(id)) ajouterPassages('document', id, m, resultat.pages)
   const { nombre } = db().prepare("SELECT count(*) AS nombre FROM passages WHERE source = 'document' AND source_id = ?").get(id)
   db().prepare('UPDATE documents SET etat = ?, message = ?, pages = ? WHERE id = ?').run('lu', nombre ? '' : 'Aucun texte trouvé dans ce document.', resultat.pages.length, id)
 

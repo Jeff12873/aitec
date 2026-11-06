@@ -14,7 +14,8 @@
     [93,7,"Les consignes de l'assistant.", true],
     [4,20,"La réponse : des pistes, avec les sources numérotées (un clic ouvre le document à la bonne page)."],
     [8,52,"Quand la question est vague, l'assistant pose des questions avec des réponses en boutons."],
-    [4,74,"La question, en français, comme à un collègue."]
+    [4,74,"La question, en français, comme à un collègue."],
+    [40,7,"Ajouter un savoir : une expérience, un document ou une photo, avec les machines et qui le dit."]
   ] }
 </script>
 
@@ -26,10 +27,28 @@
 <li>Vérifiez dans la source citée toute valeur avant d'intervenir.</li>
 </ol>
 
+<h2>Des pistes, pas des ordres</h2>
+<p>L'assistant propose des <b>pistes probables</b> et des <b>pistes de vérification</b>, avec ce qui les rend probables et leurs sources. C'est vous, devant la machine, qui décidez. Seule la ligne <b>Sécurité</b> est ferme : consignation, habilitation, EPI.</p>
+
+<h2>Ajouter un savoir</h2>
+<p>Le savoir-faire de l'atelier rend l'assistant pertinent plus vite que n'importe quelle notice. Tout le monde peut en ajouter, même sans être administrateur : l'assistant s'en sert dès la question suivante.</p>
+<ol>
+<li>Bouton <b>Ajouter un savoir</b> en haut de l'assistant.</li>
+<li><b>Une expérience</b> : la situation (le symptôme) et ce qu'il faut savoir (l'organe en cause, le geste, le réglage) ; ou <b>Un document ou une photo</b> : notice, schéma, photo de plaque.</li>
+<li><b>Machines concernées</b> : tapez un repère et choisissez ; on peut en mettre plusieurs.</li>
+<li><b>Qui le dit ?</b> : la personne, choisie dans la liste des intervenants de la GMAO.</li>
+</ol>
+<p>L'assistant le cite ensuite comme une source : « Retour d'expérience — NOM, PRÉNOM, le JJ/MM/AAAA — machine », cliquable.</p>
+
+<h2>Corriger une réponse</h2>
+<p>Sous chaque réponse, <b>Corriger la réponse</b> : dites ce qu'il en était vraiment. La correction est gardée avec la question, et l'assistant s'en sert pour les questions suivantes.</p>
+
 <h2>Dépannage électrique avec les schémas</h2>
 <p>Quand la question touche un circuit, l'assistant retrouve les folios concernés, les regarde, et propose des pistes de contrôle dans l'ordre (alimentation, sécurités, commande, puissance, capteurs), avec les repères lus sur le schéma. L'intervention reste réservée au personnel habilité, avec consignation et vérification d'absence de tension.</p>
 
 <h2>Questions fréquentes</h2>
-<details><summary>La réponse ne cite aucune source</summary><p>L'information n'est pas dans la base : ce qui vient de l'expérience générale de l'IA est mis à part (« Pistes générales »). Ajoutez le document concerné.</p></details>
+<details><summary>La réponse ne cite aucune source</summary><p>L'information n'est pas dans la base : ce qui vient de l'expérience générale de l'IA est mis à part (« Pistes générales »). Ajoutez le document ou votre expérience avec <b>Ajouter un savoir</b>.</p></details>
 <details><summary>La première réponse est lente</summary><p>Le modèle se charge (de quelques secondes à une minute) ; les suivantes sont plus rapides.</p></details>
-<details class="admin"><summary>Adapter la façon de répondre</summary><p>Le rouage ouvre les consignes : ton, forme, sécurité, sources. « Revenir à l'original » remet celles d'AITEC.</p></details>
+<details class="admin"><summary>Adapter la façon de répondre</summary><p>Le rouage ouvre les consignes : ton, forme, sécurité, sources. « Revenir à l'original » remet celles d'AITEC (et leurs améliorations des nouvelles versions).</p></details>
+<details class="admin"><summary>Un retour d'expérience est faux</summary><p>Ouvrez-le depuis la source citée : <b>Supprimer</b>. L'assistant ne s'en sert plus.</p></details>
+<details><summary>Mon nom n'est pas dans la liste « Qui le dit ? »</summary><p>La liste vient des intervenants de l'historique de la GMAO : une personne qui n'a encore aucune intervention n'y est pas.</p></details>

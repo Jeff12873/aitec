@@ -9,6 +9,7 @@ import { db } from '../../lib/base.js'
 import { etatPartage } from 'ktec/partage.js'
 import { iaInstallee, vecteurs } from 'ktec/ia.js'
 import { machinesMasquees } from '../../lib/parcs.js'
+import { titreSavoir } from '../savoirs/serveur.js'
 
 const MOTS_VIDES = new Set(
   `le la les l de des du d un une et ou à au aux en pour par sur sous dans avec sans est sont été être avoir ai as a ont
@@ -25,6 +26,10 @@ export async function chercher(question, { machineId = null, limite = 8 } = {}) 
   for (const liste of [parMots, parSens]) {
     liste.forEach((id, rang) => scores.set(id, (scores.get(id) || 0) + 1 / (60 + rang)))
   }
+  // Le savoir-faire du site (retours d'expérience) passe un peu devant à score égal : c'est ce qui est le plus
+  // proche du terrain.
+  const savoirs = scores.size ? new Set(db().prepare(`SELECT id FROM passages WHERE source = 'savoir' AND id IN (${[...scores.keys()].map(() => '?').join(',')})`).all(...scores.keys()).map((p) => p.id)) : new Set()
+  for (const id of savoirs) scores.set(id, scores.get(id) * 1.5)
   let classes = [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
   // Les machines masquées (Administration › Parcs machines) ne comptent nulle part, pas même ici.
   const masquees = machinesMasquees()
@@ -32,6 +37,10 @@ export async function chercher(question, { machineId = null, limite = 8 } = {}) 
     const machineDe = new Map(db().prepare(`SELECT id, machine_id FROM passages WHERE id IN (${classes.map(() => '?').join(',')})`).all(...classes).map((p) => [p.id, p.machine_id]))
     classes = classes.filter((id) => !masquees.has(machineDe.get(id)))
   }
+  // Un même texte recopié pour plusieurs machines (savoir, document à plusieurs machines) : une seule fois.
+  const texteDe = new Map(classes.length ? db().prepare(`SELECT id, source, source_id, page, texte FROM passages WHERE id IN (${classes.map(() => '?').join(',')})`).all(...classes).map((p) => [p.id, `${p.source}|${p.source_id}|${p.page}|${p.texte}`]) : [])
+  const vus = new Set()
+  classes = classes.filter((id) => !vus.has(texteDe.get(id)) && vus.add(texteDe.get(id)))
   return varier(classes, limite).map(decrirePassage).filter(Boolean)
 }
 
@@ -46,7 +55,7 @@ function varier(ids, limite) {
   let fiches = 0
   for (const id of ids) {
     if (retenus.length >= limite) break
-    const estFiche = sources.get(id) !== 'document'
+    const estFiche = !['document', 'savoir'].includes(sources.get(id))
     if (estFiche && fiches >= maxFiches) {
       misDeCote.push(id)
       continue
@@ -165,6 +174,9 @@ export function decrirePassage(id) {
       .get(p.source_id)
     titre = `Intervention ${i?.numero || ''} du ${dateFr(i?.date)}${i?.repere ? ' — ' + i.repere : ''}${i?.intervenant ? ' — ' + i.intervenant : ''}`
     lien = `#/interventions/${p.source_id}`
+  } else if (p.source === 'savoir') {
+    titre = titreSavoir(p.source_id)
+    lien = `#/assistant?savoir=${p.source_id}`
   } else if (p.source === 'panne') {
     const f = db().prepare('SELECT p.symptome, p.nombre, m.repere FROM pannes p LEFT JOIN machines m ON m.id = p.machine_id WHERE p.id = ?').get(p.source_id)
     titre = `Panne connue${f?.repere ? ' — ' + f.repere : ''} : ${f?.symptome || '?'} (${f?.nombre || 0} cas)`

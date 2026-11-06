@@ -587,3 +587,10 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .entete-repli[aria-expanded="true"] { margin-bottom: 14px; }
 .actions-fiche-mn1 .supprimer-fi { margin-left: auto; }
 .actions-fiche-mn1 .supprimer-fi:hover { color: var(--rouge); border-color: color-mix(in srgb, var(--rouge) 45%, transparent); }
+
+/* Ajouter un savoir (assistant) : les machines concernées en pastilles. */
+.puces-machines { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.puce-machine { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 999px; font-size: 12.5px; background: var(--accent-doux); color: var(--accent); }
+.savoir-detail .puce-machine { padding-right: 10px; }
+.suivi-depot { display: grid; gap: 8px; margin-top: 8px; }
+.bouton-savoir { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }

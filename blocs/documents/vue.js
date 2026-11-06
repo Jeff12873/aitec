@@ -99,17 +99,7 @@ export default {
       for (const fichier of fichiers) {
         const ligne = suiviFichier(zoneSuivi, fichier.name)
         try {
-          ligne.etape('Envoi…', 0.05)
-          const entetes = { 'X-Nom': encodeURIComponent(fichier.name), 'X-Machine': machine.value || '', 'X-Genre': genre.value }
-          let resultat
-          try {
-            resultat = await api('/api/documents', { methode: 'POST', fichier, entetes })
-          } catch (erreur) {
-            if (erreur.statut !== 409 || !(await confirmer(`${erreur.message} L’ajouter quand même ?`))) throw erreur
-            resultat = await api('/api/documents?forcer=1', { methode: 'POST', fichier, entetes })
-          }
-          if (resultat.lecture === 'navigateur') await lireDansLeNavigateur(resultat.id, fichier, ligne, genre.value)
-          ligne.fin(resultat.lecture === 'aucune' ? 'Rangé en pièce jointe' : 'Lu par l’IA')
+          await deposerDocument(fichier, ligne, { machine: machine.value, genre: genre.value })
         } catch (erreur) {
           ligne.erreur(erreur.message)
         }
@@ -141,6 +131,23 @@ export default {
       }
     }
   },
+}
+
+// Dépose un fichier puis le fait lire (par le serveur, ou ici pour les PDF et images). Aussi utilisé par
+// l'assistant (« Ajouter un savoir ») : entetes y ajoute X-Contribution, X-Machines et X-Auteur.
+export async function deposerDocument(fichier, ligne, { machine = '', genre = 'document', entetes: autres = {} } = {}) {
+  ligne.etape('Envoi…', 0.05)
+  const entetes = { 'X-Nom': encodeURIComponent(fichier.name), 'X-Machine': machine || '', 'X-Genre': genre, ...autres }
+  let resultat
+  try {
+    resultat = await api('/api/documents', { methode: 'POST', fichier, entetes })
+  } catch (erreur) {
+    if (erreur.statut !== 409 || !(await confirmer(`${erreur.message} L’ajouter quand même ?`))) throw erreur
+    resultat = await api('/api/documents?forcer=1', { methode: 'POST', fichier, entetes })
+  }
+  if (resultat.lecture === 'navigateur') await lireDansLeNavigateur(resultat.id, fichier, ligne, genre)
+  ligne.fin(resultat.lecture === 'aucune' ? 'Rangé en pièce jointe' : 'Lu par l’IA')
+  return resultat
 }
 
 // Avancement de la lecture des images en arrière-plan (environ 2 secondes par image avec une carte graphique).
@@ -306,7 +313,7 @@ async function lireImage(id, fichier, ligne) {
 }
 
 // Une ligne de suivi par fichier déposé.
-function suiviFichier(conteneur, nom) {
+export function suiviFichier(conteneur, nom) {
   const texte = h('span', { class: 'texte-2' }, 'En attente')
   const barre = h('div')
   const ligne = h('div', { style: { display: 'block' } }, h('div', { class: 'actions', style: { justifyContent: 'space-between' } }, h('b', {}, nom), texte), h('div', { class: 'progression', style: { marginTop: '6px' } }, barre))
