@@ -1,0 +1,34 @@
+<h1>DI, FI, RI : le circuit</h1>
+<p class="but">Deux chemins mènent une anomalie jusqu'à sa clôture, et les trois onglets les suivent.</p>
+
+<ul>
+<li><b>DI → FI → RI</b> : le conducteur fait une demande ; l'appui technique de la zone la transforme en FI dans la GMAO (avec l'équipement de l'arborescence de production et celui de maintenance) et la programme ; l'agent de maintenance la clôt par un RI.</li>
+<li><b>FI focus → RI</b> : les FI issues des fiches focus, exécutées par les conducteurs, qui créent le RI.</li>
+</ul>
+
+<script type="application/json" data-maquette>
+{ "titre": "Onglet Demandes d'intervention N1", "ratio": 40,
+  "blocs": [
+    [2,4,96,10,"Non prises en compte · Prises en compte · Terminées · Supprimées","zone"],
+    [2,18,96,12,"DI 1042 — fuite vérin poste 3 — DUPONT, JEAN     [FI] [RI]","carte"],
+    [2,33,96,12,"DI 1041 — capteur sale — …     [FI] [RI]","carte"],
+    [2,48,96,12,"DI 1039 — …     [FI] [RI]","carte"],
+    [80,20,7,8,"FI","accent"], [89,20,7,8,"RI","bouton"]
+  ],
+  "reperes": [
+    [4,9,"Trier par suite donnée : sans FI, avec FI, terminées (FI et RI), supprimées."],
+    [83,18,"Pastille FI : grisée pas encore, turquoise programmée, barrée supprimée."],
+    [92,18,"Pastille RI : verte quand le rapport est fait."]
+  ] }
+</script>
+
+<h2>Les onglets</h2>
+<ul>
+<li><b>Demandes N1</b> : les chiffres des demandes et leur liste, avec les pastilles de la FI et du RI qui les suivent.</li>
+<li><b>Fiches N1</b> : d'abord les FI issues de demandes (celles à qui il manque une arborescence en tête), puis les fiches focus des parcs.</li>
+<li><b>Rapports N1</b> : les RI des demandes (avec le délai depuis la demande), puis ceux des FI focus. En tête, les activités des conducteurs.</li>
+</ul>
+
+<h2>Questions fréquentes</h2>
+<details><summary>Une FI supprimée dans la GMAO apparaît encore</summary><p>Les FI et RI sont relues à chaque ouverture de l'écran : rechargez. Une FI archivée sans RI passe en « supprimée » (barrée).</p></details>
+<details class="admin"><summary>D'où viennent les FI et RI ?</summary><p>Des requêtes du site « FI de niveau 1 » et « RI de niveau 1 » (Administration › Données de la GMAO), et des colonnes de suite de la requête des demandes.</p></details>

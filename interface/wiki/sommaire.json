@@ -1,0 +1,140 @@
+{
+  "sections": [
+    {
+      "titre": "Commencer",
+      "pages": [
+        {
+          "id": "premiers-pas",
+          "titre": "Premiers pas avec AITEC",
+          "mots": "découvrir menu",
+          "alias": [
+            "installation",
+            "fichier-partage",
+            "sauvegardes"
+          ]
+        },
+        {
+          "id": "cas-usage",
+          "titre": "Cas d'usage",
+          "mots": "exemples scénarios"
+        }
+      ]
+    },
+    {
+      "titre": "Maintenance de niveau 1",
+      "pages": [
+        {
+          "id": "mn1",
+          "titre": "Vue d'ensemble",
+          "ecran": "mn1",
+          "mots": "mn1 parcs vignettes onglets",
+          "alias": [
+            "maintenance-niveau-1"
+          ]
+        },
+        {
+          "id": "mn1-circuit",
+          "titre": "DI, FI, RI : le circuit",
+          "ecran": "mn1",
+          "mots": "demandes fiches rapports pastilles suite"
+        },
+        {
+          "id": "mn1-indicateurs",
+          "titre": "Indicateurs et Hall of fame",
+          "ecran": "mn1",
+          "mots": "bandeau tendance délai hall of fame conducteurs calendrier équipes"
+        },
+        {
+          "id": "mn1-fiches",
+          "titre": "Fiches focus et charge des parcs",
+          "ecran": "mn1",
+          "mots": "vignettes charge pertinence pareto eth imprimer a5"
+        },
+        {
+          "id": "mn1-fi-gmao",
+          "titre": "Créer et gérer les FI dans la GMAO",
+          "ecran": "mn1",
+          "admin": true,
+          "mots": "simuler écrire suspendre remplacer périodicité"
+        }
+      ]
+    },
+    {
+      "titre": "L'IA",
+      "pages": [
+        {
+          "id": "assistant",
+          "titre": "Assistant IA",
+          "ecran": "assistant",
+          "mots": "question sources schémas électrique bêta"
+        },
+        {
+          "id": "erreurs-ia",
+          "titre": "Quand l'IA se trompe",
+          "mots": "vérifier source"
+        }
+      ]
+    },
+    {
+      "titre": "Suivi du parc",
+      "pages": [
+        {
+          "id": "tableau-de-bord",
+          "titre": "Tableau de bord",
+          "ecran": "tableau-de-bord",
+          "mots": "graphiques analyser"
+        },
+        {
+          "id": "pannes",
+          "titre": "Pannes connues et analyse d'une machine",
+          "ecran": "pannes",
+          "mots": "causes remèdes fiche analyse"
+        }
+      ]
+    },
+    {
+      "titre": "Administration",
+      "pages": [
+        {
+          "id": "documents",
+          "titre": "Documents",
+          "ecran": "documents",
+          "admin": true,
+          "mots": "notices schémas pdf word lire relire traduire"
+        },
+        {
+          "id": "donnees-gmao",
+          "titre": "Données de la GMAO",
+          "ecran": "import",
+          "admin": true,
+          "mots": "synchroniser requêtes import export csv excel",
+          "alias": [
+            "import-gmao"
+          ]
+        },
+        {
+          "id": "administration",
+          "titre": "Parcs et réglages",
+          "ecran": "administration",
+          "admin": true,
+          "mots": "parcs racines production maintenance glossaire modèle"
+        }
+      ]
+    },
+    {
+      "titre": "Aide",
+      "pages": [
+        {
+          "id": "astuces",
+          "titre": "Trucs et astuces",
+          "mots": "conseils"
+        },
+        {
+          "id": "depannage",
+          "titre": "Questions fréquentes et dépannage",
+          "mots": "erreur lent rayures synchronisation"
+        }
+      ]
+    }
+  ]
+}

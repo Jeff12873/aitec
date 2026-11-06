@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.7.17",
+      "date": "2026-11-06",
+      "points": [
+        "L'aide passe dans le wiki de K.NOVA : 17 pages remises à jour (maintenance de niveau 1 en cinq pages, assistant, documents…), avec maquettes annotées et cas d'usage"
+      ]
+    },
+    {
       "version": "0.7.16",
       "date": "2026-11-05",
       "points": [

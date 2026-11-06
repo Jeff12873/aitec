@@ -1,0 +1,35 @@
+<h1>Assistant IA (Bêta)</h1>
+<p class="but">Une discussion avec l'IA du poste, qui cherche dans les documents, les fiches machines et l'historique des interventions, et répond en citant ses sources.</p>
+
+<script type="application/json" data-maquette>
+{ "titre": "Assistant IA", "ratio": 50,
+  "blocs": [
+    [2,3,40,8,"Machine concernée ▾","champ"], [88,3,10,8,"⚙","bouton"],
+    [2,15,96,50,"La conversation : réponses, pistes, sources [1] [2]","zone"],
+    [6,48,20,8,"Choix 1","bouton"], [28,48,20,8,"Choix 2","bouton"],
+    [2,70,96,16,"Votre question…","champ"], [86,89,12,9,"Envoyer","accent"]
+  ],
+  "reperes": [
+    [4,7,"Choisir la machine limite la recherche à ses documents, sa fiche et ses interventions."],
+    [93,7,"Les consignes de l'assistant.", true],
+    [4,20,"La réponse : des pistes, avec les sources numérotées (un clic ouvre le document à la bonne page)."],
+    [8,52,"Quand la question est vague, l'assistant pose des questions avec des réponses en boutons."],
+    [4,74,"La question, en français, comme à un collègue."]
+  ] }
+</script>
+
+<h2>Bien poser sa question</h2>
+<ol>
+<li>Nommez la machine par son repère, ou choisissez-la dans « Machine concernée ».</li>
+<li>Utilisez les mots de l'atelier : références, codes défaut, noms des organes.</li>
+<li>Une question à la fois ; pour une suite, demandez simplement « et pour le secours ? ».</li>
+<li>Vérifiez dans la source citée toute valeur avant d'intervenir.</li>
+</ol>
+
+<h2>Dépannage électrique avec les schémas</h2>
+<p>Quand la question touche un circuit, l'assistant retrouve les folios concernés, les regarde, et propose des pistes de contrôle dans l'ordre (alimentation, sécurités, commande, puissance, capteurs), avec les repères lus sur le schéma. L'intervention reste réservée au personnel habilité, avec consignation et vérification d'absence de tension.</p>
+
+<h2>Questions fréquentes</h2>
+<details><summary>La réponse ne cite aucune source</summary><p>L'information n'est pas dans la base : ce qui vient de l'expérience générale de l'IA est mis à part (« Pistes générales »). Ajoutez le document concerné.</p></details>
+<details><summary>La première réponse est lente</summary><p>Le modèle se charge (de quelques secondes à une minute) ; les suivantes sont plus rapides.</p></details>
+<details class="admin"><summary>Adapter la façon de répondre</summary><p>Le rouage ouvre les consignes : ton, forme, sécurité, sources. « Revenir à l'original » remet celles d'AITEC.</p></details>

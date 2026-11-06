@@ -1,22 +1,7 @@
-// L'aide intégrée. Chaque page est un simple fichier HTML dans interface/aide/,
-// modifiable avec n'importe quel éditeur de texte. Le sommaire est la liste PAGES ci-dessous.
+// L'aide est maintenant dans le wiki de K.NOVA (/wiki/) : pages dans interface/wiki/, sommaire dans
+// interface/wiki/sommaire.json. Cet écran ne reste que pour les anciens liens « #/aide/… ».
 
-import { h, vider } from '/socle/ui.js'
-
-const PAGES = [
-  ['premiers-pas', 'Premiers pas'],
-  ['assistant', 'Poser une question à l’IA'],
-  ['tableau-de-bord', 'Tableau de bord'],
-  ['maintenance-niveau-1', 'Maintenance de niveau 1'],
-  ['documents', 'Documents et formats lus'],
-  ['import-gmao', 'Importer un export GMAO'],
-  ['administration', 'Mode administrateur'],
-  ['fichier-partage', 'Le fichier partagé'],
-  ['sauvegardes', 'Sauvegardes'],
-  ['installation', 'Installation sur un poste'],
-  ['erreurs-ia', 'L’IA s’est trompée'],
-  ['depannage', 'Dépannage'],
-]
+import { h, vider, ic } from '/socle/ui.js'
 
 export default {
   chemin: 'aide',
@@ -25,20 +10,8 @@ export default {
   menu: false,
   aide: 'premiers-pas',
 
-  async afficher(zone, { id }) {
-    const page = PAGES.find(([cle]) => cle === id)?.[0] || 'premiers-pas'
-    const texte = h('article', { class: 'aide-texte carte' })
-    vider(
-      zone,
-      h(
-        'div',
-        { class: 'aide-page' },
-        h('nav', { class: 'aide-sommaire carte', style: { padding: '10px' } }, PAGES.map(([cle, titre]) => h('a', { href: `#/aide/${cle}`, class: cle === page ? 'actif' : '' }, titre))),
-        texte,
-      ),
-    )
-    const reponse = await fetch(new URL(`../../interface/aide/${page}.html`, import.meta.url))
-    texte.innerHTML = reponse.ok ? await reponse.text() : '<p>Page d’aide introuvable.</p>'
-    window.scrollTo(0, 0)
+  afficher(zone, { id }) {
+    const adresse = `/wiki/#/aitec/${id || 'premiers-pas'}`
+    vider(zone, h('div', { class: 'bandeau info' }, ic('livre'), 'L’aide est dans le wiki de K.NOVA. ', h('a', { href: adresse, target: 'knova-wiki' }, 'Ouvrir le wiki')))
   },
 }

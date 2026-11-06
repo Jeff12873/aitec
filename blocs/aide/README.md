@@ -1,7 +1,7 @@
 # Bloc « aide »
 
-L'aide intégrée. Chaque page est un fichier HTML simple dans `interface/aide/` : on peut la
-corriger avec n'importe quel éditeur de texte, sans rien relancer.
+L'aide est dans le wiki de K.NOVA (`/wiki/`). Les pages d'AITEC sont des fichiers HTML simples dans
+`interface/wiki/`, rangés par `interface/wiki/sommaire.json` (sections, pages, `ecran`, `admin`, `alias`).
 
-Pour ajouter une page : créer `interface/aide/ma-page.html`, puis l'ajouter à la liste `PAGES` de `vue.js`.
-Le bouton « ? » de chaque écran ouvre la page indiquée par la propriété `aide` du bloc.
+Le bouton « ? » de chaque écran ouvre la page indiquée par la propriété `aide` du bloc (son `id` ou un `alias`).
+Ce bloc ne sert plus qu'aux anciens liens « #/aide/… ».
