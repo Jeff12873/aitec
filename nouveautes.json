@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.10.4",
+      "date": "2026-11-07",
+      "points": [
+        "« Ma ligne » : chaque indicateur dit sa durée dans son titre (« Pannes · sur 12 mois », « Temps passé à dépanner · sur 12 mois ») et sa comparaison en entier (« contre 1 904 h sur les 12 mois d'avant »)"
+      ]
+    },
+    {
       "version": "0.10.3",
       "date": "2026-11-07",
       "points": [
