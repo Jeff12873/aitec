@@ -7,6 +7,7 @@ import { h, vider, ic, dateFr, essayer, fenetre, notifier } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { filEtapes, evolutionPanne } from './prevtec.js'
 import { relireFiche } from './mn1-parc.js'
+import { LOGO_MN1 } from './fiches-mn1.js'
 
 const ETATS = {
   aucune: ['rouge', 'Aucune visite', 'Aucune visite sur son équipement ni sur la machine'],
@@ -71,7 +72,7 @@ export async function afficherMachine(zone, parcId, machineId) {
       h('div', { class: 'tete-decision' }, pastille(p), h('b', {}, p.symptome), h('span', { class: 'discret' }, `${p.nombre} cas`)),
       h('p', {}, p.etat === 'aucune' ? 'Un geste simple de l’opérateur peut-il la voir venir ? Sinon, un contrôle du technicien.' : 'La visite actuelle ne la voit pas venir : revoir le point contrôlé, ou ajouter un geste de l’opérateur.'),
       h('div', { class: 'actions' },
-        h('button', { class: 'petit', title: 'L’IA rédige une fiche de niveau 1 (contrôle simple de l’opérateur), que vous relisez', onclick: () => ficheN1(p) }, ic('etincelle', 13), 'Fiche N1'),
+        h('button', { class: 'petit', title: 'L’IA rédige une fiche de niveau 1 (contrôle simple de l’opérateur), que vous relisez', onclick: () => ficheN1(p) }, h('img', { class: 'logo-bouton-n1', src: LOGO_MN1, alt: '' }), 'Fiche N1'),
         h('button', { class: 'petit', title: 'L’IA rédige un point de niveau 2 (technicien), à reporter dans la GMAO', onclick: () => pointN2(p) }, ic('etincelle', 13), 'Point N2')))))
       : h('p', { class: 'discret' }, 'Rien à décider : chaque panne qui revient est regardée par une visite, et aucune ne monte.'),
     h('div', { class: 'suite-etape' },

@@ -262,6 +262,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne' } 
   if (estPrevtec && vue === 'ligne') {
     // Étape 2 : la ligne, sans rien du niveau 1 ; la courbe des correctifs en petit dans l'en-tête.
     entete.querySelector('.legende-tendance')?.remove()
+    entete.querySelector('.titre-parc img')?.remove() // le logo jaune est celui du niveau 1 : pas à l'étape 2
     const sousTitre = entete.querySelector('.sous-titre')
     if (sousTitre) sousTitre.textContent = `${d.parc.maintenance} machines de maintenance · ${d.parc.production} de production`
     const courbeTete = d.tendance?.length ? h('div', { class: 'courbe-tete', title: `Correctifs de la ligne, mois par mois (12 mois terminés) : ${d.tendance.map((x) => x.n).join(', ')}` }, courbe(d.tendance.map((x) => x.n), { largeur: 220, hauteur: 44 }), h('small', { class: 'discret' }, 'correctifs, 12 mois terminés')) : null

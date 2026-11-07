@@ -5,6 +5,7 @@ import { h, vider, ic, dateFr, nombreFr, tableau, notifier, fenetre } from '/soc
 import { api } from '/socle/api.js'
 import { avecParc, parcChoisi, nomParcChoisi } from './parcs.js'
 import { peutModifier } from '/socle/etat.js'
+import { LOGO_MN1 } from './fiches-mn1.js'
 
 const jours = (n) => (n === null || n === undefined ? '—' : `${Math.round(n)} j`)
 const pourcent = (x) => `${x > 0 ? '+' : ''}${Math.round(x * 100)} %`
@@ -62,7 +63,8 @@ function hallOfFame(i, portee, merci = null) {
   const [annee, mois] = i.mois.split('-')
   const nomMois = new Date(Number(annee), Number(mois) - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
   return h('div', { class: 'hall-of-fame' },
-    h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${portee} · ${nomMois}`)),
+    // Le logo du niveau 1 : le Hall of fame compte les demandes et exécutions de niveau 1.
+    h('div', { class: 'titre-hof' }, h('img', { class: 'logo-hof', src: LOGO_MN1, alt: 'Niveau 1', title: 'Maintenance de niveau 1' }), h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${portee} · ${nomMois}`)),
     h('div', { class: 'podiums' },
       podium(i.podium, 'DI', 'Demandes'),
       podium(i.podiumRi || [], 'RI', 'Exécutions')),

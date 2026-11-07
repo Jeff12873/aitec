@@ -512,6 +512,8 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .hall-of-fame { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, #2dd4bf 30%, transparent); background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #2dd4bf 14%, transparent), transparent 60%), color-mix(in srgb, var(--carte) 70%, transparent); backdrop-filter: blur(8px); box-shadow: 0 0 24px color-mix(in srgb, #2dd4bf 10%, transparent); }
 .titre-hof { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .texte-hof { font-size: 26px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; line-height: 1.1; background: linear-gradient(90deg, #2dd4bf, #a3e635, #fde68a, #2dd4bf) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px color-mix(in srgb, #2dd4bf 45%, transparent)); animation: reflet-hof 6s linear infinite; }
+.logo-bouton-n1 { width: 16px; height: 16px; }
+.logo-hof { width: 30px; height: 30px; flex: none; }
 .etincelle-hof { display: inline-flex; color: #fde68a; animation: scintille-hof 2.4s ease-in-out infinite; }
 .portee-hof { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #2dd4bf; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, #2dd4bf 45%, transparent); background: color-mix(in srgb, #2dd4bf 10%, transparent); }
 @keyframes reflet-hof { to { background-position: 300% 0; } }
