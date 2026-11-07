@@ -659,3 +659,52 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .evolution-panne.rouge { color: var(--rouge); }
 .evolution-panne.vert { color: var(--vert); }
 .evolution-panne small { color: var(--texte-3); }
+
+/* L'assistant en QCM : les questions de départ, puis les réponses de chaque vérification en boutons. */
+.qcm-depart { max-width: 760px; margin: 28px auto 0; display: flex; flex-direction: column; gap: 14px; }
+.tete-qcm { display: flex; gap: 12px; align-items: flex-start; color: var(--accent); }
+.tete-qcm h2 { margin: 0 0 2px; color: var(--texte); font-size: 20px; }
+.tete-qcm p { margin: 0; color: var(--texte-2); font-size: 14px; }
+.qcm-faits { display: flex; flex-wrap: wrap; gap: 8px; }
+.qcm-fait { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 12px; border-radius: var(--rayon); background: var(--accent-doux); border: 1px solid var(--accent); color: var(--texte); font-weight: 400; }
+.qcm-fait small { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.question-qcm { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.question-qcm b { font-size: 18px; }
+.question-qcm small { color: var(--texte-3); font-size: 13px; }
+.choix-qcm-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.choix-qcm { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 14px; border-radius: var(--rayon); background: var(--carte); border: 1px solid var(--bord); color: var(--texte); font-weight: 500; }
+.choix-qcm:hover { border-color: var(--accent); background: var(--accent-doux); }
+.choix-qcm small { color: var(--texte-3); font-weight: 400; font-size: 12px; }
+.choix-qcm.connue { border-color: color-mix(in srgb, var(--accent) 45%, var(--bord)); }
+.choix-qcm.autre { border-style: dashed; color: var(--texte-2); }
+.choix-qcm.repare { border-color: var(--vert, #34d399); color: var(--vert, #34d399); }
+.reponses-qcm { margin-top: 12px; }
+.questions-libres { margin-top: 10px; color: var(--texte-3); font-size: 13px; }
+.questions-libres summary { cursor: pointer; }
+.questions-libres .suggestions { margin-top: 8px; }
+
+/* PREVTEC, une machine (étapes 3 et 4) : ses pannes, tous ses préventifs, puis « Je décide ». */
+.demonstrateur { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+.table-demonstrateur { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table-demonstrateur th { text-align: left; font-size: 12px; font-weight: 600; color: var(--texte-3); padding: 6px 8px; border-bottom: 1px solid var(--bord); }
+.table-demonstrateur td { padding: 8px; border-bottom: 1px solid var(--bord); vertical-align: top; }
+.table-demonstrateur td .etiquette { margin: 0 4px 4px 0; }
+.table-demonstrateur tr.diag-sans td:first-child { box-shadow: inset 3px 0 var(--rouge, #ef4444); }
+.table-demonstrateur tr.diag-mauvais td:first-child, .table-demonstrateur tr.diag-sur td:first-child { box-shadow: inset 3px 0 var(--orange, #f59e0b); }
+.table-demonstrateur tr.diag-systematique, .table-demonstrateur tr.diag-ponctuel { opacity: .6; }
+.detection { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+.barre-abc { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--carte-2); }
+.barre-abc .a { background: var(--texte-3); }
+.barre-abc .b { background: var(--vert); }
+.barre-abc .c { background: var(--orange, #f59e0b); }
+.detection small { color: var(--texte-3); font-size: 11px; }
+.carte-decisions { border-color: #38bdf8; }
+.numero-etape { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #38bdf8; color: #0b1620; font-size: 13px; font-weight: 700; margin-right: 8px; }
+.decisions { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.decision { border: 1px solid var(--bord); border-left-width: 4px; border-radius: var(--rayon); padding: 10px 12px; background: var(--carte-2); }
+.decision.rouge { border-left-color: var(--rouge, #ef4444); }
+.decision.orange { border-left-color: var(--orange, #f59e0b); }
+.tete-decision { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.decision p { margin: 6px 0 8px; font-size: 13px; color: var(--texte-2); }
+.suite-etape { display: flex; justify-content: flex-end; margin-top: 14px; }
+.suite-etape .bouton { display: inline-flex; align-items: center; }

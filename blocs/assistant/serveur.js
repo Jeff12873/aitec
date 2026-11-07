@@ -72,9 +72,21 @@ Précisions cochées par l'agent (ligne PRÉCISIONS) :
 Poser des questions pour affiner :
 - Demande trop vague pour répondre de façon fiable (machine non précisée, symptôme flou, code défaut ou message d'écran manquant, sources qui divergent) : ne devine pas, pose 1 à 3 questions courtes.
 - Dans ce cas, termine par une ligne qui commence exactement par « CHOIX : », suivie de 2 à 5 réponses possibles séparées par « | », tirées des sources. Exemple : CHOIX : PRS-01 presse 200 t | PRS-02 presse 100 t | Une autre machine
-- Si les sources permettent de répondre : réponds directement, sans ligne CHOIX. Au plus une question finale si elle fait avancer le dépannage (« Le défaut revient-il à chaque cycle ? »).`
+- Si les sources permettent de répondre : réponds directement, puis la vérification et sa ligne CHOIX du MODE QCM.`
 
 const consignesAssistant = () => reglage('consignes_assistant', '') || CONSIGNES
+// AITEC se pratique en QCM : ajouté à toutes les consignes, même adaptées par l'administrateur (l'écran compte sur
+// la ligne CHOIX et sur le bouton « C'est réparé », blocs/assistant/vue.js).
+const MODE_QCM = `
+
+MODE QCM (toujours) :
+- Pour un dépannage : après les pistes, pose UNE seule question de vérification, la plus rapide qui départage les pistes (« Le voyant du relais K12 est-il allumé ? »).
+- Puis termine par une ligne qui commence exactement par « CHOIX : », avec 2 à 4 réponses courtes séparées par « | » : ce que l'agent peut constater en réponse à TA question (pas d'autres questions), puis « C’est réparé » et « Je ne peux pas vérifier ».
+  Exemple : Le voyant du relais K12 est-il allumé ?
+  CHOIX : Oui, allumé | Non, éteint | Il clignote | C’est réparé | Je ne peux pas vérifier
+- À la réponse de l'agent : écarte ou confirme les pistes en une ligne chacune, puis la vérification suivante, toujours avec sa ligne CHOIX. Ne répète pas les pistes déjà écartées.
+- « Je ne peux pas vérifier » : propose une autre vérification qui départage les mêmes pistes.
+- Pour une question d'information : réponds, puis CHOIX avec 2 à 4 suites utiles.`
 export const REPERES_CONSIGNES = ['{atelier}', '{date}', '{glossaire}']
 
 export function routes(r) {
@@ -175,7 +187,7 @@ function texteDeRecherche(question, historique) {
 function construireMessages(question, historique, passages, machineId, groupe = null, precisions = [], recents = []) {
   const consignes = consignesAssistant().replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
-    .replace('{glossaire}', glossaire())
+    .replace('{glossaire}', glossaire()) + MODE_QCM
 
   let contexte = `CHIFFRES DE LA BASE : ${resumeChiffres()}\n\n`
   if (machineId) {

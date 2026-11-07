@@ -27,7 +27,7 @@ Sois strict : une fiche ne vise une panne que si le lien est concret. N'invente 
 Réponds seulement avec un objet JSON, sans texte autour :
 {"pareto":[{"code":"P1","fiches":["F3"],"demandes":["D2"],"commentaire":"phrase courte"}],"resume":"2 phrases au plus : ce que les fiches couvrent bien, ce qui manque"}`
 
-function lireJson(texte) {
+export function lireJson(texte) {
   const debut = texte.indexOf('{')
   const fin = texte.lastIndexOf('}')
   if (debut < 0 || fin < debut) return null
@@ -116,6 +116,12 @@ export async function proposerFiche(parcId, code) {
   if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
   const panne = pareto(parc).find((x) => x.code === code)
   if (!panne) throw new ErreurHttp(404, 'Panne introuvable dans le Pareto')
+  return redigerFiche(panne)
+}
+
+// panne : { code, repere, designation, symptome, nombre, cas: [id d'intervention] } (du Pareto, ou d'une machine).
+export async function redigerFiche(panne) {
+  if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
   const rapports = db().prepare(`SELECT date, description FROM interventions WHERE id IN (${panne.cas.slice(0, 8).join(',') || 'NULL'}) ORDER BY date DESC`).all()
   const texte = await discuter([{ role: 'system', content: CONSIGNES_FICHE }, { role: 'user', content: `Machine : ${panne.repere} ${panne.designation}\nPanne : ${panne.symptome} (${panne.nombre} cas en 12 mois)\nRapports :\n${rapports.map((r) => `- ${r.date} : ${String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 300)}`).join('\n')}` }], { temperature: 0.3, maxMots: 600 })
   const lu = lireJson(texte)

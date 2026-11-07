@@ -12,16 +12,16 @@ import { reglerParc } from './mn1-reglages.js'
 import { encartCalendrier } from './mn1-circuit.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 import { nuageEquilibre } from './mn1-equilibre.js'
-import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne } from './prevtec.js'
+import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne, lienMachine } from './prevtec.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
 const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 100) / 100).toLocaleString('fr-FR'))
 
 // integre : le parc choisi en haut d'AITEC, affiché directement à la place des vignettes (sans « Tous les parcs »),
 // avec un bandeau qui explique sa charge, sa pertinence, sa tendance et ce qu'il reste à faire.
-// Un lien vers l'analyse, seulement pour une machine du parc maintenance (ou la machine de maintenance liée à une
+// Un lien vers l'analyse (dans PREVTEC : le démonstrateur de la machine), seulement pour une machine du parc maintenance (ou la machine de maintenance liée à une
 // machine de production) ; sinon le texte seul, pas cliquable.
-const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: `#/analyse/${d.analysables[id]}` }, contenu) : contenu)
+const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: lienMachine(d.parc.id, d.analysables[id]), title: estPrevtec ? 'Étape 3 : cette machine, ses pannes face à tous ses préventifs' : '' }, contenu) : contenu)
 
 export async function afficherParc(zone, id, { integre = false } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture du parc et des FI de la GMAO'))
@@ -346,6 +346,12 @@ async function proposerFiche(d, panne) {
   notifier('L’IA rédige une fiche pour cette panne…')
   const b = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/proposer`, { methode: 'POST', corps: { code: panne.code } }))
   if (!b) return
+  if (await relireFiche(d.parc.id, b, `Brouillon de fiche — ${panne.repere} : ${panne.symptome}`, `Rédigé par l’IA pour la panne ${panne.code} (${panne.nombre} cas en 12 mois). Relisez et corrigez : rien n’est enregistré sans vous.`)) window.ktec.recharger()
+}
+
+// Le brouillon d'une fiche (rédigé par l'IA), relu et corrigé avant de l'enregistrer dans le parc (administrateur).
+// Rend vrai si la fiche est enregistrée.
+export async function relireFiche(parcId, b, titre, intro) {
   const admin = peutModifier()
   const machine = h('input', { type: 'text', value: b.machine_nom })
   const zoneMachine = h('input', { type: 'text', value: b.zone })
@@ -353,10 +359,10 @@ async function proposerFiche(d, panne) {
   const frequence = h('select', {}, FREQUENCES.filter((x) => x !== 'Quotidienne').map((x) => h('option', { value: x, selected: x === b.frequence }, x)))
   const evite = h('input', { type: 'text', value: b.evite })
   const ok = await fenetre({
-    titre: `Brouillon de fiche — ${panne.repere} : ${panne.symptome}`,
+    titre,
     large: true,
     contenu: h('div', { class: 'grille', style: { gap: '10px' } },
-      h('p', { class: 'texte-2', style: { margin: 0 } }, `Rédigé par l’IA pour la panne ${panne.code} (${panne.nombre} cas en 12 mois). Relisez et corrigez : rien n’est enregistré sans vous.`),
+      h('p', { class: 'texte-2', style: { margin: 0 } }, intro),
       h('div', { class: 'grille grille-2', style: { gap: '10px' } },
         h('label', { class: 'champ' }, h('span', {}, 'Machine'), machine),
         h('label', { class: 'champ' }, h('span', {}, 'Zone'), zoneMachine)),
@@ -365,13 +371,11 @@ async function proposerFiche(d, panne) {
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite))),
     boutons: admin
-      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans le parc', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: d.parc.id, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
+      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans le parc', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: parcId, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
       : [{ texte: 'Fermer', classe: 'principal', valeur: null }],
   })
-  if (ok) {
-    notifier('Fiche ajoutée au parc')
-    window.ktec.recharger()
-  }
+  if (ok) notifier('Fiche ajoutée au parc')
+  return Boolean(ok)
 }
 
 // ---- les fiches du parc dans un fichier .vignettes (passage d'un fichier de connaissances à un autre)

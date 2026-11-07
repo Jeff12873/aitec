@@ -1,5 +1,7 @@
-// L'assistant : une discussion avec l'IA, qui répond à partir de la base et cite ses sources.
-// La conversation est gardée sur ce poste (pas dans le fichier partagé).
+// L'assistant : un dépannage en QCM avec l'IA, qui répond à partir de la base et cite ses sources.
+// Pour commencer, des questions à choix (la machine, ce qui se passe, le domaine, la fréquence) ; puis chaque réponse
+// de l'IA finit par une vérification et ses réponses en boutons (consigne « MODE QCM », serveur.js). Écrire reste
+// possible à tout moment (« Autre »). La conversation est gardée sur ce poste (pas dans le fichier partagé).
 
 import { h, vider, ic, notifier, essayer, fenetre } from '/socle/ui.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
@@ -22,6 +24,9 @@ const PRECISIONS = [
   ['Fréquence', ['À chaque cycle', 'De temps en temps', 'Depuis une intervention', 'Première fois']],
 ]
 const MOTS_QUESTION_PRECISE = 12
+// Le bouton du QCM qui clôt un dépannage (même texte que dans la consigne du serveur).
+const REPARE = 'C’est réparé'
+const PLACEHOLDER = 'Ou écrivez votre question… (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)'
 
 // Conversation en cours : [{ role: 'agent' | 'assistant', contenu, sources }]
 let conversation = lireConversation()
@@ -48,7 +53,7 @@ export default {
 
     const messages = h('div', { class: 'messages' })
     const saisie = h('textarea', {
-      placeholder: 'Posez votre question… (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)',
+      placeholder: PLACEHOLDER,
       rows: 2,
       onkeydown: (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -125,21 +130,83 @@ export default {
     }
     dessinerChoix()
 
+    // ---- le QCM de départ : une question à la fois, une réponse d'un clic. Les réponses déjà données restent
+    // affichées au-dessus (un clic dessus y revient).
+    let qcm = { etape: 'machine', symptome: '', domaine: '', frequence: '' }
+    const nomDuChoix = () => {
+      const machine = machineChoisie ? machines.find((m) => String(m.id) === String(machineChoisie)) : null
+      if (machine) return `${machine.repere} — ${machine.designation}`
+      const ligne = arbre?.find((n) => n.id === ligneChoisie)
+      const ensemble = ligne?.enfants.find((e) => e.id === ensembleChoisi)
+      return ensemble ? `${ligne.libelle} › ${ensemble.libelle}` : ligne ? ligne.libelle : 'Toute la base'
+    }
+    const choixQcm = (texte, action, { detail = '', classe = '' } = {}) => h('button', { class: `choix-qcm ${classe}`, onclick: action }, h('span', {}, texte), detail !== '' ? h('small', {}, detail) : null)
+    const autreQcm = (aide) => choixQcm('Autre : je l’écris', () => { saisie.placeholder = aide; saisie.focus() }, { classe: 'autre' })
+    async function dessinerQcm() {
+      const fait = (titre, valeur, etape) => h('button', { class: 'qcm-fait', title: 'Changer cette réponse', onclick: () => { qcm.etape = etape; dessinerQcm() } }, h('small', {}, titre), h('b', {}, valeur))
+      const faits = []
+      const ordre = ['machine', 'symptome', 'domaine', 'frequence']
+      const avant = (e) => ordre.indexOf(e) < ordre.indexOf(qcm.etape)
+      if (avant('machine')) faits.push(fait('Machine', nomDuChoix(), 'machine'))
+      if (avant('symptome')) faits.push(fait('Ce qui se passe', qcm.symptome, 'symptome'))
+      if (avant('domaine')) faits.push(fait('Domaine', qcm.domaine || 'je ne sais pas', 'domaine'))
+      let question, aide = '', choix
+      if (qcm.etape === 'machine') {
+        const ligne = arbre?.find((n) => n.id === ligneChoisie)
+        const suivant = () => { qcm.etape = 'symptome'; dessinerChoix(); dessinerQcm() }
+        if (!arbre?.length) {
+          question = 'Sur quelle machine ?'
+          aide = 'La liste complète est en bas, « Machine concernée ».'
+          choix = [machines.slice(0, 12).map((m) => choixQcm(m.repere, () => { machineChoisie = String(m.id); suivant() }, { detail: m.designation })), choixQcm('Toute la base', () => { machineChoisie = ''; suivant() }, { classe: 'autre' })]
+        } else if (!ligne || machineChoisie) {
+          question = 'Sur quelle ligne ?'
+          choix = [arbre.map((n) => choixQcm(n.libelle, () => { machineChoisie = ''; ligneChoisie = n.id; ensembleChoisi = ''; if (!n.enfants.length) suivant(); else { dessinerChoix(); dessinerQcm() } }, { detail: `${n.machines.length} machines` })),
+            choixQcm('Toute la base', () => { machineChoisie = ''; ligneChoisie = ''; ensembleChoisi = ''; suivant() }, { classe: 'autre' })]
+        } else {
+          question = `${ligne.libelle} : quel sous-ensemble ?`
+          choix = [ligne.enfants.map((e) => choixQcm(e.libelle, () => { ensembleChoisi = e.id; suivant() }, { detail: `${e.machines.length} machines` })),
+            choixQcm('Toute la ligne', () => { ensembleChoisi = ''; suivant() }, { classe: 'autre' }),
+            choixQcm('‹ Une autre ligne', () => { ligneChoisie = ''; dessinerChoix(); dessinerQcm() }, { classe: 'autre' })]
+        }
+      } else if (qcm.etape === 'symptome') {
+        question = 'Que se passe-t-il ?'
+        aide = 'Les pannes qui reviennent sur ce choix, puis les symptômes courants.'
+        const filtre = filtreMachines()
+        const pannes = filtre.machineId || filtre.machineIds ? await api('/api/pannes/suggestions', { methode: 'POST', corps: filtre }).catch(() => []) : []
+        const plusieurs = new Set(pannes.map((p) => p.machine_id)).size > 1
+        const suivant = (texte, machineId = null) => { qcm.symptome = texte; if (machineId) { machineChoisie = String(machineId); dessinerChoix() } qcm.etape = 'domaine'; dessinerQcm() }
+        choix = [pannes.map((p) => choixQcm(plusieurs ? `${p.repere} · ${p.symptome}` : p.symptome, () => suivant(p.symptome, p.machine_id), { detail: `${p.nombre} cas`, classe: 'connue' })),
+          PRECISIONS[1][1].map((s) => choixQcm(s, () => suivant(s))),
+          autreQcm('Décrivez ce qui se passe (code défaut, message à l’écran…)')]
+      } else if (qcm.etape === 'domaine') {
+        question = 'Plutôt de quel côté ?'
+        const suivant = (d) => { qcm.domaine = d; qcm.etape = 'frequence'; dessinerQcm() }
+        choix = [PRECISIONS[0][1].map((d) => choixQcm(d, () => suivant(d))), choixQcm('Je ne sais pas', () => suivant(''), { classe: 'autre' })]
+      } else {
+        question = 'Depuis quand, à quelle fréquence ?'
+        const lancer = (f) => {
+          qcm.frequence = f
+          const precisions = [qcm.domaine && `domaine : ${qcm.domaine.toLowerCase()}`, f && `fréquence : ${f.toLowerCase()}`].filter(Boolean)
+          const affiche = [qcm.symptome, nomDuChoix() !== 'Toute la base' ? `sur ${nomDuChoix()}` : '', precisions.length ? `(${[qcm.domaine, f].filter(Boolean).join(', ').toLowerCase()})` : ''].filter(Boolean).join(' ')
+          repondre(qcm.symptome, filtreMachines(), { precisions, affiche }) // la machine part dans le filtre
+          qcm = { etape: 'machine', symptome: '', domaine: '', frequence: '' }
+        }
+        choix = [PRECISIONS[2][1].map((f) => choixQcm(f, () => lancer(f))), choixQcm('Je ne sais pas', () => lancer(''), { classe: 'autre' })]
+      }
+      if (conversation.length) return
+      vider(messages, h('div', { class: 'qcm-depart' },
+        h('div', { class: 'tete-qcm' }, ic('etincelle', 22), h('div', {}, h('h2', {}, 'Dépannage'), h('p', {}, 'Répondez d’un clic : l’assistant cherche ensuite dans les interventions, les documents et les pannes connues, et vous guide vérification par vérification.'))),
+        faits.length ? h('div', { class: 'qcm-faits' }, faits) : null,
+        h('div', { class: 'question-qcm' }, h('b', {}, question), aide ? h('small', {}, aide) : null),
+        h('div', { class: 'choix-qcm-liste' }, choix),
+        h('details', { class: 'questions-libres' }, h('summary', {}, 'Une question d’information plutôt ?'),
+          h('div', { class: 'suggestions' }, SUGGESTIONS.map((s) => h('button', { onclick: () => envoyer(s) }, s))))))
+    }
+
     function dessinerMessages() {
       vider(messages)
-      if (!conversation.length) {
-        messages.append(
-          h(
-            'div',
-            { class: 'vide', style: { paddingTop: '60px' } },
-            ic('etincelle', 40),
-            h('h2', { style: { color: 'var(--texte)', marginBottom: '6px' } }, 'Que voulez-vous savoir ?'),
-            h('p', {}, 'L’assistant répond à partir de vos machines, interventions et documents, et cite ses sources.'),
-            h('div', { class: 'suggestions', style: { justifyContent: 'center', marginTop: '18px' } }, SUGGESTIONS.map((s) => h('button', { onclick: () => envoyer(s) }, s))),
-          ),
-        )
-        return
-      }
+      zonePannes.hidden = !conversation.length // au départ, les pannes connues sont dans le QCM
+      if (!conversation.length) return dessinerQcm()
       conversation.forEach((message, i) => messages.append(dessinerMessage({ ...message, dernier: i === conversation.length - 1 }, rappels, message)))
     }
 
@@ -197,6 +264,7 @@ export default {
       if (!question || enCours) return
       saisie.value = ''
       saisie.style.height = 'auto'
+      if (texte === REPARE && conversation.length) return finDepannage()
       if (texte !== undefined || conversation.length) return repondre(question, filtreMachines())
 
       const courte = question.split(/\s+/).length < MOTS_QUESTION_PRECISE
@@ -281,6 +349,20 @@ export default {
       }
     }
 
+    // Le dépannage est fini : on le note, et on propose d'en garder la leçon pour les collègues (un savoir).
+    function finDepannage() {
+      conversation.push({ role: 'agent', contenu: REPARE })
+      garderConversation()
+      dessinerMessages()
+      messages.append(h('div', { class: 'message ia' }, h('div', { class: 'avatar' }, ic('coche', 18)),
+        h('div', { class: 'corps carte-precisions' },
+          h('p', {}, 'Bien joué. Qu’est-ce qui a réglé la panne ? Un mot suffit : l’assistant le proposera au prochain qui aura la même.'),
+          h('div', { class: 'actions' },
+            h('button', { class: 'principal', onclick: () => corriger([...conversation].reverse().find((m) => m.role === 'assistant')) }, ic('livre', 16), 'Dire ce qui a marché'),
+            h('button', { class: 'discret', onclick: nouvelleConversation }, ic('plus', 16), 'Nouveau dépannage')))))
+      messages.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
     function arreter() {
       enCours?.abort()
     }
@@ -288,6 +370,8 @@ export default {
     function nouvelleConversation() {
       arreter()
       conversation = []
+      qcm = { etape: 'machine', symptome: '', domaine: '', frequence: '' }
+      saisie.placeholder = PLACEHOLDER
       garderConversation()
       dessinerMessages()
       montrerSources(null)
@@ -305,7 +389,7 @@ export default {
           { class: 'fil' },
           h('div', { class: 'haut-discussion' },
             h('button', { class: 'discret petit', title: 'Aide de l’assistant', onclick: () => { onglet = 'aide'; dessinerPanneau(); ouvrirTiroir() } }, ic('aide', 14), 'Aide'),
-            h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouvelle conversation'),
+            h('button', { class: 'discret petit', onclick: nouvelleConversation }, ic('plus', 14), 'Nouveau dépannage'),
             h('button', { class: 'petit bouton-savoir', title: 'Une expérience, un document ou une photo : l’assistant s’en sert dès la prochaine question', onclick: () => ajouterSavoir({ machines, preselection: machinesDuChoix() }) }, ic('livre', 14), 'Ajouter un savoir'),
             peutModifier() ? h('button', { class: 'discret petit icone-seule', title: 'Les consignes données à l’IA de l’assistant', onclick: modifierConsignes }, ic('reglages', 14)) : null),
           !etat.ia?.installee ? h('div', { class: 'bandeau' }, ic('alerte'), "L'IA n'est pas installée sur ce poste : l'assistant montre seulement les passages trouvés. Voir l’aide « Installation ».") : null,
@@ -364,8 +448,9 @@ function separerChoix(contenu) {
   const lignes = contenu.split('\n')
   const index = lignes.findIndex((l) => /^\s*\**CHOIX\**\s*:/i.test(l))
   if (index < 0) return { texte: contenu, choix: [] }
-  const choix = lignes[index].replace(/^\s*\**CHOIX\**\s*:\s*/i, '').split('|').map((c) => c.trim()).filter(Boolean)
-  return { texte: lignes.slice(0, index).join('\n'), choix }
+  const choix = lignes[index].replace(/^\s*\**CHOIX\**\s*:\s*/i, '').split('|').map((c) => c.trim().replace(/'/g, '’')).filter(Boolean)
+  // « C'est réparé » toujours en dernier : c'est lui qui clôt le dépannage.
+  return { texte: lignes.slice(0, index).join('\n'), choix: [...choix.filter((c) => c.toLowerCase() !== REPARE.toLowerCase()), REPARE] }
 }
 
 // original : l'objet de la conversation (le message affiché peut en être une copie), pour montrer ses sources.
@@ -397,7 +482,7 @@ function dessinerMessage(message, { envoyer, montrerSources, corriger }, origina
         : null,
       texte,
       !message.enCours && choix.length && message.dernier
-        ? h('div', { class: 'suggestions', style: { marginTop: '10px' } }, choix.map((c) => h('button', { onclick: () => envoyer(c) }, c)))
+        ? h('div', { class: 'choix-qcm-liste reponses-qcm' }, choix.map((c) => h('button', { class: `choix-qcm${c === REPARE ? ' repare' : ''}`, onclick: () => envoyer(c) }, h('span', {}, c))))
         : null,
       !message.enCours && message.contenu
         ? h('div', { class: 'actions', style: { marginTop: '8px' } },

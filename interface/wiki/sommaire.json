@@ -40,12 +40,6 @@
       "titre": "Suivi du parc",
       "pages": [
         {
-          "id": "tableau-de-bord",
-          "titre": "Tableau de bord",
-          "ecran": "tableau-de-bord",
-          "mots": "graphiques analyser"
-        },
-        {
           "id": "pannes",
           "titre": "Pannes connues et analyse d'une machine",
           "ecran": "pannes",

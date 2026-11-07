@@ -7,26 +7,31 @@ import { appli } from '/socle/api.js'
 
 export const estPrevtec = appli === 'prevtec'
 
+// Une machine du Pareto ou du nuage : dans PREVTEC, son démonstrateur (étape 3) ; dans AITEC, son analyse.
+export const lienMachine = (parcId, machineId) => (estPrevtec && parcId ? `#/mn1/machine/${encodeURIComponent(parcId)}/${machineId}` : `#/analyse/${machineId}`)
+
 export const VERDICTS = {
   bon: { texte: 'dans le bon sens', classe: 'vert', icone: 'coche' },
   surveiller: { texte: 'à surveiller', classe: 'orange', icone: 'alerte' },
   reevaluer: { texte: 'à réévaluer', classe: 'rouge', icone: 'alerte' },
 }
 
-// etape : 1 à 5 ; parc : { id, nom } quand on est dans un parc. Les étapes 3 et 4 s'ouvrent depuis le Pareto.
-export function filEtapes(etape, parc = null) {
+// etape : 1 à 5 ; parc : { id, nom } quand on est dans un parc ; machine : { id, repere } sur son démonstrateur.
+// L'étape 3 s'ouvre d'un clic sur une machine du Pareto ; l'étape 4 est le bas de la page de la machine.
+export function filEtapes(etape, parc = null, machine = null) {
   const ETAPES = [
     [1, 'Mon parc', '#/mn1', 'Choisir le parc : une vignette par parc, avec le verdict de son plan'],
     [2, parc ? `Son Pareto · ${parc.nom}` : 'Son Pareto', parc ? `#/mn1/parc/${encodeURIComponent(parc.id)}` : null, 'Le verdict du plan et les pannes qui reviennent, avec leur évolution'],
-    [3, 'Une machine', null, 'Clic sur une machine du Pareto : ses pannes et son préventif'],
-    [4, 'Je décide', null, 'Proposer une fiche pour une panne non couverte, espacer une fiche sans cible'],
-    [5, 'Je fais', parc ? 'fiches' : null, 'Les fiches de niveau 1 du parc : créer la FI, imprimer'],
+    [3, machine ? `Une machine · ${machine.repere}` : 'Une machine', machine ? lienMachine(parc.id, machine.id) : null, 'Clic sur une machine du Pareto : ses pannes face à tous ses préventifs'],
+    [4, 'Je décide', machine ? 'decisions' : null, 'Les décisions proposées pour la machine : une fiche N1, un point N2, espacer une gamme'],
+    [5, 'Je fais', etape === 2 ? 'fiches' : parc ? `#/mn1/parc/${encodeURIComponent(parc.id)}` : null, 'Les fiches de niveau 1 du parc : créer la FI, imprimer'],
   ]
   return h('nav', { class: 'fil-etapes', 'aria-label': 'Étapes du plan de maintenance' }, ETAPES.map(([n, texte, cible, aide], i) => {
     const classe = `etape-fil${n === etape ? ' en-cours' : ''}${n < etape ? ' faite' : ''}${cible ? '' : ' muette'}`
     const contenu = [h('b', {}, String(n)), h('span', {}, texte)]
-    const lien = cible === 'fiches'
-      ? h('button', { class: classe, title: aide, onclick: () => document.querySelector('.carte-fiches-parc')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, contenu)
+    const descendre = { fiches: '.carte-fiches-parc', decisions: '.carte-decisions' }[cible]
+    const lien = descendre
+      ? h('button', { class: classe, title: aide, onclick: () => document.querySelector(descendre)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, contenu)
       : cible ? h('a', { class: classe, href: cible, title: aide }, contenu) : h('span', { class: classe, title: aide }, contenu)
     return [i ? h('span', { class: 'sep-fil', 'aria-hidden': 'true' }, '›') : null, lien]
   }))

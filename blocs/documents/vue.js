@@ -49,7 +49,7 @@ export default {
           vide: 'Aucun document. Déposez les notices, schémas, procédures, fiches techniques…',
           colonnes: [
             { titre: 'Nom', valeur: (d) => [h('a', { href: adresse(`/api/documents/${d.id}/fichier`), target: '_blank' }, d.nom), d.genre && d.genre !== 'document' ? [' ', h('span', { class: 'etiquette violet' }, d.genre === 'schema' ? 'Schéma' : 'Plan')] : null] },
-            { titre: 'Machine', valeur: (d) => (d.repere ? h('a', { href: `#/parc/${d.machine_id}`, class: 'mono' }, d.repere) : '') },
+            { titre: 'Machine', valeur: (d) => (d.repere ? h('a', { href: `#/analyse/${d.machine_id}`, class: 'mono' }, d.repere) : '') },
             { titre: 'État', valeur: (d) => h('span', { class: `etiquette ${ETATS[d.etat]?.[0] || ''}`, title: d.message }, ETATS[d.etat]?.[1] || d.etat) },
             { titre: 'Taille', classe: 'nombre', valeur: (d) => tailleFr(d.taille) },
             { titre: 'Ajouté', valeur: (d) => h('span', { class: 'texte-2' }, `${dateFr(d.ajoute_le)} ${d.ajoute_par ? '· ' + d.ajoute_par : ''}`) },

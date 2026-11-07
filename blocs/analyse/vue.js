@@ -12,7 +12,7 @@ import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres, FREQUENCE
 
 // Les fiches de niveau 1 sont dans PREVTEC quand il existe (menu.js) ; sinon dans AITEC.
 const lienMn1 = () => (appli === 'aitec' && window.aitecAvecPrevtec ? '/prevtec/#/mn1' : '#/mn1')
-// Dans PREVTEC, la fiche machine et l'assistant restent dans AITEC.
+// Dans PREVTEC, l'assistant reste dans AITEC.
 const versAitec = appli === 'prevtec' ? '/aitec/' : ''
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
@@ -22,7 +22,7 @@ export default {
   titre: 'Analyse d’une machine',
   icone: 'graphique',
   menu: false,
-  aide: 'tableau-de-bord',
+  aide: 'pannes',
 
   async afficher(zone, { id }) {
     const [d, parametres] = await Promise.all([api(`/api/analyse/${id}`), api('/api/mn1/parametres').catch(() => null)])
@@ -36,7 +36,6 @@ export default {
         h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
         h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono' }, m.repere), m.designation ? ` — ${m.designation}` : ''), h('p', { class: 'sous-titre' }, ['Fiche d’analyse', m.marque, m.modele, m.etat].filter(Boolean).join(' · '))),
         h('div', { class: 'actions' },
-          h('a', { class: 'bouton', href: `${versAitec}#/parc/${m.id}` }, ic('usine', 16), 'Fiche machine'),
           h('a', { class: 'bouton', href: `${versAitec}#/assistant?machine=${m.id}` }, ic('etincelle', 16), 'Demander à l’assistant'))),
 
       h('div', { class: 'grille grille-4', style: { marginBottom: '16px' } },

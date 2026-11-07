@@ -9,6 +9,7 @@
 import { h, vider, ic, essayer } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { modeAdmin } from '/socle/etat.js'
+import { lienMachine } from './prevtec.js'
 
 const SVG = 'http://www.w3.org/2000/svg'
 const s = (balise, attributs = {}, texte) => {
@@ -34,6 +35,7 @@ function zone({ correctifs, preventifs }, totaux, nombre) {
 
 // d : le détail du parc (pour son id). Renvoie l'élément ; les données se chargent à l'affichage.
 export function nuageEquilibre(d) {
+  parcCourant = d.parc.id
   const zoneNuage = h('div', { class: 'equilibre-mn1' }, h('p', { class: 'discret' }, 'Lecture des interventions…'))
   let donnees = null
   let mode = 'tout'
@@ -113,7 +115,8 @@ export function nuageEquilibre(d) {
 }
 
 // Un équipement à regarder : son repère (lien vers son analyse, s'il en a une), ses correctifs / préventifs.
-const lien = (e, contenu) => (e.analyse ? h('a', { href: `#/analyse/${e.analyse}` }, contenu) : contenu)
+let parcCourant = null // le parc du nuage affiché, pour les liens vers ses machines
+const lien = (e, contenu) => (e.analyse ? h('a', { href: lienMachine(parcCourant, e.analyse) }, contenu) : contenu)
 function puce(e) {
   return h('span', { class: `puce-equipement ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} correctif${e.correctifs > 1 ? 's' : ''}, ${e.preventifs} préventif${e.preventifs > 1 ? 's' : ''}` },
     lien(e, h('span', { class: 'mono' }, e.repere || '?')), h('small', {}, ` ${e.correctifs} / ${e.preventifs}`))
@@ -183,7 +186,7 @@ function graphique(liste, totaux) {
     const nommes = groupe.slice(0, 10).map((g) => `${g.repere}${g.designation ? ` · ${g.designation}` : ''}`).join('\n') + (groupe.length > 10 ? `\n… et ${groupe.length - 10} autres` : '')
     const detail = seul ? ` (niveau 1 : ${e.n1}, techniciens : ${e.techniciens})${e.systematiques ? `\n${pluriel(e.systematiques, 'systématique')} écarté${e.systematiques > 1 ? 's' : ''}` : ''}` : ''
     point.append(s('title', {}, `${seul ? '' : `${groupe.length} équipements\n`}${nommes}\n${pluriel(e.correctifs, 'correctif')}, ${pluriel(e.preventifs, 'préventif')} d’observation${detail}`))
-    if (seul && cible) point.addEventListener('click', () => { location.hash = `#/analyse/${cible.analyse}` })
+    if (seul && cible) point.addEventListener('click', () => { location.hash = lienMachine(parcCourant, cible.analyse) })
     svg.append(point)
     if (!seul) svg.append(s('text', { x: x(e.correctifs), y: y(e.preventifs) + 3.5, 'text-anchor': 'middle', class: 'nombre-bulle' }, String(groupe.length)))
   }

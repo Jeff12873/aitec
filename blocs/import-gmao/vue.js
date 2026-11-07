@@ -120,7 +120,7 @@ function afficherCorrespondance(zone, lecture, cibles, nomFichier) {
         ),
         bilan.erreurs.length ? h('div', { style: { marginTop: '16px' } }, h('h3', {}, 'Lignes non importées'), h('ul', { class: 'texte-2' }, bilan.erreurs.map((e) => h('li', {}, e)))) : null,
         h('p', { class: 'texte-2', style: { marginTop: '16px' } }, 'La correspondance des colonnes est retenue : le prochain export du même logiciel sera reconnu directement. L’IA prépare la recherche dans ces nouvelles données en arrière-plan.'),
-        h('div', { class: 'actions' }, h('a', { class: 'bouton', href: '#/tableau-de-bord' }, 'Voir le tableau de bord'), h('a', { class: 'bouton principal', href: '#/assistant' }, 'Poser une question à l’IA')),
+        h('div', { class: 'actions' }, h('a', { class: 'bouton principal', href: '#/assistant' }, 'Poser une question à l’IA')),
       ),
     )
   }

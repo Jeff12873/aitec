@@ -29,28 +29,29 @@ const JOURS = 365
 const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
 
 const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
-const texteSeul = (t) => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+export const texteSeul = (t) => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
 
 // La gamme d'une intervention : son titre, avant « - » (« Vérification du tunnel de rinçage - ras » → la 1re partie).
+// Un code d'équipement en tête (« 741.1 - Contrôle visu. - RAS ») est sauté, comme pour les pannes.
 export function gammeDe(description) {
-  const t = texteSeul(description)
+  const t = texteSeul(description).replace(/^[\d.]+\s*-\s*/, '').replace(/^(.{3,}?)\.(\s+-\s)/, '$1$2')
   const i = t.indexOf(' - ')
   return (i > 0 ? t.slice(0, i) : t).slice(0, 120).trim()
 }
-const cleDe = (gamme) => gamme.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+export const cleDe = (gamme) => gamme.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
 // Première idée sans IA : les mots du renouvellement à date fixe.
 const SYSTEMATIQUE = /\b(echange|echanger|remplac\w*|chang(?:er|ement)|vidange\w*|renouvel\w*|substitu\w*)\b/
 const devinee = (cle) => (SYSTEMATIQUE.test(cle) ? 'systematique' : 'observation')
 
 // { cle: { classe: 'observation' | 'systematique', par: 'ia' | 'admin', gamme } }
-const classement = () => reglageJson('mn1_gammes', {}) || {}
-const classeDe = (c, cle) => c[cle]?.classe || devinee(cle)
+export const classement = () => reglageJson('mn1_gammes', {}) || {}
+export const classeDe = (c, cle) => c[cle]?.classe || devinee(cle)
 
 // Les préventifs et correctifs des machines de maintenance d'un parc (12 mois).
-async function interventionsDuParc(parc) {
+export async function interventionsDuParc(parc) {
   const ids = new Set(parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines)
-  const lignes = db().prepare('SELECT machine_id, numero, type, description FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
+  const lignes = db().prepare('SELECT id, date, machine_id, numero, type, description FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
   // Le niveau 1 : les RI de la requête du site (si elle est réglée et la GMAO joignable), et les FI au modèle MN1.
   let riN1 = new Set()
   try {

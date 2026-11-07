@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.9.0",
+      "date": "2026-11-07",
+      "points": [
+        "AITEC en QCM : le dépannage commence par des questions à choix (la ligne, le sous-ensemble, ce qui se passe avec les pannes connues en premier, le domaine, la fréquence), puis chaque réponse de l'IA finit par une vérification et ses réponses en boutons",
+        "« C'est réparé » clôt un dépannage et propose de dire ce qui a marché, gardé comme savoir pour les collègues ; écrire reste possible à tout moment",
+        "AITEC : plus de tableau de bord au menu ni de fiche machine ; une machine s'ouvre sur son analyse",
+        "PREVTEC, étape 3 « Une machine » : le démonstrateur, ses pannes face à tous ses préventifs gamme par gamme (nature, niveau, passages, détection, pannes visées), avec les diagnostics pas de préventif, mauvais point contrôlé, préventif OK, sur-maintenance",
+        "Analyse lourde : l'IA rattache les gammes aux pannes et lit chaque RI préventive une fois (A rien trouvé, B anomalie corrigée, C anomalie laissée) pour le taux de détection",
+        "PREVTEC, étape 4 « Je décide » : une fiche N1 rédigée par l'IA, un point N2 à reporter dans la GMAO, ou espacer une gamme qui tourne à vide ; puis l'étape 5 sur la page du parc",
+        "PREVTEC : plus de pastilles de parc, le parc se choisit par sa vignette ; la gamme d'un préventif saute le code d'équipement en tête"
+      ]
+    },
+    {
       "version": "0.8.0",
       "date": "2026-11-07",
       "points": [

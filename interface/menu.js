@@ -1,5 +1,5 @@
 // Le menu d'AITEC, chargé par la coquille commune de KTEC (page /aitec/).
-// Seuls le tableau de bord, l'assistant, la maintenance de niveau 1 et l'administration sont au menu (menu: true) ; les autres écrans
+// Seuls l'assistant, la maintenance de niveau 1 (sans PREVTEC) et l'administration sont au menu (menu: true) ; les autres écrans
 // (dont les pannes connues) s'ouvrent depuis les sources citées par l'IA ou depuis l'administration.
 
 import { h, ic } from '/socle/ui.js'

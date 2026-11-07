@@ -15,6 +15,7 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
+import { demonstrateur, lireMachine, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -530,6 +531,15 @@ export function routes(r) {
   r.get('/api/mn1/parcs/:id/equilibre', (ctx) => equilibreDuParc(ctx.params.id))
   r.post('/api/mn1/parcs/:id/gammes', (ctx) => classerGammes(ctx.params.id))
   admin.post('/api/mn1/gammes', async (ctx) => corrigerGamme(await ctx.json()))
+
+  // PREVTEC, une machine : le démonstrateur (pannes × préventifs), sa lecture par l'IA, et les décisions.
+  r.get('/api/mn1/parcs/:id/machines/:machine', (ctx) => demonstrateur(ctx.params.id, ctx.params.machine))
+  r.post('/api/mn1/parcs/:id/machines/:machine/lire', (ctx) => lireMachine(ctx.params.id, ctx.params.machine))
+  r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
+  r.post('/api/mn1/parcs/:id/machines/:machine/n2', async (ctx) => {
+    const { panne = '', gamme = '' } = await ctx.json()
+    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(gamme))
+  })
 
   // Les réglages propres au parc (administrateur) : maximum par ETH, paramètres de ses FI.
   admin.get('/api/mn1/parcs/:id/reglages', (ctx) => {

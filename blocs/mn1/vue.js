@@ -16,6 +16,7 @@ import { avecParc, parcChoisi } from '../../interface/parcs.js'
 import { animer } from '../tableau-de-bord/vue.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
 import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
+import { afficherMachine } from '../../interface/prevtec-machine.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 let tri = 'nom'
@@ -45,8 +46,9 @@ export default {
   aide: 'maintenance-niveau-1',
 
   async afficher(zone, { id }) {
-    const [onglet, parc] = String(id || '').split('/')
+    const [onglet, parc, machine] = String(id || '').split('/')
     if (onglet === 'parc' && parc) return afficherParc(zone, decodeURIComponent(parc))
+    if (onglet === 'machine' && parc && machine) return afficherMachine(zone, decodeURIComponent(parc), machine)
     definirParametres(await api('/api/mn1/parametres').catch(() => null))
     const contenu = h('div')
     const admin = peutModifier()

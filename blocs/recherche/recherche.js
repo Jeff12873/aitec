@@ -166,8 +166,8 @@ export function decrirePassage(id) {
     lien = `/api/documents/${p.source_id}/fichier${p.page ? `#page=${p.page}` : ''}`
   } else if (p.source === 'machine') {
     const m = db().prepare('SELECT repere, designation FROM machines WHERE id = ?').get(p.source_id)
-    titre = `Fiche machine ${m?.repere || ''} — ${m?.designation || ''}`
-    lien = `#/parc/${p.source_id}`
+    titre = `Machine ${m?.repere || ''} — ${m?.designation || ''}`
+    lien = `#/analyse/${p.source_id}`
   } else if (p.source === 'intervention') {
     const i = db()
       .prepare('SELECT i.date, i.numero, i.intervenant, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id WHERE i.id = ?')

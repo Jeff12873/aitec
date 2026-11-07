@@ -4,17 +4,18 @@
 <script type="application/json" data-maquette>
 { "titre": "AITEC — Assistant de dépannage", "ratio": 58,
   "blocs": [
-    [0,0,17,100,"","menu"], [2,4,13,6,"AITEC","texte"], [2,16,13,5,"Tableau de bord","texte"], [2,23,13,5,"Assistant IA (Bêta)","accent"], [2,33,13,5,"Administration","texte"],
+    [0,0,17,100,"","menu"], [2,4,13,6,"AITEC","texte"], [2,16,13,5,"Assistant IA (Bêta)","accent"], [2,26,13,5,"Administration","texte"],
     [17,0,83,8,"","barre"], [19,2,30,5,"Recherche dans toute la base","champ"],
-    [19,12,79,10,"Machine concernée","champ"],
-    [19,25,79,48,"La réponse, avec ses sources","zone"],
+    [19,12,79,8,"Dépannage : sur quelle ligne ?","texte"],
+    [19,22,25,9,"Choix 1","bouton"], [46,22,25,9,"Choix 2","bouton"], [73,22,25,9,"Autre : je l'écris","bouton"],
+    [19,35,79,38,"Puis la réponse, avec ses sources, et la vérification suivante en boutons","zone"],
     [19,76,79,10,"Votre question","champ"],
     [19,89,30,6,"Ajouter un savoir","bouton"]
   ],
   "reperes": [
-    [9,26,"Le menu : l'assistant, le tableau de bord ; l'administration pour l'administrateur."],
+    [9,19,"Le menu : l'assistant ; l'administration pour l'administrateur."],
     [21,4,"La barre de recherche : cherche partout sans passer par l'IA."],
-    [21,15,"La machine concernée : l'assistant cherche d'abord dans son historique et ses documents."],
+    [21,26,"Le dépannage en QCM : la machine, ce qui se passe, le domaine, la fréquence, d'un clic."],
     [21,92,"Après un dépannage : transmettre ce qu'il faut savoir au prochain."]
   ] }
 </script>
@@ -22,8 +23,9 @@
 <h2>Pas à pas</h2>
 <ol>
 <li>Ouvrez AITEC depuis le portail.</li>
-<li><b>Assistant IA</b> : posez une question comme à un collègue (« le compresseur est en alarme température, que vérifier ? »).</li>
-<li><b>Tableau de bord</b> : la vue d'ensemble du parc.</li>
+<li><b>Assistant IA</b> : répondez aux questions d'un clic (la machine, ce qui se passe, le domaine, la fréquence). L'assistant propose ses pistes, puis une vérification à la fois, avec les réponses possibles en boutons.</li>
+<li>Quand c'est réparé : « C'est réparé », puis dites ce qui a marché. L'assistant le proposera au prochain qui aura la même panne.</li>
+<li>Une question d'information, ou une panne qui n'est pas dans la liste : « Autre : je l'écris ».</li>
 </ol>
 
 <h2 class="admin">Remplir la base</h2>

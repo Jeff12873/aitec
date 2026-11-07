@@ -1,5 +1,15 @@
 <h1>Assistant IA (Bêta)</h1>
-<p class="but">Une discussion avec l'IA du poste, qui cherche dans les documents, les fiches machines et l'historique des interventions, et répond en citant ses sources.</p>
+<p class="but">Un dépannage en QCM avec l'IA du poste : vous répondez d'un clic, elle cherche dans les documents, les pannes connues et l'historique des interventions, et vous guide vérification par vérification en citant ses sources.</p>
+
+<h2>Le QCM</h2>
+<ol>
+<li><b>Sur quelle ligne ?</b> puis le sous-ensemble : l'assistant cherchera d'abord dans leurs machines.</li>
+<li><b>Que se passe-t-il ?</b> : les pannes qui reviennent sur ce choix en premier, puis les symptômes courants.</li>
+<li><b>Plutôt de quel côté ?</b> et <b>à quelle fréquence ?</b> : « Je ne sais pas » est une bonne réponse.</li>
+<li>L'assistant donne ses pistes, puis <b>une vérification</b> et ses réponses en boutons (« Oui, allumé », « Non, éteint »…). Chaque réponse écarte ou confirme des pistes.</li>
+<li><b>C'est réparé</b> clôt le dépannage : dites ce qui a marché, c'est gardé comme savoir pour les collègues.</li>
+</ol>
+<p>Une réponse déjà donnée se change d'un clic dessus. Écrire reste possible à tout moment (« Autre : je l'écris », ou le champ du bas).</p>
 
 <script type="application/json" data-maquette>
 { "titre": "Assistant IA", "ratio": 50,
@@ -13,7 +23,7 @@
     [4,7,"Choisir la machine limite la recherche à ses documents, sa fiche et ses interventions."],
     [93,7,"Les consignes de l'assistant.", true],
     [4,20,"La réponse : des pistes, avec les sources numérotées (un clic ouvre le document à la bonne page)."],
-    [8,52,"Quand la question est vague, l'assistant pose des questions avec des réponses en boutons."],
+    [8,52,"Chaque réponse finit par une vérification, avec les réponses possibles en boutons."],
     [4,74,"La question, en français, comme à un collègue."],
     [40,7,"Ajouter un savoir : une expérience, un document ou une photo, avec les machines et qui le dit."]
   ] }

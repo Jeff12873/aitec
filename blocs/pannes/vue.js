@@ -99,7 +99,7 @@ function listePannes(fiches, filtre, viseeId) {
   return [...parEnsemble].map(([ensemble, machines]) => h('section', { class: 'ensemble-pannes' },
     h('h2', {}, ensemble || 'Sans sous-ensemble', h('span', { class: 'discret' }, ` · ${[...machines.values()].flat().length} pannes`)),
     [...machines.values()].map((liste) => h('div', { class: 'carte machine-pannes' },
-      h('div', { class: 'titre-machine-pannes' }, h('a', { href: `#/parc/${liste[0].machine_id}` }, h('b', { class: 'mono' }, liste[0].repere)), liste[0].designation ? h('span', { class: 'texte-2' }, ` — ${liste[0].designation}`) : null),
+      h('div', { class: 'titre-machine-pannes' }, h('a', { href: `#/analyse/${liste[0].machine_id}` }, h('b', { class: 'mono' }, liste[0].repere)), liste[0].designation ? h('span', { class: 'texte-2' }, ` — ${liste[0].designation}`) : null),
       liste.map((f) => fichePanne(f, String(f.id) === String(viseeId)))))))
 }
 

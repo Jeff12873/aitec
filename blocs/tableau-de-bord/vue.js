@@ -19,7 +19,7 @@ export default {
   parcs: true, // le choix du parc sous le titre
   titre: 'Tableau de bord',
   icone: 'tableau',
-  menu: true,
+  menu: false, // plus au menu : AITEC s'ouvre sur l'assistant
   aide: 'tableau-de-bord',
 
   // Le parc compté est celui du sélecteur, en haut d'AITEC.

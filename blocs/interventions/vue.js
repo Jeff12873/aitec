@@ -101,7 +101,7 @@ async function afficherFiche(zone, id) {
       'div',
       { class: 'carte' },
       h('div', { class: 'grille grille-4', style: { marginBottom: '18px' } },
-        info('Machine', i.repere ? h('a', { href: `#/parc/${i.machine_id}` }, `${i.repere} — ${i.machine}`) : ''),
+        info('Machine', i.repere ? h('a', { href: `#/analyse/${i.machine_id}` }, `${i.repere} — ${i.machine}`) : ''),
         info('Intervenant', i.intervenant), info('Durée', i.duree_h !== null ? `${nombreFr(i.duree_h, 2)} h` : ''), info('Statut', i.statut),
       ),
       h('h3', {}, 'Description'),

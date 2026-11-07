@@ -1,9 +1,8 @@
-// Le parc : liste des machines et fiche de chaque machine (ouverte depuis les sources de l'IA).
+// Le parc : la liste des machines (une machine s'ouvre sur son analyse, il n'y a plus de fiche machine).
 
-import { h, vider, ic, tableau, fenetre, formulaire, confirmer, essayer, dateFr, tailleFr, apresPause } from '/socle/ui.js'
-import { api, adresse } from '/socle/api.js'
+import { h, vider, ic, tableau, fenetre, formulaire, dateFr, apresPause } from '/socle/ui.js'
+import { api } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
-import { texteSeul } from '../interventions/vue.js'
 import { avecParc } from '../../interface/parcs.js'
 
 export const ETATS = ['En service', 'En panne', 'En réserve', 'Hors service', 'Réformée']
@@ -17,7 +16,8 @@ export default {
   aide: 'assistant',
 
   async afficher(zone, { id, query }) {
-    if (id) return afficherFiche(zone, id)
+    // Plus de fiche machine dans AITEC : une machine s'ouvre sur son analyse.
+    if (id) return location.replace(`#/analyse/${id}`)
 
     const [valeurs] = await Promise.all([api('/api/machines-valeurs')])
     const liste = h('div')
@@ -70,60 +70,6 @@ export function etiquetteEtat(etat) {
   return h('span', { class: `etiquette ${classe}` }, etat)
 }
 
-async function afficherFiche(zone, id) {
-  const [m, valeurs] = await Promise.all([api(`/api/machines/${id}`), api('/api/machines-valeurs')])
-  const info = (libelle, valeur) => (valeur ? h('div', {}, h('div', { class: 'discret', style: { fontSize: '13px' } }, libelle), h('div', {}, valeur)) : null)
-
-  vider(
-    zone,
-    h(
-      'div',
-      { class: 'entete-page' },
-      h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
-      h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono', style: { fontSize: '22px' } }, m.repere), ' — ', m.designation), h('p', { class: 'sous-titre' }, [m.famille, m.emplacement].filter(Boolean).join(' · '))),
-      etiquetteEtat(m.etat),
-      h('a', { class: 'bouton', href: `#/analyse/${m.id}`, title: 'Chiffres, pannes qui reviennent, résumé et conseils de l’IA, fiches de niveau 1' }, ic('graphique', 16), 'Analyse'),
-      h('a', { class: 'bouton principal', href: `#/assistant?machine=${m.id}` }, ic('etincelle', 16), "Demander à l'IA"),
-      peutModifier() ? h('button', { onclick: () => modifierMachine(m, valeurs) }, ic('crayon', 16), 'Modifier') : null,
-      peutModifier() ? h('button', { class: 'danger', onclick: () => supprimerMachine(m) }, ic('poubelle', 16)) : null,
-    ),
-    h(
-      'div',
-      { class: 'grille grille-2' },
-      h(
-        'div',
-        { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('usine', 18), 'Informations')),
-        h('div', { class: 'grille grille-2' }, info('Marque', m.marque), info('Modèle', m.modele), info('N° de série', m.numero_serie), info('Mise en service', dateFr(m.mise_en_service)), info('Emplacement', m.emplacement), info('Famille', m.famille)),
-        m.notes ? h('p', { class: 'texte-2', style: { marginTop: '14px', whiteSpace: 'pre-wrap' } }, m.notes) : null,
-      ),
-      h(
-        'div',
-        { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Documents'), peutModifier() ? h('a', { class: 'bouton petit', href: `#/administration/documents?machine=${m.id}` }, ic('plus', 14), 'Ajouter') : null),
-        m.documents.length
-          ? h('div', { class: 'legende' }, m.documents.map((d) => h('a', { href: adresse(`/api/documents/${d.id}/fichier`), target: '_blank', style: { display: 'flex', gap: '10px', alignItems: 'center', color: 'inherit' } }, ic('document', 16), h('span', { style: { flex: 1 } }, d.nom), h('span', { class: 'discret' }, tailleFr(d.taille)))))
-          : h('div', { class: 'vide' }, 'Aucun document pour cette machine. Déposez sa notice dans Documents.'),
-      ),
-      h(
-        'div',
-        { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('cle', 18), 'Interventions'), h('a', { class: 'bouton petit', href: `#/interventions?machine=${m.id}` }, 'Tout voir')),
-        tableau({
-          lignes: m.interventions.slice(0, 12),
-          surClic: (i) => (location.hash = `#/interventions/${i.id}`),
-          vide: 'Aucune intervention enregistrée.',
-          colonnes: [
-            { titre: 'Date', valeur: (i) => dateFr(i.date) },
-            { titre: 'Type', valeur: (i) => i.type },
-            { titre: 'Description', valeur: (i) => texteSeul(i.description) },
-          ],
-        }),
-      ),
-    ),
-  )
-}
-
 export async function modifierMachine(machine, valeurs) {
   const form = formulaire(
     [
@@ -158,9 +104,4 @@ export async function modifierMachine(machine, valeurs) {
       },
     ],
   })
-}
-
-async function supprimerMachine(m) {
-  if (!(await confirmer(`Supprimer la machine ${m.repere} ? Ses interventions et documents sont gardés, mais ne seront plus rattachés à une machine.`, { texte: 'Supprimer', danger: true }))) return
-  if (await essayer(() => api(`/api/machines/${m.id}`, { methode: 'DELETE' }), 'Machine supprimée')) history.back()
 }

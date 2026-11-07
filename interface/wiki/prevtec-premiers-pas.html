@@ -22,10 +22,26 @@
 <ol>
 <li><b>Mon parc</b> : la vignette de chaque parc donne le verdict de son plan (dans le bon sens, à surveiller, à réévaluer), ses pannes face aux 12 mois d'avant et son nombre de préventifs. Cliquez le vôtre.</li>
 <li><b>Son Pareto</b> : le verdict expliqué, puis les pannes qui reviennent, chacune avec sa tendance (monte, baisse, nouvelle) et les fiches qui la visent. La vue <b>Correctif × préventif</b> place chaque équipement selon ses pannes et son préventif.</li>
-<li><b>Une machine</b> : un clic sur une machine du Pareto ouvre son analyse (pannes, causes, préventif).</li>
-<li><b>Je décide</b> : proposer une fiche de niveau 1 pour une panne non couverte, espacer une fiche sans cible.</li>
-<li><b>Je fais</b> : créer la FI dans la GMAO (simulée d'abord), imprimer la fiche pliée en carte A6.</li>
+<li><b>Une machine</b> : un clic sur une machine du Pareto (ou du nuage) ouvre son démonstrateur : ses pannes face à <b>tous</b> ses préventifs.</li>
+<li><b>Je décide</b> : en bas de la page de la machine, une décision par panne mal couverte ou par gamme qui tourne à vide.</li>
+<li><b>Je fais</b> : sur la page du parc, créer la FI dans la GMAO (simulée d'abord), imprimer la fiche pliée en carte A6.</li>
 </ol>
+<p>Le parc se choisit seulement par sa vignette : pas de pastilles de parc dans PREVTEC.</p>
+
+<h2>Le démonstrateur d'une machine</h2>
+<ul>
+<li><b>Ses pannes</b> : chacune avec son évolution, le préventif qui la regarde (gammes des techniciens, fiches de niveau 1) et son diagnostic :
+  <b>pas de préventif</b>, <b>mauvais point contrôlé</b> (la panne monte malgré le préventif, ou les passages n'ont jamais rien trouvé), <b>préventif OK</b>.</li>
+<li><b>Tous ses préventifs</b>, gamme par gamme : observation ou systématique, niveau 1 ou techniciens, passages, dernier passage, taux de détection, pannes visées. Une gamme qui passe souvent sans rien trouver ni viser de panne : <b>sur-maintenance ?</b> Une gamme faite une ou deux fois (chantier, réception) : <b>ponctuel</b>.</li>
+<li><b>Lire les RI par l'IA</b> : l'IA dit quelle gamme regarde quelle panne, et lit chaque rapport préventif une fois : A rien trouvé, B anomalie corrigée, C anomalie laissée. Le taux de détection = (B + C) / RI lues. Sans cette lecture, le rattachement se fait par les mots communs, en première idée.</li>
+</ul>
+
+<h2>Je décide</h2>
+<ul>
+<li><b>Pas de préventif</b> : « Fiche N1 (opérateur) », un brouillon rédigé par l'IA à relire puis enregistrer dans le parc ; ou « Point N2 (technicien) », à copier dans la GMAO.</li>
+<li><b>Mauvais point contrôlé</b> : « Revoir le point (N2) », ou ajouter une fiche N1.</li>
+<li><b>Sur-maintenance</b> : « Espacer », une proposition à copier.</li>
+</ul>
 
 <h2>Le verdict d'un parc</h2>
 <ul>
