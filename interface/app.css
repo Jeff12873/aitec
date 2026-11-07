@@ -567,11 +567,11 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .semaine-cal b { font-size: 11.5px; line-height: 1.2; font-family: var(--mono); }
 .semaine-cal:not(:disabled):hover { transform: translateY(-1px); border-color: color-mix(in srgb, #2dd4bf 55%, transparent); }
 .semaine-cal:disabled { cursor: default; }
-.semaine-cal.equipes-1 { background: color-mix(in srgb, #2dd4bf 14%, transparent); }
-.semaine-cal.equipes-2 { background: color-mix(in srgb, #2dd4bf 28%, transparent); }
-.semaine-cal.equipes-3 { background: color-mix(in srgb, #2dd4bf 46%, transparent); }
-.semaine-cal.equipes-3 b { color: #f2fffb; }
-.semaine-cal.defaut { opacity: .55; }
+.semaine-cal.equipes-1, .semaine-cal.equipes-2, .semaine-cal.equipes-3 { background: var(--fond); }
+.semaine-compacte.equipes-1, .semaine-compacte.equipes-2, .semaine-compacte.equipes-3 { background: var(--fond); }
+.semaine-cal b, .semaine-compacte b { color: #f2fffb; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.lettre-equipe { font-weight: 600; }
+.semaine-cal.defaut { opacity: .8; }
 .semaine-cal.exclue { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--texte-3) 18%, transparent) 0 4px, transparent 4px 8px); color: var(--texte-3); opacity: 1; }
 .semaine-cal.courante { border-color: #2dd4bf; }
 .legende-calendrier { margin: 10px 0 0; font-size: 11.5px; color: var(--texte-3); line-height: 1.5; }
@@ -727,7 +727,9 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .zone-hof-ligne:empty { display: none; }
 .zone-hof-ligne { margin-bottom: 14px; }
 .hof-vide { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
-.tuiles-ligne { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.bloc-tuiles-ligne { margin-bottom: 16px; }
+.periode-tuiles { margin: 0 0 8px; font-size: 12.5px; }
+.tuiles-ligne { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 .tuile-ligne { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--bord); background: var(--carte); }
 .titre-tuile { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--texte-3); }
 .valeur-tuile { display: flex; align-items: baseline; gap: 8px; }
@@ -739,7 +741,7 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .sens-tuile.rouge { color: var(--rouge); }
 .machines-tuile { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; }
 .machines-tuile small { color: var(--texte-3); }
-.tuiles-ligne .hors-convention { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; }
+.bloc-tuiles-ligne .hors-convention { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 12.5px; }
 .concentration-vignette { display: block; margin-top: 6px; }
 @media (max-width: 760px) { .haut-ligne { grid-template-columns: 1fr; } .semaines-compactes { grid-template-columns: repeat(6, 1fr); } .courbe-tete { display: none; } }
 

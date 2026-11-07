@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.10.1",
+      "date": "2026-11-07",
+      "points": [
+        "Calendrier des équipes en couleurs : A (matin) bleu, B (après-midi) vert, C (nuit) violet ; plusieurs équipes en dégradé (AB du bleu au vert)",
+        "Calendrier : un clic change la semaine au relâcher ; cliquer-glisser recopie la valeur de la première semaine sans la changer",
+        "« Ma ligne » : les indicateurs se lisent en phrases (« 917 pannes, contre 958 l'année d'avant (−4 %) »), avec la période écrite au-dessus"
+      ]
+    },
+    {
       "version": "0.10.0",
       "date": "2026-11-07",
       "points": [

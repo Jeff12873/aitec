@@ -65,26 +65,33 @@ export function evolutionPanne(p) {
 }
 
 // Les indicateurs de « Ma ligne » : pannes et heures de dépannage, part du préventif, concentration des pannes,
-// sur les 12 derniers mois terminés face aux 12 d'avant.
+// sur les 12 derniers mois terminés face aux 12 d'avant. Chaque tuile se lit en phrase, sans question à se poser.
 export function tuilesLigne(i, parc) {
   if (!i) return null
   const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
+  const ecart = (r, p) => (p ? ` (${r >= p ? '+' : '−'}${Math.abs(Math.round(((r - p) / p) * 100))} %)` : '')
   const sens = (r, p, bon = 'baisse') => {
     if (r === null || p === null || r === undefined || p === undefined || r === p) return h('span', { class: 'sens-tuile' }, '=')
     const monte = r > p
-    return h('span', { class: `sens-tuile ${(monte ? 'hausse' : 'baisse') === bon ? 'vert' : 'rouge'}` }, monte ? '↑' : '↓')
+    return h('span', { class: `sens-tuile ${(monte ? 'hausse' : 'baisse') === bon ? 'vert' : 'rouge'}`, title: (monte ? 'hausse' : 'baisse') === bon ? 'dans le bon sens' : 'dans le mauvais sens' }, monte ? '↑' : '↓')
   }
-  const tuile = (titre, valeur, fleche, detail, aide = '') => h('div', { class: 'tuile-ligne', title: aide }, h('span', { class: 'titre-tuile' }, titre), h('div', { class: 'valeur-tuile' }, h('b', {}, valeur), fleche), h('small', {}, detail))
+  const tuile = (titre, valeur, fleche, ...lignes) => h('div', { class: 'tuile-ligne' }, h('span', { class: 'titre-tuile' }, titre), h('div', { class: 'valeur-tuile' }, h('b', {}, valeur), fleche), lignes.filter(Boolean).map((l) => h('small', {}, l)))
+  // La période, dite une fois : les 12 derniers mois terminés.
+  const mois = (decalage) => new Date(new Date().getFullYear(), new Date().getMonth() - decalage, 1).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
   const hr = i.heures.recent
+  const hp = i.heures.precedent
   const c = i.concentration
-  return h('div', { class: 'tuiles-ligne' },
-    tuile('Pannes', nombreFr(i.pannes.recent), sens(i.pannes.recent, i.pannes.precedent), `avant : ${nombreFr(i.pannes.precedent)}`, 'Correctifs des 12 derniers mois terminés, face aux 12 mois d’avant'),
-    tuile('Heures de dépannage', `${nombreFr(hr.total)} h`, sens(hr.total, i.heures.precedent.total), hr.connues !== null && hr.connues < 0.95 ? `durée connue pour ${pct(hr.connues)} des pannes` : `avant : ${nombreFr(i.heures.precedent.total)} h`, 'Somme des durées notées sur les correctifs'),
-    tuile('Part du préventif', pct(i.preventif.recent), sens(i.preventif.recent, i.preventif.precedent, 'hausse'), i.preventif.observation !== null ? `dont ${pct(i.preventif.observation)} d’observation` : `avant : ${pct(i.preventif.precedent)}`, 'Visites du plan / (visites + pannes). Observation : on regarde l’état ; le reste renouvelle à date fixe'),
-    c.machines.length ? h('div', { class: 'tuile-ligne concentration', title: 'Les 3 machines qui font le plus de pannes, et leur part des pannes de la ligne' },
-      h('span', { class: 'titre-tuile' }, 'Concentration des pannes'),
-      h('div', { class: 'valeur-tuile' }, h('b', {}, `${c.machines.length} machines = ${pct(c.part)}`)),
-      h('div', { class: 'machines-tuile' }, c.machines.map((m) => h('a', { href: lienMachine(parc.id, m.id), title: `${m.designation || ''} — ${m.n} pannes : ouvrir l’étape 3` }, h('span', { class: 'mono' }, m.repere || '?'), h('small', {}, ` ${m.n}`))))) : null,
-    i.conventionReglee && i.horsConvention ? h('p', { class: 'hors-convention discret' }, ic('alerte', 13), `${nombreFr(i.horsConvention)} interventions préventives hors convention (sans code reconnu en tête du titre) : non comptées dans le plan.`) : null,
-    !i.conventionReglee ? h('p', { class: 'hors-convention discret' }, ic('reglages', 13), 'Réglez « Comment reconnaître les préventifs » (Administration › Lignes) : tant qu’il ne l’est pas, tout le préventif compte.') : null)
+  return h('div', { class: 'bloc-tuiles-ligne' },
+    h('p', { class: 'periode-tuiles discret' }, `Sur les 12 derniers mois terminés (${mois(12)} → ${mois(1)}), comparés aux 12 mois d’avant. Flèche verte : dans le bon sens.`),
+    h('div', { class: 'tuiles-ligne' },
+      tuile('Pannes', nombreFr(i.pannes.recent), sens(i.pannes.recent, i.pannes.precedent), `contre ${nombreFr(i.pannes.precedent)} l’année d’avant${ecart(i.pannes.recent, i.pannes.precedent)}`),
+      tuile('Temps passé à dépanner', `${nombreFr(hr.total)} h`, sens(hr.total, hp.total), `contre ${nombreFr(hp.total)} h l’année d’avant${ecart(hr.total, hp.total)}`, hr.connues !== null && hr.connues < 0.95 ? `durée notée sur ${pct(hr.connues)} des pannes seulement` : null),
+      tuile('Part du préventif', pct(i.preventif.recent), sens(i.preventif.recent, i.preventif.precedent, 'hausse'), `des interventions sont des visites (contre ${pct(i.preventif.precedent)} l’année d’avant)`, i.preventif.observation !== null ? `dont ${pct(i.preventif.observation)} de contrôles, le reste en remplacements à date fixe` : null),
+      c.machines.length ? h('div', { class: 'tuile-ligne concentration' },
+        h('span', { class: 'titre-tuile' }, 'Où sont les pannes'),
+        h('div', { class: 'valeur-tuile' }, h('b', {}, pct(c.part))),
+        h('small', {}, `des pannes viennent de ${c.machines.length} machines :`),
+        h('div', { class: 'machines-tuile' }, c.machines.map((m) => h('a', { href: lienMachine(parc.id, m.id), title: `${m.designation || ''} : ouvrir l’étape 3` }, h('span', { class: 'mono' }, m.repere || '?'), h('small', {}, ` ${m.n} pannes`))))) : null),
+    i.conventionReglee && i.horsConvention ? h('p', { class: 'hors-convention discret' }, ic('alerte', 13), `${nombreFr(i.horsConvention)} interventions préventives n’ont pas de code reconnu en tête du titre : elles ne comptent pas dans le plan.`) : null,
+    !i.conventionReglee ? h('p', { class: 'hors-convention discret' }, ic('reglages', 13), 'Les préventifs ne sont pas encore reconnus par leur code (Administration › Lignes) : en attendant, tout le préventif compte.') : null)
 }

@@ -240,6 +240,15 @@ const semaineCourante = () => {
   return `${jeudi.getUTCFullYear()}-${1 + Math.round(((jeudi - premierJeudi) / 86_400_000 - 3 + ((premierJeudi.getUTCDay() + 6) % 7)) / 7)}`
 }
 const teinte = (r) => (r === 'X' ? 'exclue' : `equipes-${r.length}`)
+// La couleur d'une semaine : A (matin) bleu, B (après-midi) vert, C (nuit) violet ; plusieurs équipes : le dégradé
+// de leurs couleurs (AB du bleu au vert). Semaine exclue : rayée, sans couleur.
+const COULEURS_EQUIPES = { A: '#38bdf8', B: '#22c55e', C: '#a78bfa' }
+const fondRegime = (r) => {
+  if (!r || r === 'X') return ''
+  const couleurs = [...r].map((l) => `color-mix(in srgb, ${COULEURS_EQUIPES[l] || '#2dd4bf'} 58%, transparent)`)
+  return couleurs.length === 1 ? couleurs[0] : `linear-gradient(135deg, ${couleurs.map((c, i) => `${c} ${Math.round((i * 100) / (couleurs.length - 1))}%`).join(', ')})`
+}
+const lettreColoree = (l, texte) => h('span', { class: 'lettre-equipe', style: { color: COULEURS_EQUIPES[l] } }, texte)
 
 // PREVTEC, « Ma ligne » : le calendrier des équipes en petit, la semaine en cours et les 5 suivantes ; un clic
 // ouvre le calendrier complet (l'administrateur y change les semaines).
@@ -255,7 +264,7 @@ export function calendrierCompact(parc, admin) {
     const semaines = []
     for (let k = 0, a = a0, s = s0; k < 6; k++) {
       const regime = cal.semaines[`${a}-${s}`] || cal.defaut
-      semaines.push(h('span', { class: `semaine-compacte ${teinte(regime)}${k ? '' : ' courante'}`, title: `S${s} ${a} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}` }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
+      semaines.push(h('span', { class: `semaine-compacte ${teinte(regime)}${k ? '' : ' courante'}`, style: { '--fond': fondRegime(regime) }, title: `S${s} ${a} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}` }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
       if (++s > semainesDeLAnnee(a)) { s = 1; a++ }
     }
     vider(zone, h('span', { class: 'tete-compact' }, ic('calendrier', 14), 'Équipes', h('small', { class: 'discret' }, ' · cette semaine et les suivantes')), h('span', { class: 'semaines-compactes' }, semaines))
@@ -285,6 +294,7 @@ export function encartCalendrier(parc, admin) {
     if (!bouton) return
     const regime = valeur || cal.defaut
     bouton.className = `semaine-cal ${teinte(regime)}${valeur ? '' : ' defaut'}${cle === semaineCourante() ? ' courante' : ''}`
+    bouton.style.setProperty('--fond', fondRegime(regime))
     bouton.querySelector('b').textContent = regime === 'X' ? '✕' : regime
   }
   const relacher = () => {
@@ -308,6 +318,7 @@ export function encartCalendrier(parc, admin) {
       cases.push(h('button', {
         type: 'button',
         class: `semaine-cal ${teinte(regime)}${propre ? '' : ' defaut'}${cle === courante ? ' courante' : ''}`,
+        style: { '--fond': fondRegime(regime) },
         disabled: !admin,
         'data-s': String(s),
         title: `S${s} ${annee} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}${propre ? '' : ' — régime par défaut'}`,
@@ -344,7 +355,7 @@ export function encartCalendrier(parc, admin) {
           h('button', { class: 'discret icone-seule petit', title: 'Année suivante', onclick: () => { annee++; dessiner() } }, '›'))),
       h('div', { class: 'defaut-calendrier' }, h('span', { class: 'discret' }, 'Par défaut'), defaut),
       h('div', { class: 'grille-calendrier' }, cases),
-      h('p', { class: 'legende-calendrier' }, 'A matin · B après-midi · C nuit · ✕ exclue', admin ? h('br') : null, admin ? 'Clic : changer · clic gardé en glissant : la même valeur sur plusieurs semaines · Maj + clic : recopier jusqu’ici' : null))
+      h('p', { class: 'legende-calendrier' }, lettreColoree('A', 'A matin'), ' · ', lettreColoree('B', 'B après-midi'), ' · ', lettreColoree('C', 'C nuit'), ' · ✕ exclue', admin ? h('br') : null, admin ? 'Clic : changer · clic gardé en glissant : la même valeur sur plusieurs semaines · Maj + clic : recopier jusqu’ici' : null))
   }
   api(`/api/mn1/calendrier/${encodeURIComponent(parc.id)}`).then((c) => { cal = c; dessiner() }).catch(() => vider(zone))
   return zone
