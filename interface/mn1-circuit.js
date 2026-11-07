@@ -242,10 +242,10 @@ const semaineCourante = () => {
 const teinte = (r) => (r === 'X' ? 'exclue' : `equipes-${r.length}`)
 // La couleur d'une semaine : A (matin) bleu, B (après-midi) vert, C (nuit) violet ; plusieurs équipes : le dégradé
 // de leurs couleurs (AB du bleu au vert). Semaine exclue : rayée, sans couleur.
-const COULEURS_EQUIPES = { A: '#38bdf8', B: '#22c55e', C: '#a78bfa' }
+const COULEURS_EQUIPES = { A: '#6fa3c7', B: '#73b08a', C: '#9c8fc4' }
 const fondRegime = (r) => {
   if (!r || r === 'X') return ''
-  const couleurs = [...r].map((l) => `color-mix(in srgb, ${COULEURS_EQUIPES[l] || '#2dd4bf'} 58%, transparent)`)
+  const couleurs = [...r].map((l) => `color-mix(in srgb, ${COULEURS_EQUIPES[l] || '#2dd4bf'} 42%, transparent)`)
   return couleurs.length === 1 ? couleurs[0] : `linear-gradient(135deg, ${couleurs.map((c, i) => `${c} ${Math.round((i * 100) / (couleurs.length - 1))}%`).join(', ')})`
 }
 const lettreColoree = (l, texte) => h('span', { class: 'lettre-equipe', style: { color: COULEURS_EQUIPES[l] } }, texte)

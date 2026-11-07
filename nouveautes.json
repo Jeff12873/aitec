@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.10.2",
+      "date": "2026-11-07",
+      "points": [
+        "Calendrier des équipes : couleurs plus douces (bleu, vert, violet désaturés)"
+      ]
+    },
+    {
       "version": "0.10.1",
       "date": "2026-11-07",
       "points": [
