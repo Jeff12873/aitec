@@ -78,6 +78,7 @@ export function tuilesLigne(i, parc) {
   const tuile = (titre, valeur, fleche, ...lignes) => h('div', { class: 'tuile-ligne' }, h('span', { class: 'titre-tuile' }, titre), h('div', { class: 'valeur-tuile' }, h('b', {}, valeur), fleche), lignes.filter(Boolean).map((l) => h('small', {}, l)))
   // La période, dite une fois : les 12 derniers mois terminés.
   const mois = (decalage) => new Date(new Date().getFullYear(), new Date().getMonth() - decalage, 1).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+  const virgule = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR')
   const hr = i.heures.recent
   const hp = i.heures.precedent
   const c = i.concentration
@@ -87,6 +88,9 @@ export function tuilesLigne(i, parc) {
       tuile('Pannes · sur 12 mois', nombreFr(i.pannes.recent), sens(i.pannes.recent, i.pannes.precedent), `pannes, contre ${nombreFr(i.pannes.precedent)} sur les 12 mois d’avant${ecart(i.pannes.recent, i.pannes.precedent)}`),
       tuile('Temps passé à dépanner · sur 12 mois', `${nombreFr(hr.total)} h`, sens(hr.total, hp.total), `d’intervention, contre ${nombreFr(hp.total)} h sur les 12 mois d’avant${ecart(hr.total, hp.total)}`, hr.connues !== null && hr.connues < 0.95 ? `durée notée sur ${pct(hr.connues)} des pannes seulement` : null),
       tuile('Part du préventif · sur 12 mois', pct(i.preventif.recent), sens(i.preventif.recent, i.preventif.precedent, 'hausse'), `des interventions sont des visites, contre ${pct(i.preventif.precedent)} sur les 12 mois d’avant`, i.preventif.observation !== null ? `dont ${pct(i.preventif.observation)} de contrôles, le reste en remplacements à date fixe` : null),
+      i.tmcd?.recent !== null && i.tmcd?.recent !== undefined ? tuile('Dépanneurs par panne · sur 12 mois', virgule(i.tmcd.recent), sens(Math.round(i.tmcd.recent * 10), i.tmcd.precedent === null ? null : Math.round(i.tmcd.precedent * 10)),
+        `en moyenne sur une panne (TMCD), contre ${i.tmcd.precedent === null ? '—' : virgule(i.tmcd.precedent)} sur les 12 mois d’avant`,
+        i.tmcd.nouveaux ? `${i.tmcd.nouveaux} dépanneur${i.tmcd.nouveaux > 1 ? 's' : ''} sur ${i.tmcd.depanneurs} n’avai${i.tmcd.nouveaux > 1 ? 'ent' : 't'} pas dépanné ici l’année d’avant` : null) : null,
       c.machines.length ? h('div', { class: 'tuile-ligne concentration' },
         h('span', { class: 'titre-tuile' }, 'Où sont les pannes · sur 12 mois'),
         h('div', { class: 'valeur-tuile' }, h('b', {}, pct(c.part))),

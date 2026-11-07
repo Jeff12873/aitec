@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.11.0",
+      "date": "2026-11-07",
+      "points": [
+        "Correctif × préventif devient un tableau en grosses cases : les pannes en hauteur, les visites en largeur, par tranches ; d'abord les ETH de la ligne, un clic zoome sur les machines d'une ETH (flèche de retour), un clic sur une machine ouvre l'étape 3",
+        "Nouvel indicateur humain sur « Ma ligne » : dépanneurs par panne (TMCD), face aux 12 mois d'avant, avec le nombre de dépanneurs nouveaux sur la ligne"
+      ]
+    },
+    {
       "version": "0.10.4",
       "date": "2026-11-07",
       "points": [

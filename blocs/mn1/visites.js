@@ -85,17 +85,19 @@ export async function apercuConvention() {
 // ---------------------------------------------------------------- l'arborescence d'un parc
 
 // Pour chaque machine d'AITEC sous les racines de maintenance du parc : { niveau, machine (id de son nœud de
-// niveau 3, ou elle-même au-dessus) }. Machines rangées par leur repère (= code du nœud).
+// niveau 3, ou elle-même au-dessus), eth ({ id, code, libelle } du nœud de niveau 2 qui la porte) }. Machines
+// rangées par leur repère (= code du nœud).
 export function placesDuParc(p, parc) {
   const parRepere = new Map(db().prepare('SELECT id, repere FROM machines').all().map((m) => [m.repere, m.id]))
   const places = new Map()
-  const parcourir = (n, niveau, machine3) => {
+  const parcourir = (n, niveau, machine3, eth) => {
     const id = parRepere.get(n.code) ?? null
     const porteuse = niveau === NIVEAU_MACHINE ? id : machine3
-    if (id !== null && !places.has(id)) places.set(id, { niveau, machine: niveau <= NIVEAU_MACHINE ? id : porteuse ?? id })
-    n.enfants.forEach((e) => parcourir(e, niveau + 1, porteuse))
+    const sonEth = niveau === 2 ? { id: n.id, code: n.code, libelle: n.desi && n.desi !== n.code ? `${n.code} (${n.desi})` : n.code } : eth
+    if (id !== null && !places.has(id)) places.set(id, { niveau, machine: niveau <= NIVEAU_MACHINE ? id : porteuse ?? id, eth: sonEth })
+    n.enfants.forEach((e) => parcourir(e, niveau + 1, porteuse, sonEth))
   }
-  for (const r of p.racines.filter((x) => parc.maintenance.includes(x.id))) parcourir(r.noeud, 1, null)
+  for (const r of p.racines.filter((x) => parc.maintenance.includes(x.id))) parcourir(r.noeud, 1, null, null)
   return places
 }
 
@@ -111,7 +113,7 @@ export async function visitesDuParc(parcId) {
   const ids = parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines
   const places = placesDuParc(p, parc)
   const depuis = ilYa(365)
-  const lignes = db().prepare('SELECT id, date, machine_id, type, description, duree_h FROM interventions WHERE date >= ?').all(ilYa(730)).filter((l) => ids.has(l.machine_id))
+  const lignes = db().prepare('SELECT id, date, machine_id, type, description, duree_h, intervenant FROM interventions WHERE date >= ?').all(ilYa(730)).filter((l) => ids.has(l.machine_id))
   const visites = []
   let horsConvention = 0
   for (const l of lignes) {
@@ -162,6 +164,27 @@ export async function bilanLigne(parcId, liste, { classeDe } = {}) {
     return { total: Math.round(avec.reduce((s, l) => s + Number(l.duree_h), 0)), connues: du.length ? avec.length / du.length : null }
   }
   const part = (p, c) => (p + c ? p / (p + c) : null)
+  // Le TMCD : le nombre moyen de dépanneurs sur une panne (« NOM, PRÉNOM, NOM, PRÉNOM » : deux morceaux par
+  // personne). Il monte quand les dépanneurs sont moins expérimentés (beaucoup de nouveaux), ce qui pèse sur le
+  // MTTR et le MTBF. Les nouveaux : dépanneurs de la période absents de la période d'avant.
+  const personnes = (texte) => {
+    const parties = String(texte || '').split(/\s*,\s*/).filter(Boolean)
+    return parties.length >= 2 && parties.length % 2 === 0 ? parties.reduce((acc, x, i) => (i % 2 ? acc : [...acc, `${x}, ${parties[i + 1]}`]), []) : parties.length ? [parties.join(', ')] : []
+  }
+  const equipe = (a, b) => {
+    const du = correctifs.filter((l) => dans(l, a, b) && String(l.intervenant || '').trim())
+    const noms = new Set()
+    let total = 0
+    for (const l of du) {
+      const ps = personnes(l.intervenant)
+      total += ps.length
+      ps.forEach((x) => noms.add(x))
+    }
+    return { moyenne: du.length ? total / du.length : null, noms }
+  }
+  const equipeRecente = equipe(milieu, fin)
+  const equipeAvant = equipe(debut, milieu)
+  const tmcd = { recent: equipeRecente.moyenne, precedent: equipeAvant.moyenne, depanneurs: equipeRecente.noms.size, nouveaux: [...equipeRecente.noms].filter((x) => !equipeAvant.noms.has(x)).length }
   const recentes = v.visites.filter((l) => dans(l, milieu, fin))
   const observation = classeDe && recentes.length ? recentes.filter((l) => classeDe(l.description) !== 'systematique').length / recentes.length : null
   // Les machines qui concentrent les pannes (remontées à leur machine de niveau 3).
@@ -175,6 +198,7 @@ export async function bilanLigne(parcId, liste, { classeDe } = {}) {
   const indicateurs = {
     pannes, heures: { recent: heures(milieu, fin), precedent: heures(debut, milieu) },
     preventif: { recent: part(preventifs.recent, pannes.recent), precedent: part(preventifs.precedent, pannes.precedent), observation },
+    tmcd,
     concentration: { machines: top, part: pannes.recent ? top.reduce((s, x) => s + x.n, 0) / pannes.recent : null },
     horsConvention: v.horsConvention, conventionReglee: v.reglee,
   }

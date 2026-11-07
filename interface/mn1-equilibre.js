@@ -1,5 +1,5 @@
-// Le nuage correctif × préventif d'un parc (fiche MN1, à côté du Pareto) : un point par équipement, ses correctifs
-// en abscisse et son préventif d'observation en ordonnée, sur 12 mois.
+// Le tableau correctif × préventif d'une ligne (à côté du Pareto), en grosses cases : les pannes en hauteur, les
+// visites d'observation en largeur, sur 12 mois. D'abord les ETH de la ligne ; un clic zoome sur les machines d'une ETH.
 //   rouge  : beaucoup de pannes, peu de préventif (sous-entretien) ;
 //   orange : beaucoup de préventif, peu de pannes (sur-entretien possible) ;
 //   vert   : équilibré.
@@ -10,14 +10,6 @@ import { h, vider, ic, essayer } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { modeAdmin } from '/socle/etat.js'
 import { lienMachine } from './prevtec.js'
-
-const SVG = 'http://www.w3.org/2000/svg'
-const s = (balise, attributs = {}, texte) => {
-  const e = document.createElementNS(SVG, balise)
-  for (const [k, v] of Object.entries(attributs)) e.setAttribute(k, v)
-  if (texte !== undefined) e.textContent = texte
-  return e
-}
 
 const ECART = 2 // même règle que le serveur (equilibre.js, zone)
 const MODES = [['tout', 'Tout', 'Le préventif de niveau 1 et celui des techniciens'], ['n1', 'Niveau 1', 'Les RI de niveau 1 (conducteurs, fiches MN1)'], ['techniciens', 'Techniciens', 'Le préventif des techniciens, hors niveau 1']]
@@ -39,6 +31,7 @@ export function nuageEquilibre(d) {
   const zoneNuage = h('div', { class: 'equilibre-mn1' }, h('p', { class: 'discret' }, 'Lecture des interventions…'))
   let donnees = null
   let mode = 'tout'
+  let ethChoisi = null // null : les ETH de la ligne ; sinon l'id de l'ETH dont on voit les machines
 
   const charger = async () => {
     donnees = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/equilibre`))
@@ -47,7 +40,24 @@ export function nuageEquilibre(d) {
   }
 
   const dessiner = () => {
-    const liste = donnees.equipements.map((e) => ({ ...e, preventifs: preventifsDe(e, mode) })).filter((e) => e.correctifs || e.preventifs)
+    const tous = donnees.equipements.map((e) => ({ ...e, preventifs: preventifsDe(e, mode) })).filter((e) => e.correctifs || e.preventifs)
+    // Deux niveaux : les ETH de la ligne, puis (clic) les machines d'un ETH, sous-ensembles regroupés.
+    const regrouper = (equipements, cle, decrire) => {
+      const groupes = new Map()
+      for (const e of equipements) {
+        const k = cle(e)
+        const g = groupes.get(k) || { ...decrire(e), correctifs: 0, preventifs: 0, equipements: 0 }
+        g.correctifs += e.correctifs
+        g.preventifs += e.preventifs
+        g.equipements++
+        groupes.set(k, g)
+      }
+      return [...groupes.values()]
+    }
+    const eth = tous.find((e) => (e.eth?.id || '') === ethChoisi)?.eth
+    const liste = ethChoisi === null
+      ? regrouper(tous, (e) => e.eth?.id || '', (e) => ({ type: 'eth', id: e.eth?.id || '', repere: e.eth?.code || 'Hors ETH', designation: e.eth?.libelle || 'Équipements rangés hors des ETH' }))
+      : regrouper(tous.filter((e) => (e.eth?.id || '') === ethChoisi), (e) => e.machine.id, (e) => ({ type: 'machine', id: e.machine.id, repere: e.machine.repere || e.repere, designation: e.machine.designation || e.designation, analyse: e.machine.id }))
     const totaux = { correctifs: liste.reduce((t, e) => t + e.correctifs, 0), preventifs: liste.reduce((t, e) => t + e.preventifs, 0) }
     for (const e of liste) e.zone = zone(e, totaux, liste.length)
     const compte = (z) => liste.filter((e) => e.zone === z).length
@@ -72,10 +82,11 @@ export function nuageEquilibre(d) {
           h('span', { class: 'pastille-zone rouge' }), `${compte('rouge')} sous-entretenu${compte('rouge') > 1 ? 's' : ''}`,
           h('span', { class: 'pastille-zone orange' }), `${compte('orange')} sur-entretenu${compte('orange') > 1 ? 's' : ''} ?`,
           h('span', { class: 'pastille-zone vert' }), `${compte('vert')} équilibré${compte('vert') > 1 ? 's' : ''}`)),
+      ethChoisi !== null ? h('div', { class: 'retour-tableau' }, h('button', { class: 'petit discret', onclick: () => { ethChoisi = null; dessiner() } }, ic('retour', 14), 'Toutes les ETH'), h('b', {}, eth?.libelle || 'Hors ETH'), h('span', { class: 'discret' }, ' : ses machines')) : null,
       liste.length
-        ? graphique(liste, totaux)
+        ? tableauCases(liste, totaux, { niveau: ethChoisi === null ? 'eth' : 'machine', zoomer: (id) => { ethChoisi = id; dessiner() } })
         : h('p', { class: 'discret' }, 'Ni correctif ni préventif sur les machines de maintenance de cette ligne ces 12 derniers mois.'),
-      h('p', { class: 'discret petit-texte' }, `${liste.length} équipement${liste.length > 1 ? 's' : ''}, ${totaux.correctifs} correctifs et ${totaux.preventifs} préventifs d’observation sur 12 mois. Une couleur compare deux parts : celle des pannes de la ligne que porte l’équipement, et celle du préventif qu’il reçoit (le double de l’autre, au moins).`),
+      h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. Rouge : beaucoup de pannes pour peu de visites ; orange : beaucoup de visites pour peu de pannes ; vert : équilibré.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour l’étape 3.'}`),
       aRegarder.length || surEntretien.length ? h('div', { class: 'a-regarder' },
         aRegarder.length ? h('div', {}, h('b', {}, 'À regarder d’abord'), aRegarder.slice(0, 8).map(puce)) : null,
         surEntretien.length ? h('div', {}, h('b', {}, 'Préventif à alléger ?'), surEntretien.slice(0, 8).map(puce)) : null) : null,
@@ -122,73 +133,49 @@ function puce(e) {
     lien(e, h('span', { class: 'mono' }, e.repere || '?')), h('small', {}, ` ${e.correctifs} / ${e.preventifs}`))
 }
 
-// Le nuage : échelles en racine carrée (beaucoup d'équipements ont peu d'interventions, quelques-uns beaucoup) ; une
-// droite passant par zéro le reste, si bien que les zones restent des secteurs nets autour de la diagonale.
-function graphique(liste, totaux) {
-  const L = 720
-  const H = 380
-  const m = { g: 48, d: 16, h: 14, b: 40 }
-  const maxC = Math.max(1, ...liste.map((e) => e.correctifs))
-  const maxP = Math.max(1, ...liste.map((e) => e.preventifs))
-  const x = (v) => m.g + (Math.sqrt(v) / Math.sqrt(maxC)) * (L - m.g - m.d)
-  const y = (v) => H - m.b - (Math.sqrt(v) / Math.sqrt(maxP)) * (H - m.h - m.b)
-  const svg = s('svg', { viewBox: `0 0 ${L} ${H}`, class: 'nuage-mn1', role: 'img', 'aria-label': 'Nuage correctif × préventif par équipement' })
+// Le tableau en grosses cases : les pannes en hauteur (beaucoup en haut), les visites en largeur, par tranches
+// (0, 1–2, 3–5, 6–10, 11–20…). Chaque case prend la couleur de sa zone : rouge sous la moitié de la pente de la
+// ligne (beaucoup de pannes pour peu de visites), orange au-dessus du double, vert entre les deux.
+const BORNES = [0, 1, 3, 6, 11, 21, 51, 101, 201, 501, 1001, 2001]
+const tranches = (max) => {
+  const b = BORNES.filter((x) => x <= max)
+  return b.map((de, i) => ({ de, a: (b[i + 1] ?? Infinity) - 1, libelle: b[i + 1] === undefined ? (de ? `${de}+` : '0') : de === b[i + 1] - 1 ? String(de) : `${de}–${b[i + 1] - 1}` }))
+}
+const indiceDe = (lesTranches, v) => lesTranches.findIndex((t) => v >= t.de && v <= t.a)
 
-  // Les secteurs : préventif = pente × correctif (pente du parc), sous la moitié rouge, au-dessus du double orange.
+function tableauCases(liste, totaux, { niveau, zoomer }) {
+  const lignesC = tranches(Math.max(1, ...liste.map((e) => e.correctifs))).reverse() // beaucoup de pannes en haut
+  const colonnesP = tranches(Math.max(1, ...liste.map((e) => e.preventifs)))
   const pente = totaux.correctifs ? totaux.preventifs / totaux.correctifs : 1
-  const bord = (k) => {
-    // Le point où la droite P = k·C sort du cadre.
-    const c = Math.min(maxC, maxP / k)
-    return [x(c), y(k * c)]
+  const milieu = (t) => (t.a === Infinity ? t.de * 1.5 : (t.de + t.a) / 2)
+  const fond = (tc, tp) => {
+    const c = milieu(tc)
+    const p = milieu(tp)
+    if (!c && !p) return ''
+    if (p * ECART <= c * pente) return 'rouge'
+    if (p >= ECART * c * pente) return 'orange'
+    return 'vert'
   }
-  const [x0, y0] = [x(0), y(0)]
-  const [xr, yr] = bord(pente / ECART)
-  const [xo, yo] = bord(pente * ECART)
-  const [xd, yd] = bord(pente)
-  const coins = { bd: [x(maxC), y0], hd: [x(maxC), y(maxP)], hg: [x0, y(maxP)] }
-  const poly = (points, classe) => s('polygon', { points: points.map((p) => p.join(',')).join(' '), class: classe })
-  svg.append(
-    poly([[x0, y0], coins.bd, ...(yr > coins.hd[1] + 0.5 ? [[xr, yr]] : [coins.hd, [xr, yr]])], 'secteur rouge'),
-    poly([[x0, y0], [xo, yo], ...(xo >= coins.hd[0] - 0.5 ? [coins.hd] : []), coins.hg], 'secteur orange'),
-    s('line', { x1: x0, y1: y0, x2: xd, y2: yd, class: 'diagonale' }),
-  )
-
-  // Axes et graduations (valeurs rondes).
-  const graduations = (max) => {
-    const pas = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].find((p) => max / p <= 5) || 1000
-    const v = [0]
-    for (let t = pas; t <= max; t += pas) v.push(t)
-    return v
-  }
-  for (const v of graduations(maxC)) svg.append(s('line', { x1: x(v), y1: y0, x2: x(v), y2: y0 + 4, class: 'axe' }), s('text', { x: x(v), y: y0 + 16, 'text-anchor': 'middle', class: 'graduation' }, String(v)))
-  for (const v of graduations(maxP)) svg.append(s('line', { x1: x0 - 4, y1: y(v), x2: x0, y2: y(v), class: 'axe' }), s('text', { x: x0 - 7, y: y(v) + 4, 'text-anchor': 'end', class: 'graduation' }, String(v)))
-  svg.append(
-    s('line', { x1: x0, y1: y0, x2: x(maxC), y2: y0, class: 'axe' }),
-    s('line', { x1: x0, y1: y0, x2: x0, y2: y(maxP), class: 'axe' }),
-    s('text', { x: x(maxC), y: H - 6, 'text-anchor': 'end', class: 'titre-axe' }, 'correctifs (12 mois) →'),
-    s('text', { x: 12, y: m.h + 4, transform: `rotate(-90 12 ${m.h + 4})`, 'text-anchor': 'end', class: 'titre-axe' }, '← préventif d’observation'),
-  )
-
-  // Les points : les équipements aux mêmes nombres (fréquent pour les petits) font une seule bulle, plus grosse,
-  // qui les nomme tous. Les rouges en dernier (au-dessus).
-  const bulles = new Map()
-  for (const e of liste) {
-    const cle = `${e.correctifs}|${e.preventifs}|${e.zone}`
-    bulles.set(cle, [...(bulles.get(cle) || []), e])
-  }
-  const ordre = { vert: 0, orange: 1, rouge: 2 }
-  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`
-  for (const groupe of [...bulles.values()].sort((a, b) => ordre[a[0].zone] - ordre[b[0].zone] || b.length - a.length)) {
-    const e = groupe[0]
-    const seul = groupe.length === 1
-    const cible = groupe.find((x) => x.analyse)
-    const point = s('circle', { cx: x(e.correctifs), cy: y(e.preventifs), r: 5 + 2.2 * Math.sqrt(groupe.length - 1), class: `point ${e.zone}${seul && e.analyse ? ' cliquable' : ''}` })
-    const nommes = groupe.slice(0, 10).map((g) => `${g.repere}${g.designation ? ` · ${g.designation}` : ''}`).join('\n') + (groupe.length > 10 ? `\n… et ${groupe.length - 10} autres` : '')
-    const detail = seul ? ` (niveau 1 : ${e.n1}, techniciens : ${e.techniciens})${e.systematiques ? `\n${pluriel(e.systematiques, 'systématique')} écarté${e.systematiques > 1 ? 's' : ''}` : ''}` : ''
-    point.append(s('title', {}, `${seul ? '' : `${groupe.length} équipements\n`}${nommes}\n${pluriel(e.correctifs, 'correctif')}, ${pluriel(e.preventifs, 'préventif')} d’observation${detail}`))
-    if (seul && cible) point.addEventListener('click', () => { location.hash = lienMachine(parcCourant, cible.analyse) })
-    svg.append(point)
-    if (!seul) svg.append(s('text', { x: x(e.correctifs), y: y(e.preventifs) + 3.5, 'text-anchor': 'middle', class: 'nombre-bulle' }, String(groupe.length)))
-  }
-  return h('div', { class: 'cadre-nuage' }, svg)
+  const cases = []
+  lignesC.forEach((tc, r) => {
+    cases.push(h('div', { class: 'etiquette-ligne-cases' }, tc.libelle))
+    colonnesP.forEach((tp) => {
+      const dedans = liste.filter((e) => indiceDe(lignesC, e.correctifs) === r && indiceDe(colonnesP, e.preventifs) === colonnesP.indexOf(tp))
+      const puceCase = (e) => niveau === 'eth'
+        ? h('button', { class: `puce-case ${e.zone}`, title: `${e.designation} : ${e.correctifs} pannes, ${e.preventifs} visites — cliquer pour voir ses machines`, onclick: () => zoomer(e.id) }, e.repere)
+        : e.analyse
+          ? h('a', { class: `puce-case ${e.zone}`, href: lienMachine(parcCourant, e.analyse), title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — étape 3` }, e.repere)
+          : h('span', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites` }, e.repere)
+      const montrees = dedans.sort((a, b) => b.correctifs - a.correctifs).slice(0, 4)
+      cases.push(h('div', { class: `case-tableau ${fond(tc, tp)}${dedans.length ? ' occupee' : ''}`, title: dedans.length > 4 ? dedans.map((e) => `${e.repere} (${e.correctifs} / ${e.preventifs})`).join('\n') : '' },
+        montrees.map(puceCase),
+        dedans.length > 4 ? h('span', { class: 'reste-case' }, `+${dedans.length - 4}`) : null))
+    })
+  })
+  return h('div', { class: 'tableau-cases-zone' },
+    h('div', { class: 'axe-pannes' }, 'pannes (12 mois) ↑'),
+    h('div', { class: 'tableau-cases', style: { gridTemplateColumns: `auto repeat(${colonnesP.length}, minmax(0, 1fr))` } },
+      cases,
+      h('div'), colonnesP.map((tp) => h('div', { class: 'etiquette-colonne-cases' }, tp.libelle))),
+    h('div', { class: 'axe-visites' }, 'visites d’observation (12 mois) →'))
 }

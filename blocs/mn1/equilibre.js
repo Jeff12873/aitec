@@ -24,7 +24,7 @@ import { familleDe } from '../../lib/types.js'
 import { lireRiN1 } from './circuit.js'
 import { reglagesDuParc } from './gmao.js'
 import { motifs } from './fi.js'
-import { convention, conventionReglee, lireCode, estDuPlan } from './visites.js'
+import { convention, conventionReglee, lireCode, estDuPlan, placesDuParc } from './visites.js'
 
 const JOURS = 365
 const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
@@ -96,7 +96,13 @@ export async function equilibreDuParc(parcId) {
   }
   const reperes = db().prepare('SELECT id, repere, designation FROM machines').all()
   const machine = new Map(reperes.map((x) => [x.id, x]))
-  const equipements = [...parMachine].map(([id, m]) => ({ id, repere: machine.get(id)?.repere || '', designation: machine.get(id)?.designation || '', analyse: machineAnalysable(p, id) || null, ...m }))
+  // Chaque équipement avec sa machine (niveau 3) et son ETH (niveau 2), pour le tableau à deux niveaux.
+  const places = placesDuParc(p, parc)
+  const equipements = [...parMachine].map(([id, m]) => {
+    const pl = places.get(id)
+    const porteuse = pl?.machine ?? id
+    return { id, repere: machine.get(id)?.repere || '', designation: machine.get(id)?.designation || '', analyse: machineAnalysable(p, id) || null, machine: { id: porteuse, repere: machine.get(porteuse)?.repere || '', designation: machine.get(porteuse)?.designation || '' }, eth: pl?.eth || null, ...m }
+  })
   const listeGammes = [...gammes.values()].sort((a, b) => b.nombre - a.nombre)
   return {
     jours: JOURS,
