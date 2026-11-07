@@ -43,8 +43,13 @@ export function lireCode(description, c = convention()) {
   return { code: `${n}${l}${ty}`, niveau: c.niveaux[n], ligne: l, type: ty, nomType: c.types[ty].nom || ty, jamaisEspacer: c.types[ty].jamaisEspacer, titre: m[4] }
 }
 
-// Le préventif compte-t-il dans le plan ? (convention non réglée : oui, tout compte)
-export const estDuPlan = (description, c = convention()) => !conventionReglee(c) || Boolean(lireCode(description, c))
+// Seul ce qui a un fréquentiel fait partie du plan : une intervention issue d'une FI (son texte cite « FI : FI-… »).
+// Le reste du « préventif » (une chose vue à refaire pendant une panne, notée sans fréquence) n'en fait pas partie :
+// il sert de source, avec les correctifs, pour proposer de nouveaux préventifs.
+export const issueDUneFi = (description) => /\bFI\s*:\s*[A-Z]{1,4}-?\d/i.test(texteSeul(description))
+
+// Le préventif compte-t-il dans le plan ? Issu d'une FI, et (convention réglée) avec un code reconnu.
+export const estDuPlan = (description, c = convention()) => issueDUneFi(description) && (!conventionReglee(c) || Boolean(lireCode(description, c)))
 
 export function enregistrerConvention({ niveaux = {}, types = {} }) {
   modifierReglage('prev_convention', { niveaux, types })
@@ -65,7 +70,7 @@ export function enregistrerLettre(parc, lettres) {
 export async function apercuConvention() {
   const c = convention()
   const p = await lireParcs()
-  const lignes = db().prepare('SELECT machine_id, type, description FROM interventions WHERE date >= ?').all(ilYa(365)).filter((l) => familleDe(l.type) === 'Préventif')
+  const lignes = db().prepare('SELECT machine_id, type, description FROM interventions WHERE date >= ?').all(ilYa(365)).filter((l) => familleDe(l.type) === 'Préventif' && issueDUneFi(l.description))
   const parcs = (p?.parcs || []).filter((x) => x.id !== NON_CLASSE).map((parc) => {
     const ids = parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines
     const du = lignes.filter((l) => ids.has(l.machine_id))
@@ -115,9 +120,14 @@ export async function visitesDuParc(parcId) {
   const depuis = ilYa(365)
   const lignes = db().prepare('SELECT id, date, machine_id, type, description, duree_h, intervenant FROM interventions WHERE date >= ?').all(ilYa(730)).filter((l) => ids.has(l.machine_id))
   const visites = []
+  const ponctuels = [] // du « préventif » sans fréquence (pas issu d'une FI) : hors plan, source de conseils
   let horsConvention = 0
   for (const l of lignes) {
     if (familleDe(l.type) !== 'Préventif') continue
+    if (!issueDUneFi(l.description)) {
+      ponctuels.push(l)
+      continue
+    }
     const code = lireCode(l.description, c)
     if (reglee && !code) {
       if (l.date >= depuis) horsConvention++
@@ -125,7 +135,7 @@ export async function visitesDuParc(parcId) {
     }
     visites.push({ ...l, recente: l.date >= depuis, code, place: places.get(l.machine_id) || null })
   }
-  return { p, parc, places, visites, horsConvention, reglee, convention: c, lignes }
+  return { p, parc, places, visites, ponctuels, horsConvention, reglee, convention: c, lignes }
 }
 
 // Une visite regarde-t-elle une panne posée sur l'équipement « machineId » ?
@@ -201,6 +211,7 @@ export async function bilanLigne(parcId, liste, { classeDe } = {}) {
     tmcd,
     concentration: { machines: top, part: pannes.recent ? top.reduce((s, x) => s + x.n, 0) / pannes.recent : null },
     horsConvention: v.horsConvention, conventionReglee: v.reglee,
+    ponctuels: v.ponctuels.filter((l) => dans(l, milieu, fin)).length,
   }
 
   const recentesVisites = v.visites.filter((l) => l.recente)

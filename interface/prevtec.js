@@ -96,6 +96,7 @@ export function tuilesLigne(i, parc) {
         h('div', { class: 'valeur-tuile' }, h('b', {}, pct(c.part))),
         h('small', {}, `des pannes viennent de ${c.machines.length} machines :`),
         h('div', { class: 'machines-tuile' }, c.machines.map((m) => h('a', { href: lienMachine(parc.id, m.id), title: `${m.designation || ''} : ouvrir l’étape 3` }, h('span', { class: 'mono' }, m.repere || '?'), h('small', {}, ` ${m.n} pannes`))))) : null),
+    i.ponctuels ? h('p', { class: 'hors-convention discret' }, ic('document', 13), `${nombreFr(i.ponctuels)} interventions « préventives » sans FI (sans fréquence, notées pendant une panne) : pas comptées dans le plan, mais utilisées pour proposer de nouveaux préventifs.`) : null,
     i.conventionReglee && i.horsConvention ? h('p', { class: 'hors-convention discret' }, ic('alerte', 13), `${nombreFr(i.horsConvention)} interventions préventives n’ont pas de code reconnu en tête du titre : elles ne comptent pas dans le plan.`) : null,
     !i.conventionReglee ? h('p', { class: 'hors-convention discret' }, ic('reglages', 13), 'Les préventifs ne sont pas encore reconnus par leur code (Administration › Lignes) : en attendant, tout le préventif compte.') : null)
 }

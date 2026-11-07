@@ -119,11 +119,12 @@ export async function proposerFiche(parcId, code) {
   return redigerFiche(panne)
 }
 
-// panne : { code, repere, designation, symptome, nombre, cas: [id d'intervention] } (du Pareto, ou d'une machine).
+// panne : { code, repere, designation, symptome, nombre, cas: [id d'intervention], notes? } (du Pareto, ou d'une
+// machine). notes : les choses vues à refaire sur l'équipement, notées sans fréquence (source de conseils).
 export async function redigerFiche(panne) {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
   const rapports = db().prepare(`SELECT date, description FROM interventions WHERE id IN (${panne.cas.slice(0, 8).join(',') || 'NULL'}) ORDER BY date DESC`).all()
-  const texte = await discuter([{ role: 'system', content: CONSIGNES_FICHE }, { role: 'user', content: `Machine : ${panne.repere} ${panne.designation}\nPanne : ${panne.symptome} (${panne.nombre} cas en 12 mois)\nRapports :\n${rapports.map((r) => `- ${r.date} : ${String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 300)}`).join('\n')}` }], { temperature: 0.3, maxMots: 600 })
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_FICHE }, { role: 'user', content: `Machine : ${panne.repere} ${panne.designation}\nPanne : ${panne.symptome} (${panne.nombre} cas en 12 mois)\nRapports :\n${rapports.map((r) => `- ${r.date} : ${String(r.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 300)}`).join('\n')}${panne.notes?.length ? `\nChoses vues à refaire sur cet équipement (notées pendant des pannes, sans fréquence) :\n${panne.notes.map((n) => `- ${n}`).join('\n')}` : ''}` }], { temperature: 0.3, maxMots: 600 })
   const lu = lireJson(texte)
   if (!lu || !Array.isArray(lu.points)) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
   const frequences = ['Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']

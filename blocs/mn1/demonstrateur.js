@@ -125,11 +125,15 @@ const CONSIGNES_N2 = `Tu rédiges un point de maintenance préventive de niveau 
 Réponds seulement avec un objet JSON, sans texte autour :
 {"quoi":"le contrôle ou la mesure, concret, avec la valeur ou l'état attendu","ou":"organe ou sous-ensemble","frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","metier":"Mécanique | Électrique | Pneumatique | Hydraulique | Automatisme","pourquoi":"la panne visée et ce que le contrôle voit venir, une phrase"}`
 
+// La panne, avec les choses vues à refaire sur son équipement ou sa machine (préventif sans fréquence, 12 mois) :
+// hors du plan, elles nourrissent les conseils de préventif.
 async function panneDe(parcId, machineId, cle) {
-  const { machine, pannes } = await machineEtPannes(parcId, machineId)
+  const { v, machine, pannes } = await machineEtPannes(parcId, machineId)
   const panne = pannes.find((x) => x.cle === cle)
   if (!panne) throw new ErreurHttp(404, 'Panne introuvable sur cette machine')
-  return { machine, panne }
+  const depuis = ilYa(365)
+  const notes = v.ponctuels.filter((l) => l.date >= depuis && (l.machine_id === panne.equipement || l.machine_id === machine.id)).slice(0, 8).map((l) => `${l.date} : ${texteSeul(l.description).slice(0, 200)}`)
+  return { machine, panne: { ...panne, notes } }
 }
 
 export async function proposerFicheMachine(parcId, machineId, cle) {
@@ -142,7 +146,7 @@ export async function proposerN2(parcId, machineId, cle, visites = '') {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
   const { machine, panne } = await panneDe(parcId, machineId, cle)
   const rapports = db().prepare(`SELECT date, description FROM interventions WHERE id IN (${panne.cas.slice(0, 8).join(',') || 'NULL'}) ORDER BY date DESC`).all()
-  const texte = await discuter([{ role: 'system', content: CONSIGNES_N2 }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nPanne : ${panne.symptome}${panne.surQuoi ? ` (sur ${panne.surQuoi})` : ''}, ${panne.nombre} cas en 12 mois${visites ? `\nVisite actuelle qui ne la voit pas venir : ${visites}` : ''}\nRapports :\n${rapports.map((r) => `- ${r.date} : ${texteSeul(r.description).slice(0, 300)}`).join('\n')}` }], { temperature: 0.3, maxMots: 400 })
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_N2 }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nPanne : ${panne.symptome}${panne.surQuoi ? ` (sur ${panne.surQuoi})` : ''}, ${panne.nombre} cas en 12 mois${visites ? `\nVisite actuelle qui ne la voit pas venir : ${visites}` : ''}\nRapports :\n${rapports.map((r) => `- ${r.date} : ${texteSeul(r.description).slice(0, 300)}`).join('\n')}${panne.notes.length ? `\nChoses vues à refaire sur cet équipement (notées pendant des pannes, sans fréquence) :\n${panne.notes.map((n) => `- ${n}`).join('\n')}` : ''}` }], { temperature: 0.3, maxMots: 400 })
   const lu = lireJson(texte)
   if (!lu?.quoi) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
   const champ = (k, n = 300) => String(lu[k] || '').slice(0, n)
