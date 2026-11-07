@@ -1,5 +1,8 @@
-// Le démonstrateur d'une machine (PREVTEC, étapes 3 « Une machine » et 4 « Je décide »), réduit à une question :
-// les pannes qui reviennent sur cette machine sont-elles regardées par une visite ?
+// Le Démonstrateur d'une machine (PREVTEC, étapes 3 et 4), fidèle au classeur de son auteur : en colonnes les
+// équipements de la machine (sous-ensembles, organes), le plus en panne à gauche ; en lignes les visites du plan ;
+// à la croisée, l'endroit où chaque visite est posée (arborescence) ; sous chaque colonne, l'un des 4 diagnostics.
+// Le taux t = A / (A + B + C) du classeur d'origine demande le résultat des inspections, que la GMAO n'a pas :
+// la colonne t reste vide tant qu'il n'y en a pas.
 //
 // La machine : le nœud de niveau 3 de l'arborescence (un clic sur un sous-ensemble remonte à sa machine), avec tous
 // ses sous-ensembles. Ses 5 premières pannes (12 mois), chacune avec une pastille, sans IA :
@@ -17,7 +20,6 @@ import { evolution } from './parcs.js'
 import { visitesDuParc, regarde, texteSeul } from './visites.js'
 import { redigerFiche, lireJson } from './correlation.js'
 
-const NB_PANNES = 5
 const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
 const plusFrequent = (valeurs) => [...valeurs.reduce((c, v) => c.set(v, (c.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
 const cleDe = (texte) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 80)
@@ -47,30 +49,71 @@ async function machineEtPannes(parcId, machineId) {
   return { v, machine, equipements, repere, pannes }
 }
 
+// Les 4 diagnostics du Démonstrateur (libellés de son auteur), par équipement de la machine :
+//   « pas »      pas de préventif : des pannes, aucune visite sur l'équipement ni sur la machine ;
+//   « mauvais »  mauvais point contrôlé ou énoncé trop vague : la panne monte malgré une visite sur l'équipement,
+//                ou la seule visite est posée sur la machine entière (pas sur l'organe) ;
+//   « ok »       préventif ok : des visites sur l'équipement, et ses pannes ne montent pas ;
+//   « sur »      sur maintenance : 4 passages au moins sur un équipement presque sans panne.
+const DIAGNOSTICS = {
+  pas: 'pas de préventif',
+  mauvais: 'mauvais point contrôlé ou énoncé trop vague',
+  ok: 'préventif ok',
+  sur: 'sur maintenance',
+  rien: '',
+}
+const PANNES_MIN = 2
+const SUR_MAINTENANCE = 4
+
 export async function demonstrateur(parcId, machineId) {
   const { v, machine, equipements, repere, pannes } = await machineEtPannes(parcId, machineId)
   const visites = v.visites.filter((x) => x.recente && equipements.has(x.machine_id))
   const titreDe = (x) => x.code?.titre || texteSeul(x.description).split(' - ')[0].slice(0, 100)
-  const resultat = pannes.slice(0, NB_PANNES).map((p) => {
-    const regardent = visites.filter((x) => regarde(x, p.equipement, v.places))
-    const monte = p.evolution === 'monte' || (p.evolution === 'nouvelle' && p.nombre >= 3)
-    const etat = !regardent.length ? 'aucune' : monte ? 'revoir' : 'regardee'
-    return { cle: p.cle, symptome: p.symptome, surQuoi: p.surQuoi, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, etat, visites: [...new Set(regardent.map(titreDe))] }
-  })
-  // Les visites, regroupées par code, titre et équipement.
+  const designation = new Map(db().prepare(`SELECT id, designation FROM machines WHERE id IN (${[...equipements].join(',')})`).all().map((m) => [m.id, m.designation]))
+  // Les lignes : les visites du plan, regroupées par code, titre et équipement où elles sont posées.
   const groupes = new Map()
   for (const x of visites) {
     const cle = `${x.code?.code || ''}|${titreDe(x)}|${x.machine_id}`
-    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), surQuoi: repere.get(x.machine_id) || '', passages: 0, derniere: '' }
+    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), equipement: x.machine_id, machineEntiere: x.machine_id === machine.id, passages: 0, derniere: '', t: null }
     g.passages++
     if (x.date > g.derniere) g.derniere = x.date
     groupes.set(cle, g)
   }
+  const lignes = [...groupes.values()]
+  const surMachine = lignes.filter((g) => g.machineEntiere)
+  // Les colonnes : les équipements qui ont des pannes ou des visites, le plus en panne à gauche ; la machine entière
+  // (visites posées sur elle) en dernier.
+  const parEquipement = new Map()
+  for (const p of pannes) {
+    const c = parEquipement.get(p.equipement) || { pannes: 0, precedent: 0, liste: [] }
+    c.pannes += p.nombre
+    c.precedent += p.precedent
+    c.liste.push(p)
+    parEquipement.set(p.equipement, c)
+  }
+  for (const g of lignes) if (!g.machineEntiere && !parEquipement.has(g.equipement)) parEquipement.set(g.equipement, { pannes: 0, precedent: 0, liste: [] })
+  const colonnes = [...parEquipement].filter(([id]) => id !== machine.id || parEquipement.get(id).pannes).map(([id, c]) => {
+    const dessus = lignes.filter((g) => g.equipement === id && !g.machineEntiere)
+    const passages = dessus.reduce((s, g) => s + g.passages, 0)
+    const ev = evolution(c.pannes, c.precedent)
+    const monte = ev === 'monte' || (ev === 'nouvelle' && c.pannes >= 3)
+    let diagnostic = 'rien'
+    let raison = ''
+    if (c.pannes >= PANNES_MIN) {
+      if (!dessus.length && !surMachine.length) { diagnostic = 'pas'; raison = 'Des pannes, et aucune visite sur cet équipement ni sur la machine.' }
+      else if (!dessus.length) { diagnostic = 'mauvais'; raison = 'Seule une visite sur la machine entière le regarde : énoncé trop vague, le point n’est pas sur l’organe.' }
+      else if (monte) { diagnostic = 'mauvais'; raison = 'Ses pannes montent malgré les visites posées sur lui : le point contrôlé ne les voit pas venir.' }
+      else { diagnostic = 'ok'; raison = 'Des visites posées sur lui, et ses pannes ne montent pas.' }
+    } else if (passages >= SUR_MAINTENANCE) { diagnostic = 'sur'; raison = `${passages} passages en 12 mois, pour ${c.pannes ? 'une seule panne' : 'aucune panne'}.` }
+    else if (dessus.length) { diagnostic = 'ok'; raison = 'Peu de pannes, peu de visites.' }
+    return { id, repere: repere.get(id) || '', designation: designation.get(id) || '', pannes: c.pannes, precedent: c.precedent, evolution: ev, diagnostic, libelle: DIAGNOSTICS[diagnostic], raison, panne: c.liste.sort((a, b) => b.nombre - a.nombre)[0] ? { cle: c.liste[0].cle, symptome: c.liste[0].symptome, nombre: c.liste[0].nombre } : null, pannesListe: c.liste.slice(0, 3).map((p) => ({ symptome: p.symptome, nombre: p.nombre })) }
+  }).sort((a, b) => b.pannes - a.pannes || a.repere.localeCompare(b.repere))
+  const ordreLignes = (g) => (g.machineEntiere ? colonnes.length : Math.max(0, colonnes.findIndex((c) => c.id === g.equipement)))
   return {
     parc: { id: v.parc.id, nom: v.parc.nom },
     machine,
-    pannes: resultat,
-    visites: [...groupes.values()].sort((a, b) => b.passages - a.passages),
+    colonnes,
+    lignes: lignes.sort((a, b) => ordreLignes(a) - ordreLignes(b) || b.passages - a.passages),
     conventionReglee: v.reglee,
     iaInstallee: iaInstallee(),
   }

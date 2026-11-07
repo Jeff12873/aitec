@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.12.0",
+      "date": "2026-11-07",
+      "points": [
+        "L'étape 3 devient le Démonstrateur, fidèle au classeur d'origine : les équipements de la machine en colonnes (le plus en panne à gauche), les visites du plan en lignes, un ● là où chaque visite est posée, et sous chaque colonne son diagnostic",
+        "Les 4 diagnostics : pas de préventif ; mauvais point contrôlé ou énoncé trop vague (la panne monte malgré la visite, ou la visite n'est posée que sur la machine entière) ; préventif ok ; sur maintenance",
+        "La colonne t (part des passages sans rien trouver) est prête pour le jour où la GMAO donnera le résultat des inspections"
+      ]
+    },
+    {
       "version": "0.11.1",
       "date": "2026-11-07",
       "points": [

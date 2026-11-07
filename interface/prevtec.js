@@ -23,7 +23,7 @@ export function filEtapes(etape, parc = null, machine = null) {
   const ETAPES = [
     [1, 'Mes lignes', '#/mn1', 'Choisir la ligne : une vignette par ligne, avec le verdict de son plan'],
     [2, parc ? `Ma ligne · ${parc.nom}` : 'Ma ligne', parc ? `#/mn1/parc/${encodeURIComponent(parc.id)}` : null, 'Le verdict du plan, les indicateurs et les pannes qui reviennent'],
-    [3, machine ? `Une machine · ${machine.repere}` : 'Une machine', machine ? lienMachine(parc.id, machine.id) : null, 'Clic sur une machine du Pareto : ses pannes sont-elles regardées par une visite ?'],
+    [3, machine ? `Démonstrateur · ${machine.repere}` : 'Démonstrateur', machine ? lienMachine(parc.id, machine.id) : null, 'Clic sur une machine : le Démonstrateur, son préventif est-il bien ciblé, en bonne quantité ?'],
     [4, 'Je décide', machine ? 'decisions' : null, 'Pour une panne sans visite, ou à revoir : une fiche N1 ou un point N2'],
     [5, 'Niveau 1', parc ? `#/mn1/n1/${encodeURIComponent(parc.id)}` : null, 'Les fiches de niveau 1 de la ligne : FI, cartes papier, charge des opérateurs, impression'],
   ]

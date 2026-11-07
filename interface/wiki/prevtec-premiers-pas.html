@@ -6,7 +6,7 @@
   "blocs": [
     [0,0,17,100,"","menu"], [2,4,13,6,"PREVTEC","texte"], [2,16,13,5,"Plan de maintenance","accent"], [2,26,13,5,"Administration","texte"],
     [17,0,83,8,"","barre"],
-    [24,11,69,6,"1 Mes lignes › 2 Ma ligne › 3 Une machine › 4 Je décide › 5 Niveau 1","zone"],
+    [24,11,69,6,"1 Mes lignes › 2 Ma ligne › 3 Démonstrateur › 4 Je décide › 5 Niveau 1","zone"],
     [19,22,79,6,"Trier par : Verdict · Nom · Tendance","texte"],
     [19,31,25,30,"Ligne A · à surveiller","carte"], [46,31,25,30,"Ligne B · dans le bon sens","carte"], [73,31,25,30,"Ligne C · à réévaluer","carte"]
   ],
@@ -20,7 +20,7 @@
 <ol>
 <li><b>Mes lignes</b> : une vignette par ligne, avec le verdict de son plan (dans le bon sens, à surveiller, à réévaluer). Cliquez la vôtre.</li>
 <li><b>Ma ligne</b> : le verdict expliqué, le calendrier des équipes en haut à droite, le Hall of fame de la ligne, cinq indicateurs (pannes, temps passé à dépanner, part du préventif, dépanneurs par panne, où sont les pannes), puis les pannes qui reviennent. La vue <b>Correctif × préventif</b> est un tableau en cases : les pannes en hauteur, les visites en largeur ; d'abord les ETH de la ligne, un clic zoome sur les machines d'une ETH.</li>
-<li><b>Une machine</b> : un clic sur une machine du Pareto ou du nuage. Une seule question : ses pannes sont-elles regardées par une visite ?</li>
+<li><b>Démonstrateur</b> : un clic sur une machine du Pareto ou du tableau. Le préventif est-il bien ciblé, en bonne quantité ?</li>
 <li><b>Je décide</b> : pour une panne sans visite, ou dont la visite ne la voit pas venir, une fiche N1 ou un point N2 rédigés par l'IA.</li>
 <li><b>Niveau 1</b> : les fiches de la ligne, leur mise en service (FI ou carte papier), la charge des opérateurs, l'impression ; et le circuit N1 de l'usine.</li>
 </ol>
@@ -38,11 +38,14 @@
 <li>Une visite, c'est une intervention préventive faite et enregistrée dans la GMAO. Une fiche seule ne compte pas.</li>
 </ul>
 
-<h2>Une machine</h2>
+<h2>Le Démonstrateur (étape 3)</h2>
+<p>Il répond à une question : le préventif de cette machine est-il bien ciblé, et en bonne quantité ?</p>
 <ul>
-<li>Ses 5 premières pannes, chacune avec une pastille : <b>rouge</b>, aucune visite sur son équipement ni sur la machine ; <b>orange</b>, une visite la regarde et pourtant elle monte ; <b>vert</b>, regardée.</li>
-<li>Une visite regarde une panne si elle est posée sur le même équipement, ou sur la machine qui le porte (niveau 3 de l'arborescence). Une visite posée sur la ligne ou l'ETH ne regarde aucune panne précise.</li>
-<li>Ses visites du plan : leur code (niveau, type), où elles sont posées, combien de passages en 12 mois.</li>
+<li><b>En colonnes</b>, les équipements de la machine (sous-ensembles, organes), le plus en panne à gauche, avec leurs pannes sur 12 mois et leur évolution ; la machine entière à part, à droite.</li>
+<li><b>En lignes</b>, les visites du plan, avec leur code. <b>À la croisée</b>, un ● là où la visite est posée dans l'arborescence.</li>
+<li><b>Sous chaque colonne</b>, un diagnostic : <b>pas de préventif</b> (des pannes, aucune visite) ; <b>mauvais point contrôlé ou énoncé trop vague</b> (la panne monte malgré une visite sur l'équipement, ou la seule visite est sur la machine entière) ; <b>préventif ok</b> ; <b>sur maintenance</b> (beaucoup de passages sans panne).</li>
+<li>La colonne <b>t</b> (part des passages sans rien trouver, t = A / (A + B + C)) attend le résultat des inspections, que la GMAO n'a pas encore.</li>
+<li><b>Je décide</b> : pour un équipement sans préventif ou mal regardé, une fiche N1 ou un point N2 rédigés par l'IA ; pour la sur maintenance, la question d'espacer.</li>
 </ul>
 
 <h2 class="admin">Comment reconnaître les préventifs</h2>

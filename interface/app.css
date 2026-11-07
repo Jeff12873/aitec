@@ -799,3 +799,32 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .a-regarder-eth { font-size: 11px; font-weight: 600; color: #e08a84; }
 .a-alleger-eth { font-size: 11px; color: #d6b071; }
 .ok-eth { font-size: 11px; color: var(--texte-3); }
+
+/* Le Démonstrateur : visites × équipements d'une machine */
+.demo-conteneur { overflow-x: auto; }
+.matrice-demo { border-collapse: separate; border-spacing: 3px; font-size: 13px; min-width: 100%; }
+.matrice-demo th, .matrice-demo td { padding: 6px 8px; border-radius: 6px; }
+.coin-demo { text-align: left; font-size: 11.5px; color: var(--texte-3); font-weight: 500; min-width: 220px; }
+.col-equipement { vertical-align: bottom; text-align: center; min-width: 74px; background: var(--carte-2); }
+.col-equipement .mono { display: block; font-size: 12px; }
+.col-equipement small { display: block; max-width: 110px; margin: 2px auto 0; font-weight: 400; font-size: 10.5px; color: var(--texte-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-equipement.machine-entiere { background: transparent; border: 1px dashed var(--bord); }
+.col-t, .col-passages { text-align: center; font-size: 11.5px; color: var(--texte-3); }
+.ligne-pannes-demo th, .ligne-diagnostics th { text-align: left; font-size: 11.5px; color: var(--texte-3); font-weight: 500; }
+.nb-pannes { text-align: center; }
+.nb-pannes b { display: block; font-size: 15px; }
+.nb-pannes .evolution-panne { font-size: 10.5px; }
+.titre-visite { text-align: left; font-weight: 400; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-visite { margin-right: 6px; font-family: var(--mono); font-size: 11px; }
+.croisee { text-align: center; background: color-mix(in srgb, var(--texte-3) 5%, transparent); color: var(--accent); }
+.croisee.posee { background: color-mix(in srgb, var(--accent) 16%, transparent); font-size: 14px; }
+.croisee.vague { color: var(--texte-2); background: color-mix(in srgb, var(--texte-3) 14%, transparent); }
+.diag-demo { text-align: center; font-size: 11px; font-weight: 600; line-height: 1.25; }
+.rouge.col-equipement, .rouge.nb-pannes, .rouge.diag-demo { background: color-mix(in srgb, #c0605a 24%, transparent); }
+.violet.col-equipement, .violet.nb-pannes, .violet.diag-demo { background: color-mix(in srgb, #9c8fc4 26%, transparent); }
+.vert.col-equipement, .vert.nb-pannes, .vert.diag-demo { background: color-mix(in srgb, #5fa77c 22%, transparent); }
+.orange.col-equipement, .orange.nb-pannes, .orange.diag-demo { background: color-mix(in srgb, #c49a52 24%, transparent); }
+.legende-demo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; font-size: 12px; }
+.legende-demo .diag-demo { padding: 3px 8px; border-radius: 6px; }
+.decision.violet { border-left-color: #9c8fc4; }
+.etiquette.violet { color: #c4b8ec; }
