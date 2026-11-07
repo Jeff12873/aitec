@@ -60,7 +60,18 @@ export function nuageEquilibre(d) {
       : regrouper(tous.filter((e) => (e.eth?.id || '') === ethChoisi), (e) => e.machine.id, (e) => ({ type: 'machine', id: e.machine.id, repere: e.machine.repere || e.repere, designation: e.machine.designation || e.designation, analyse: e.machine.id }))
     const totaux = { correctifs: liste.reduce((t, e) => t + e.correctifs, 0), preventifs: liste.reduce((t, e) => t + e.preventifs, 0) }
     for (const e of liste) e.zone = zone(e, totaux, liste.length)
-    const compte = (z) => liste.filter((e) => e.zone === z).length
+    // Une ETH alerte par ce qu'elle contient : ses machines rouges (ou orange), comptées comme au zoom.
+    if (ethChoisi === null) {
+      for (const e of liste) {
+        const machines = regrouper(tous.filter((x) => (x.eth?.id || '') === e.id), (x) => x.machine.id, () => ({}))
+        const t2 = { correctifs: machines.reduce((s, m) => s + m.correctifs, 0), preventifs: machines.reduce((s, m) => s + m.preventifs, 0) }
+        e.rouges = machines.filter((m) => zone(m, t2, machines.length) === 'rouge').length
+        e.oranges = machines.filter((m) => zone(m, t2, machines.length) === 'orange').length
+        e.machines = machines.length
+      }
+    }
+    // Au niveau des ETH, la légende compte les machines (ce qui alerte), pas les ETH (presque toujours équilibrées).
+    const compte = (z) => (ethChoisi === null ? liste.reduce((s, e) => s + (z === 'rouge' ? e.rouges : z === 'orange' ? e.oranges : e.machines - e.rouges - e.oranges), 0) : liste.filter((e) => e.zone === z).length)
     const aRegarder = liste.filter((e) => e.zone === 'rouge').sort((a, b) => b.correctifs - a.correctifs)
     const surEntretien = liste.filter((e) => e.zone === 'orange').sort((a, b) => b.preventifs - a.preventifs)
     const g = donnees.gammes
@@ -79,6 +90,7 @@ export function nuageEquilibre(d) {
       h('div', { class: 'tete-equilibre' },
         h('div', { class: 'segments petits' }, MODES.map(([cle, texte, aide]) => h('button', { class: mode === cle ? 'choisi' : '', title: aide, onclick: () => { mode = cle; dessiner() } }, texte))),
         h('div', { class: 'legende-equilibre' },
+          ethChoisi === null ? h('span', { class: 'discret' }, 'machines : ') : null,
           h('span', { class: 'pastille-zone rouge' }), `${compte('rouge')} sous-entretenu${compte('rouge') > 1 ? 's' : ''}`,
           h('span', { class: 'pastille-zone orange' }), `${compte('orange')} sur-entretenu${compte('orange') > 1 ? 's' : ''} ?`,
           h('span', { class: 'pastille-zone vert' }), `${compte('vert')} équilibré${compte('vert') > 1 ? 's' : ''}`)),
@@ -142,10 +154,20 @@ const tranches = (max) => {
   return b.map((de, i) => ({ de, a: (b[i + 1] ?? Infinity) - 1, libelle: b[i + 1] === undefined ? (de ? `${de}+` : '0') : de === b[i + 1] - 1 ? String(de) : `${de}–${b[i + 1] - 1}` }))
 }
 const indiceDe = (lesTranches, v) => lesTranches.findIndex((t) => v >= t.de && v <= t.a)
+// Les tranches adaptées à ce qu'on regarde (une poignée d'ETH aux grands nombres) : 5 tranches au plus, bornées sur
+// les valeurs réelles, arrondies à des nombres ronds.
+const rond = (x) => (x <= 10 ? Math.round(x) : x <= 50 ? Math.round(x / 5) * 5 : x <= 200 ? Math.round(x / 10) * 10 : Math.round(x / 50) * 50)
+function tranchesAdaptees(valeurs) {
+  const tri = [...valeurs].sort((a, b) => a - b)
+  if (tri.length > 12) return tranches(Math.max(1, tri[tri.length - 1]))
+  const bornes = [...new Set([0, ...[0.2, 0.4, 0.6, 0.8].map((q) => rond(tri[Math.floor(q * (tri.length - 1))])).filter((x) => x > 0)])].sort((a, b) => a - b)
+  return bornes.map((de, i) => ({ de, a: (bornes[i + 1] ?? Infinity) - 1, libelle: bornes[i + 1] === undefined ? (de ? `${de}+` : '0') : de === bornes[i + 1] - 1 ? String(de) : `${de}–${bornes[i + 1] - 1}` }))
+}
 
 function tableauCases(liste, totaux, { niveau, zoomer }) {
-  const lignesC = tranches(Math.max(1, ...liste.map((e) => e.correctifs))).reverse() // beaucoup de pannes en haut
-  const colonnesP = tranches(Math.max(1, ...liste.map((e) => e.preventifs)))
+  // Peu d'éléments (les ETH) : des tranches adaptées ; beaucoup (les machines) : les tranches fixes.
+  const lignesC = tranchesAdaptees(liste.map((e) => e.correctifs)).reverse() // beaucoup de pannes en haut
+  const colonnesP = tranchesAdaptees(liste.map((e) => e.preventifs))
   const pente = totaux.correctifs ? totaux.preventifs / totaux.correctifs : 1
   const milieu = (t) => (t.a === Infinity ? t.de * 1.5 : (t.de + t.a) / 2)
   const fond = (tc, tp) => {
@@ -162,7 +184,9 @@ function tableauCases(liste, totaux, { niveau, zoomer }) {
     colonnesP.forEach((tp) => {
       const dedans = liste.filter((e) => indiceDe(lignesC, e.correctifs) === r && indiceDe(colonnesP, e.preventifs) === colonnesP.indexOf(tp))
       const puceCase = (e) => niveau === 'eth'
-        ? h('button', { class: `puce-case ${e.zone}`, title: `${e.designation} : ${e.correctifs} pannes, ${e.preventifs} visites — cliquer pour voir ses machines`, onclick: () => zoomer(e.id) }, e.repere)
+        ? h('button', { class: `puce-case puce-eth ${e.rouges ? 'rouge alerte' : e.oranges ? 'orange' : e.zone}`, title: `${e.designation} : ${e.correctifs} pannes, ${e.preventifs} visites, ${e.machines} machines — cliquer pour voir ses machines`, onclick: () => zoomer(e.id) },
+          h('b', {}, e.repere), h('small', {}, `${e.correctifs} pannes · ${e.preventifs} visites`),
+          e.rouges ? h('span', { class: 'a-regarder-eth' }, `${e.rouges} à regarder`) : e.oranges ? h('span', { class: 'a-alleger-eth' }, `${e.oranges} à alléger ?`) : h('span', { class: 'ok-eth' }, 'rien d’alarmant'))
         : e.analyse
           ? h('a', { class: `puce-case ${e.zone}`, href: lienMachine(parcCourant, e.analyse), title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — étape 3` }, e.repere)
           : h('span', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites` }, e.repere)

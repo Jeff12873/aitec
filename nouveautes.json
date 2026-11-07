@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.11.1",
+      "date": "2026-11-07",
+      "points": [
+        "Tableau correctif × préventif, niveau des ETH : tranches adaptées aux valeurs (les ETH s'étalent au lieu d'être tassées dans un coin)",
+        "Chaque ETH dit ses pannes, ses visites et ce qu'elle contient : « 3 à regarder » (machines rouges, étiquette bordée de rouge), « 1 à alléger ? » ou « rien d'alarmant » ; la légende compte les machines"
+      ]
+    },
+    {
       "version": "0.11.0",
       "date": "2026-11-07",
       "points": [
