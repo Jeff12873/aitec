@@ -1,0 +1,49 @@
+<h1>Premiers pas avec PREVTEC</h1>
+<p class="but">PREVTEC sert à réévaluer le plan de maintenance : votre parc, ses pannes et leur évolution, un préventif bien orienté, puis les fiches de niveau 1 et leur charge. Il vient avec AITEC, sur les mêmes données ; AITEC garde le dépannage.</p>
+
+<script type="application/json" data-maquette>
+{ "titre": "PREVTEC — Plan de maintenance", "ratio": 58,
+  "blocs": [
+    [0,0,17,100,"","menu"], [2,4,13,6,"PREVTEC","texte"], [2,16,13,5,"Plan de maintenance","accent"], [2,26,13,5,"Administration","texte"],
+    [17,0,83,8,"","barre"],
+    [19,11,79,6,"1 Mon parc › 2 Son Pareto › 3 Une machine › 4 Je décide › 5 Je fais","zone"],
+    [19,20,79,12,"Bandeau : chiffres, une idée qui tourne","carte"],
+    [19,35,25,26,"Parc A · à réévaluer","carte"], [46,35,25,26,"Parc B · bon sens","carte"], [73,35,25,26,"Parc C · à surveiller","carte"],
+    [19,66,79,30,"Demandes N1 · Fiches N1 · Rapports N1","zone"]
+  ],
+  "reperes": [
+    [21,14,"Le fil des étapes : on avance dans l'ordre, sans chercher dans les menus."],
+    [30,47,"Une vignette par parc : le verdict de son plan, ses pannes et son nombre de préventifs sur 12 mois. Un clic ouvre le parc."],
+    [21,70,"Le circuit DI → FI → RI du niveau 1, comme avant."]
+  ] }
+</script>
+
+<h2>Le parcours</h2>
+<ol>
+<li><b>Mon parc</b> : la vignette de chaque parc donne le verdict de son plan (dans le bon sens, à surveiller, à réévaluer), ses pannes face aux 12 mois d'avant et son nombre de préventifs. Cliquez le vôtre.</li>
+<li><b>Son Pareto</b> : le verdict expliqué, puis les pannes qui reviennent, chacune avec sa tendance (monte, baisse, nouvelle) et les fiches qui la visent. La vue <b>Correctif × préventif</b> place chaque équipement selon ses pannes et son préventif.</li>
+<li><b>Une machine</b> : un clic sur une machine du Pareto ouvre son analyse (pannes, causes, préventif).</li>
+<li><b>Je décide</b> : proposer une fiche de niveau 1 pour une panne non couverte, espacer une fiche sans cible.</li>
+<li><b>Je fais</b> : créer la FI dans la GMAO (simulée d'abord), imprimer la fiche pliée en carte A6.</li>
+</ol>
+
+<h2>Le verdict d'un parc</h2>
+<ul>
+<li>On compare les pannes des 12 derniers mois aux 12 mois d'avant, et chaque panne du haut du Pareto à son passé.</li>
+<li><b>À réévaluer</b> : les pannes du parc montent nettement, ou plusieurs pannes du haut du Pareto montent alors qu'une fiche les vise (le préventif ne les voit pas venir).</li>
+<li><b>À surveiller</b> : une seule de ces alertes.</li>
+<li><b>Dans le bon sens</b> : les pannes baissent ou restent stables, sans panne visée qui monte.</li>
+</ul>
+
+<h2>La vue Correctif × préventif</h2>
+<ul>
+<li>Un point par équipement du parc : ses pannes en abscisse, son préventif d'observation en ordonnée, sur 12 mois. Les équipements aux mêmes nombres font une seule bulle, qui les nomme tous.</li>
+<li><b>Rouge</b> : une part des pannes du parc au moins double de sa part du préventif (sous-entretien). <b>Orange</b> : l'inverse (sur-entretien possible). <b>Vert</b> : équilibré.</li>
+<li>Bascule <b>Niveau 1 / Techniciens / Tout</b>.</li>
+<li>Le préventif <b>systématique</b> (changer une pièce à date fixe) est écarté : il renouvelle sans regarder l'état. L'IA classe chaque gamme une fois (« Classer les gammes par l'IA ») ; en attendant, les mots du titre (échange, remplacement…) donnent une première idée. L'administrateur corrige dans « Voir le classement des gammes ».</li>
+</ul>
+
+<h2>La maintenance de niveau 1</h2>
+<p>Tout ce qui existait reste : la charge des opérateurs par ETH, les fiches focus et leur FI, la corrélation avec le Pareto, le circuit <a href="#/prevtec/mn1-circuit">DI → FI → RI</a>, les <a href="#/prevtec/mn1-indicateurs">indicateurs</a> et le calendrier des équipes.</p>
+
+<details><summary>Où est passée la maintenance de niveau 1 d'AITEC ?</summary><p>Dans PREVTEC, telle quelle : mêmes écrans, mêmes données. AITEC garde l'assistant et le dépannage.</p></details>

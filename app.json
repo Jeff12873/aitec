@@ -2,8 +2,23 @@
   "id": "aitec",
   "nom": "AITEC",
   "couleur": "#2dd4bf",
-  "sousTitre": "Maintenance de niveau 1",
-  "description": "La maintenance de premier niveau, dynamique et évolutive : demandes, fiches et rapports d’intervention, indicateurs, avec une IA locale.",
+  "sousTitre": "Assistant de dépannage",
+  "description": "L’assistant IA du dépannage : une panne, une machine, la réponse vite, avec ses sources (historique des interventions, documents, pannes connues).",
   "icone": "interface/icone.svg",
-  "besoins": ["ia", "java"]
+  "besoins": [
+    "ia",
+    "java"
+  ],
+  "portes": [
+    {
+      "id": "prevtec",
+      "nom": "PREVTEC",
+      "couleur": "#38bdf8",
+      "sousTitre": "Plan de maintenance",
+      "description": "Réévaluer le plan de maintenance : le Pareto des pannes et son évolution, un préventif bien orienté, les fiches de niveau 1 et leur charge.",
+      "icone": "interface/icone-prevtec.svg",
+      "menu": "interface/menu-prevtec.js",
+      "wiki": "interface/wiki/sommaire-prevtec.json"
+    }
+  ]
 }

@@ -11,6 +11,8 @@ import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
 import { reglerParc } from './mn1-reglages.js'
 import { encartCalendrier } from './mn1-circuit.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
+import { nuageEquilibre } from './mn1-equilibre.js'
+import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne } from './prevtec.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
 const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 100) / 100).toLocaleString('fr-FR'))
@@ -77,6 +79,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     ['machine', 'Machine', (l) => l.p.repere || ''],
     ['panne', 'Panne qui revient', (l) => l.p.symptome || ''],
     ['cas', 'Cas (12 mois)', (l) => l.p.nombre],
+    ['evolution', 'Évolution', (l) => ({ nouvelle: 3, monte: 2, stable: 1, baisse: 0 }[l.p.evolution] ?? 1), 'Les cas des 12 derniers mois face aux 12 mois d’avant (entre parenthèses) : ↑ monte, ↓ baisse, ✦ nouvelle.'],
     ['part', 'Part des pannes', (l) => l.p.part, [
       'Part des pannes : ce que pèse cette panne parmi toutes les pannes qui reviennent dans le tableau (ses cas sur 12 mois, divisés par le total des cas).',
       '',
@@ -105,6 +108,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
           h('td', {}, lienAnalyse(d, p.machine, h('span', { class: 'mono' }, p.repere)), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
           h('td', { title: x?.commentaire || '' }, p.symptome),
           h('td', { class: 'nombre' }, String(p.nombre)),
+          h('td', {}, evolutionPanne(p)),
           h('td', {}, h('div', { class: 'part-pareto', title: `${p.nombre} cas sur 12 mois : ${pct(p.part)} des pannes qui reviennent` }, h('i', { style: { width: `${Math.round(p.part * 100)}%` } }), h('span', {}, pct(p.part)))),
           h('td', {}, x ? (x.fiches.length ? x.fiches.map((fid) => h('button', { class: 'etiquette lien-fiche', title: 'Descendre jusqu’à la fiche', onclick: () => allerAFiche(fid) }, etiquetteFiche(fid))) : h('span', { class: 'etiquette orange' }, 'aucune')) : h('span', { class: 'discret' }, '—'),
             x?.demandes?.length ? h('span', { class: 'discret petit-texte' }, ` · ${x.demandes.length} demande${x.demandes.length > 1 ? 's' : ''}`) : null),
@@ -121,7 +125,19 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
         a?.resume ? h('div', { class: 'texte-ia resume-correlation' }, h('div', { html: texteIA(a.resume) })) : null),
       boutonAnalyse),
     d.pareto.length ? h('div', { class: 'tableau-conteneur' }, tableauPareto) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de ce parc ces 12 derniers mois.'))
-  const carteCorrelation = h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, ic('graphique', 18), 'Pareto des pannes ↔ fiches')), zoneCorrelation)
+  // Deux vues dans la même carte : le Pareto des pannes face aux fiches, ou le nuage correctif × préventif.
+  let nuage = null
+  const titreCarte = h('h2', {}, ic('graphique', 18), 'Pareto des pannes ↔ fiches')
+  const corpsCarte = h('div', {}, zoneCorrelation)
+  const choixVue = h('div', { class: 'segments petits' })
+  const montrerVue = (vue) => {
+    vider(choixVue, [['pareto', 'Pareto ↔ fiches', 'Les pannes qui reviennent, et les fiches qui les visent'], ['nuage', 'Correctif × préventif', 'Chaque équipement : ses correctifs face à son préventif d’observation (12 mois)']].map(([cle, texte, aide]) => h('button', { class: vue === cle ? 'choisi' : '', title: aide, onclick: () => montrerVue(cle) }, texte)))
+    vider(titreCarte, ic('graphique', 18), vue === 'nuage' ? 'Correctif × préventif par équipement' : 'Pareto des pannes ↔ fiches')
+    if (vue === 'nuage') nuage = nuage || nuageEquilibre(d)
+    vider(corpsCarte, vue === 'nuage' ? nuage : zoneCorrelation)
+  }
+  montrerVue('pareto')
+  const carteCorrelation = h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titreCarte, choixVue), corpsCarte)
 
   // ---- fiches
   const enPlus = (f) => h('div', { class: 'enplus-mn1 badges-fiche' },
@@ -227,7 +243,11 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
   }
   const synthese = integre ? bandeauSynthese(d, { filtrer, compter: (cle) => d.fiches.filter(FILTRES.find(([c]) => c === cle)[2]).length }) : null
   // À droite, le calendrier des équipes du parc : il pèse sur tous les indicateurs de la maintenance N1.
-  vider(zone, h('div', { class: 'scene-parc' }, fond, entete, h('div', { class: 'haut-parc' }, h('div', { class: 'colonne-parc' }, synthese, carteChargeParc), encartCalendrier(d.parc, admin))), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
+  carteFiches.classList.add('carte-fiches-parc')
+  const haut = h('div', { class: 'haut-parc' }, h('div', { class: 'colonne-parc' }, synthese, carteChargeParc), encartCalendrier(d.parc, admin))
+  // PREVTEC suit le parcours : le fil (étape 2), le verdict du plan et le Pareto d'abord, puis la charge et les fiches.
+  if (estPrevtec) vider(zone, filEtapes(2, d.parc), h('div', { class: 'scene-parc' }, fond, entete, bandeauVerdict(d.plan)), h('div', { class: 'parc-mn1' }, carteCorrelation), haut, h('div', { class: 'parc-mn1' }, carteFiches, carteDemandes))
+  else vider(zone, h('div', { class: 'scene-parc' }, fond, entete, haut), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.

@@ -594,3 +594,68 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .savoir-detail .puce-machine { padding-right: 10px; }
 .suivi-depot { display: grid; gap: 8px; margin-top: 8px; }
 .bouton-savoir { border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+
+/* ---- Nuage correctif × préventif (fiche MN1 d'un parc) */
+.equilibre-mn1 { display: flex; flex-direction: column; gap: 12px; }
+.tete-equilibre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.legende-equilibre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; color: var(--texte-2); }
+.pastille-zone { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+.pastille-zone.rouge, .nuage-mn1 .point.rouge { background: var(--rouge); fill: var(--rouge); }
+.pastille-zone.orange, .nuage-mn1 .point.orange { background: var(--orange); fill: var(--orange); }
+.pastille-zone.vert, .nuage-mn1 .point.vert { background: var(--vert); fill: var(--vert); }
+.cadre-nuage { background: var(--carte-2); border: 1px solid var(--bord); border-radius: 12px; padding: 8px; }
+.nuage-mn1 { width: 100%; height: auto; display: block; }
+.nuage-mn1 .secteur.rouge { fill: color-mix(in srgb, var(--rouge) 9%, transparent); }
+.nuage-mn1 .secteur.orange { fill: color-mix(in srgb, var(--orange) 9%, transparent); }
+.nuage-mn1 .diagonale { stroke: var(--vert); stroke-width: 1.2; stroke-dasharray: 5 4; opacity: .7; }
+.nuage-mn1 .axe { stroke: var(--bord-fort); stroke-width: 1; }
+.nuage-mn1 .graduation { fill: var(--texte-3); font-size: 11px; }
+.nuage-mn1 .titre-axe { fill: var(--texte-2); font-size: 12px; }
+.nuage-mn1 .point { stroke: var(--carte); stroke-width: 1.5; opacity: .9; transition: r .15s; }
+.nuage-mn1 .point.cliquable { cursor: pointer; }
+.nuage-mn1 .point:hover { r: 8; opacity: 1; }
+.a-regarder { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.a-regarder > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.a-regarder b { width: 100%; font-size: 13px; color: var(--texte-2); }
+.puce-equipement { display: inline-flex; align-items: baseline; gap: 2px; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--bord); font-size: 13px; }
+.puce-equipement.rouge { border-color: color-mix(in srgb, var(--rouge) 55%, transparent); }
+.puce-equipement.orange { border-color: color-mix(in srgb, var(--orange) 55%, transparent); }
+.puce-equipement small { color: var(--texte-3); }
+.gammes-equilibre { border-top: 1px solid var(--bord); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ligne-gammes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ligne-gammes .etiquette { margin-left: 8px; }
+.liste-gammes { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow: auto; margin-top: 8px; }
+.liste-gammes .gamme { display: grid; grid-template-columns: 1fr auto auto 150px; align-items: center; gap: 10px; padding: 4px 8px; border-radius: 8px; font-size: 13px; }
+.liste-gammes .gamme.systematique { background: var(--carte-2); color: var(--texte-3); }
+@media (max-width: 640px) { .liste-gammes .gamme { grid-template-columns: 1fr auto; } }
+.nuage-mn1 .nombre-bulle { fill: #0b1410; font-size: 9.5px; font-weight: 700; pointer-events: none; }
+
+/* ---- PREVTEC : le fil des étapes, le verdict du plan, l'évolution des pannes */
+.fil-etapes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 14px; font-size: 13.5px; }
+.fil-etapes .sep-fil { color: var(--texte-3); }
+.etape-fil { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; border-radius: 99px; border: 1px solid var(--bord); background: var(--carte); color: var(--texte-2); text-decoration: none; font: inherit; cursor: pointer; }
+.etape-fil b { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11.5px; background: var(--carte-2); color: var(--texte-2); }
+.etape-fil:hover { border-color: var(--bord-fort); color: var(--texte); }
+.etape-fil.faite b { background: var(--accent-doux); color: var(--accent); }
+.etape-fil.en-cours { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); font-weight: 600; }
+.etape-fil.en-cours b { background: var(--accent); color: #06121a; }
+.etape-fil.muette { cursor: default; opacity: .75; }
+.etape-fil.muette:hover { border-color: var(--bord); color: var(--texte-2); }
+.plan-vignette { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 2px; }
+.verdict-plan { display: inline-flex; align-items: center; gap: 5px; }
+.etiquette.vert { color: var(--vert); border-color: color-mix(in srgb, var(--vert) 45%, transparent); background: color-mix(in srgb, var(--vert) 12%, transparent); }
+.bandeau-verdict { position: relative; margin: 14px 0 4px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--bord); background: color-mix(in srgb, var(--carte) 85%, transparent); backdrop-filter: blur(6px); }
+.bandeau-verdict.rouge { border-color: color-mix(in srgb, var(--rouge) 55%, transparent); }
+.bandeau-verdict.orange { border-color: color-mix(in srgb, var(--orange) 55%, transparent); }
+.bandeau-verdict.vert { border-color: color-mix(in srgb, var(--vert) 55%, transparent); }
+.tete-verdict { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.bandeau-verdict.rouge .tete-verdict { color: var(--rouge); }
+.bandeau-verdict.orange .tete-verdict { color: var(--orange); }
+.bandeau-verdict.vert .tete-verdict { color: var(--vert); }
+.bandeau-verdict ul { margin: 6px 0 8px; padding-left: 20px; color: var(--texte-2); font-size: 14px; }
+.chiffres-verdict { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--texte-3); }
+.chiffres-verdict b { color: var(--texte); font-size: 15px; }
+.evolution-panne { white-space: nowrap; font-size: 13px; color: var(--texte-2); }
+.evolution-panne.rouge { color: var(--rouge); }
+.evolution-panne.vert { color: var(--vert); }
+.evolution-panne small { color: var(--texte-3); }

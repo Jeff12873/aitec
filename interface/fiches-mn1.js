@@ -111,7 +111,7 @@ export function montrerFiche(f, pourquoi = []) {
       h('div', { class: 'pourquoi-fiche' }, h('h3', {}, ic('aide', 16), 'Le pourquoi de ses informations'),
         h('dl', {}, raisons.map(([titre, texte]) => [h('dt', {}, titre), h('dd', {}, texte)])))),
     boutons: [
-      { texte: 'Imprimer (A5)', classe: 'discret', action: () => { imprimerFiches([f]); return false } },
+      { texte: 'Imprimer (A6 pliée)', classe: 'discret', action: () => { imprimerFiches([f]); return false } },
       { texte: 'Fermer', classe: 'principal' },
     ],
   })
@@ -120,8 +120,9 @@ export function montrerFiche(f, pourquoi = []) {
 // Une seule fiche : toutes ses feuilles (5 pour un contrôle hebdomadaire, une par semaine du mois).
 export const imprimerFiche = (f) => imprimerFiches([f])
 
-// Les fiches à imprimer, A5 paysage, une feuille par fiche et par période. La feuille reprend la carte terrain :
-// à gauche le recto (machine, zone, étiquette, points à vérifier), à droite le verso (date, exécutant, mode
+// Les fiches à imprimer, une feuille A5 portrait par fiche et par période, pliée en deux par le milieu : la carte
+// terrain finie est un A6 paysage, recto verso. En haut, à l'endroit, le recto (machine, zone, étiquette, points à
+// vérifier) ; en bas, tête-bêche pour se lire dans le bon sens une fois pliée, le verso (date, exécutant, mode
 // opératoire, résultat à cocher) et le bandeau « LIGNE - FICHE MAINTENANCE NIV 01 ».
 export function imprimerFiches(fiches) {
   const e = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -144,6 +145,7 @@ export function imprimerFiches(fiches) {
       ${f.evite ? `<p class="evite">Évite : ${e(f.evite)}</p>` : ''}
     </div>
   </section>
+  <div class="pli"></div>
   <section class="verso">
     <div class="periode">${nombre > 1 ? `${e(periode)} ${numero} / ${nombre} · ` : ''}${e(f.frequence || 'Fréquence à préciser')}</div>
     <div class="date-mode">
@@ -163,36 +165,39 @@ export function imprimerFiches(fiches) {
   const feuilles = fiches.flatMap((f) => { const n = Math.max(1, fichesPour(f.frequence)); return Array.from({ length: n }, (_, i) => feuille(f, i + 1, n)) })
   const page = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Fiches maintenance niveau 1</title>
 <style>
-  @page { size: A5 landscape; margin: 6mm; }
+  @page { size: A5 portrait; margin: 0; }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 10pt/1.35 Cambria, Georgia, 'Times New Roman', serif; color: #111; background: #e9ecea; }
-  .feuille { width: 210mm; height: 148mm; margin: 12px auto; padding: 6mm; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: grid; grid-template-columns: 1.15fr 1fr; gap: 6mm; }
-  section { display: flex; flex-direction: column; gap: 3mm; min-height: 0; }
-  .cases { display: grid; grid-template-columns: 1fr 1.4fr .8fr; gap: 2mm; }
-  .case { border: .45mm solid #111; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; padding: 1.5mm; min-height: 12mm; font-size: 9pt; line-height: 1.15; }
+  body { margin: 0; font: 8.5pt/1.3 Cambria, Georgia, 'Times New Roman', serif; color: #111; background: #e9ecea; }
+  /* Une feuille A5 portrait = deux moitiés A6 paysage ; la moitié du bas est tête-bêche (pliage par le milieu). */
+  .feuille { width: 148mm; height: 210mm; margin: 12px auto; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.15); display: grid; grid-template-rows: 1fr 0 1fr; overflow: hidden; }
+  section { display: flex; flex-direction: column; gap: 2.2mm; min-height: 0; height: 105mm; padding: 5mm; }
+  .verso { transform: rotate(180deg); }
+  .pli { border-top: .2mm dashed #bbb; }
+  .cases { display: grid; grid-template-columns: 1fr 1.4fr .9fr; gap: 1.5mm; }
+  .case { border: .4mm solid #111; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; padding: 1mm; min-height: 10mm; font-size: 8pt; line-height: 1.1; }
   .verte { background: #92d050; }
-  .claire { background: #e2efda; font-size: 8pt; }
-  .code { font-size: 17pt; }
-  .points { flex: 1; border: .45mm solid #111; padding: 3mm 3.5mm; overflow: hidden; font-weight: 700; font-size: 9.5pt; }
-  .points p { margin: 0 0 1.3mm; }
-  .titre { text-decoration: underline; margin-top: 1.5mm !important; }
-  .point { display: flex; gap: 1.8mm; }
+  .claire { background: #e2efda; font-size: 7pt; }
+  .code { font-size: 12pt; }
+  .points { flex: 1; border: .4mm solid #111; padding: 2.5mm 3mm; overflow: hidden; font-weight: 700; font-size: 8.5pt; }
+  .points p { margin: 0 0 1mm; }
+  .titre { text-decoration: underline; margin-top: 1.2mm !important; }
+  .point { display: flex; gap: 1.5mm; }
   .point span { flex: none; }
-  .evite { margin-top: 2.5mm !important; font-weight: 400; font-style: italic; color: #444; }
-  .alerte { padding: 1.5mm 2mm; background: #fdecea; color: #a12a1a; font-family: system-ui, sans-serif; font-size: 8pt; }
-  .periode { align-self: flex-end; font: 600 8pt system-ui, sans-serif; color: #1d5fbf; border: .3mm solid #1d5fbf; border-radius: 99px; padding: .8mm 3mm; }
-  .date-mode { display: grid; grid-template-columns: .8fr 1.4fr; gap: 1.5mm; }
-  .qui, .date-mode ol { border: .45mm solid #111; margin: 0; padding: 2mm 3mm; font-weight: 700; }
-  .qui p { margin: 0 0 9mm; font-size: 11pt; text-align: center; }
-  .date-mode ol { padding-left: 7mm; font-size: 8.5pt; }
-  .resultats { display: flex; flex-direction: column; gap: 2mm; align-items: center; margin-top: 1mm; }
-  .resultats div { display: flex; align-items: center; gap: 4mm; width: 82%; }
-  .resultats i { width: 8mm; height: 7mm; border: .45mm solid #111; border-radius: 1.5mm; flex: none; }
-  .resultats span { flex: 1; border: .35mm solid #111; text-align: center; font-weight: 700; padding: 1.2mm; font-size: 9pt; }
-  .bandeau { margin-top: auto; background: #92d050; border: .45mm solid #111; display: flex; align-items: center; justify-content: center; gap: 3mm; padding: 1.5mm; font-weight: 700; font-size: 12pt; }
-  .bandeau img { width: 9mm; height: 9mm; }
-  .pied { font: 6.5pt system-ui, sans-serif; color: #888; text-align: right; }
-  @media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; width: auto; height: 136mm; padding: 0; page-break-after: always; break-after: page; } .feuille:last-child { page-break-after: auto; break-after: auto; } }
+  .evite { margin-top: 2mm !important; font-weight: 400; font-style: italic; color: #444; }
+  .alerte { padding: 1mm 2mm; background: #fdecea; color: #a12a1a; font-family: system-ui, sans-serif; font-size: 7pt; }
+  .periode { align-self: flex-end; font: 600 7pt system-ui, sans-serif; color: #1d5fbf; border: .3mm solid #1d5fbf; border-radius: 99px; padding: .6mm 2.5mm; }
+  .date-mode { display: grid; grid-template-columns: .8fr 1.5fr; gap: 1.5mm; }
+  .qui, .date-mode ol { border: .4mm solid #111; margin: 0; padding: 1.5mm 2.5mm; font-weight: 700; }
+  .qui p { margin: 0 0 6mm; font-size: 9pt; text-align: center; }
+  .date-mode ol { padding-left: 6mm; font-size: 7pt; }
+  .resultats { display: flex; flex-direction: column; gap: 1.5mm; align-items: center; }
+  .resultats div { display: flex; align-items: center; gap: 3mm; width: 88%; }
+  .resultats i { width: 7mm; height: 5.5mm; border: .4mm solid #111; border-radius: 1.2mm; flex: none; }
+  .resultats span { flex: 1; border: .3mm solid #111; text-align: center; font-weight: 700; padding: .8mm; font-size: 7.5pt; }
+  .bandeau { margin-top: auto; background: #92d050; border: .4mm solid #111; display: flex; align-items: center; justify-content: center; gap: 2.5mm; padding: 1mm; font-weight: 700; font-size: 9.5pt; }
+  .bandeau img { width: 7mm; height: 7mm; }
+  .pied { font: 5.5pt system-ui, sans-serif; color: #888; text-align: right; }
+  @media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; page-break-after: always; break-after: page; } .feuille:last-child { page-break-after: auto; break-after: auto; } }
 </style></head><body>${feuilles.join('')}</body></html>`
   // L'aperçu par-dessus la page (pas de fenêtre surgissante, que les navigateurs bloquent souvent) ;
   // « Imprimer » imprime les feuilles seules.
@@ -202,7 +207,7 @@ export function imprimerFiches(fiches) {
   const nombre = feuilles.length
   const voile = h('div', { class: 'apercu-fiche', onmousedown: (ev) => ev.target === voile && fermer() },
     h('div', { class: 'outils-fiche' },
-      h('span', {}, ic('document', 16), `${nombre} fiche${nombre > 1 ? 's' : ''} de niveau 1 — A5 paysage`),
+      h('span', {}, ic('document', 16), `${nombre} fiche${nombre > 1 ? 's' : ''} de niveau 1 — feuille A5 pliée en deux (carte A6)`),
       fiches.some((f) => f.frequence === 'Quotidienne') ? h('span', { class: 'alerte-mn1' }, ic('alerte', 14), 'Trop fréquent') : null,
       h('button', { class: 'principal', onclick: () => cadre.contentWindow?.print() }, ic('document', 15), nombre > 1 ? `Imprimer les ${nombre}` : 'Imprimer'),
       h('button', { class: 'discret icone-seule', title: 'Fermer (Échap)', onclick: fermer }, ic('x', 16))),

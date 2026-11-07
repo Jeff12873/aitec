@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icône de PREVTEC : un Pareto (barres décroissantes) et la flèche qui le fait tourner, la réévaluation du plan
+       de maintenance, dans le cadre commun des applications KTEC. -->
+  <defs>
+    <linearGradient id="bord" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#0f1b24" stroke="url(#bord)" stroke-width="16"/>
+  <g fill="#e6f2ea">
+    <rect x="132" y="190" width="46" height="180" rx="8"/>
+    <rect x="196" y="240" width="46" height="130" rx="8"/>
+    <rect x="260" y="282" width="46" height="88" rx="8"/>
+    <rect x="324" y="316" width="46" height="54" rx="8"/>
+  </g>
+  <path d="M120 150 C 200 96, 316 96, 384 160" fill="none" stroke="#38bdf8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M396 108 L 392 178 L 324 166 Z" fill="#38bdf8" stroke="#38bdf8" stroke-width="8" stroke-linejoin="round"/>
+</svg>

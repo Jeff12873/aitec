@@ -15,9 +15,11 @@ import { jauge, courbe, ecartTendance } from '../../interface/mn1-graphiques.js'
 import { avecParc, parcChoisi } from '../../interface/parcs.js'
 import { animer } from '../tableau-de-bord/vue.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
+import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 let tri = 'nom'
+let triChoisi = false // PREVTEC trie par verdict tant qu'on n'a pas choisi
 let derniereLecture = 0 // les FI de la GMAO sont relues à chaque ouverture de l'écran (pas à chaque rafraîchissement)
 
 // Ce qu'on sait de la maintenance autonome (TPM), sans chiffre inventé : des repères et des exemples.
@@ -54,6 +56,8 @@ export default {
     bandeau.zoneHof = zoneHof
     vider(
       zone,
+      // PREVTEC : le fil des étapes, en haut (sur les vignettes des parcs, on est à l'étape 1).
+      estPrevtec ? filEtapes(1) : null,
       bandeau,
       zoneHof,
       h('div', { class: 'barre-onglets-mn1' },
@@ -159,14 +163,17 @@ async function afficherVignettes(zone, bandeau) {
     alertes: (a, b) => alertes(b) - alertes(a) || a.nom.localeCompare(b.nom, 'fr'),
     // Les parcs dont les correctifs montent le plus d'abord, ceux qui baissent le plus à la fin.
     tendance: (a, b) => ecartTendance(b.tendance.map((x) => x.n)) - ecartTendance(a.tendance.map((x) => x.n)),
+    // Les plans à réévaluer d'abord.
+    verdict: (a, b) => ({ reevaluer: 0, surveiller: 1, bon: 2 }[a.plan?.verdict] ?? 3) - ({ reevaluer: 0, surveiller: 1, bon: 2 }[b.plan?.verdict] ?? 3) || a.nom.localeCompare(b.nom, 'fr'),
   }
+  if (estPrevtec && !triChoisi) tri = 'verdict'
   parcs = [...parcs].sort(ordres[tri])
   const grille = h('div', { class: 'vignettes-mn1' }, parcs.map((p, i) => vignette(p, i, v.seuil)))
   vider(zone,
     h('div', { class: 'barre-vignettes' },
       h('span', { class: 'discret' }, 'Trier par'),
-      h('div', { class: 'segments petits' }, [['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes'], ['tendance', 'Tendance']].map(([cle, texte]) =>
-        h('button', { class: tri === cle ? 'choisi' : '', title: cle === 'tendance' ? 'Les correctifs qui montent le plus d’abord (3 derniers mois par rapport à la moyenne des 12)' : '', onclick: () => { tri = cle; afficherVignettes(zone, bandeau) } }, texte))),
+      h('div', { class: 'segments petits' }, [...(estPrevtec ? [['verdict', 'Verdict']] : []), ['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes'], ['tendance', 'Tendance']].map(([cle, texte]) =>
+        h('button', { class: tri === cle ? 'choisi' : '', title: cle === 'tendance' ? 'Les correctifs qui montent le plus d’abord (3 derniers mois par rapport à la moyenne des 12)' : cle === 'verdict' ? 'Les plans à réévaluer d’abord' : '', onclick: () => { tri = cle; triChoisi = true; afficherVignettes(zone, bandeau) } }, texte))),
       h('div', { class: 'espace' }),
       v.lecture?.erreur ? h('span', { class: 'etiquette orange', title: v.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : v.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO à ${new Date(v.lecture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`) : null,
       admin && v.sansParc ? h('button', { class: 'petit', onclick: rangerSansParc }, ic('alerte', 14), `${v.sansParc} fiche${v.sansParc > 1 ? 's' : ''} sans parc`) : null,
@@ -180,6 +187,9 @@ function vignette(p, rang, seuil) {
   const pire = p.alertes.find((a) => a.niveau === 'rouge') ? 'rouge' : p.alertes.find((a) => a.niveau === 'orange') ? 'orange' : ''
   return h('div', { class: `vignette-mn1 ${pire}`, role: 'button', tabindex: '0', style: { '--i': rang }, title: `Ouvrir la fiche MN1 du parc ${p.nom}`, onclick: ouvrir, onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), ouvrir()) },
     h('div', { class: 'tete-vignette' }, h('h2', {}, p.nom), h('span', { class: 'discret' }, `${nombreFr(p.fiches)} fiche${p.fiches > 1 ? 's' : ''} · ${nombreFr(p.charge?.actives ?? 0)} FI`)),
+    // PREVTEC : le verdict du plan du parc, ses pannes et son préventif sur 12 mois face aux 12 d'avant.
+    estPrevtec && p.plan ? h('div', { class: 'plan-vignette' }, pastilleVerdict(p.plan),
+      h('small', { class: 'discret', title: 'Interventions correctives et préventives des 12 derniers mois (entre parenthèses : les 12 mois d’avant)' }, `${nombreFr(p.plan.correctifs.recent)} pannes (${nombreFr(p.plan.correctifs.precedent)}) · ${nombreFr(p.plan.preventifs.recent)} préventifs (${nombreFr(p.plan.preventifs.precedent)})`)) : null,
     h('div', { class: 'jauges-vignette' },
       h('div', { class: 'jauge-vignette', title: p.erreurCharge || (p.charge ? `Charge la plus haute d’un ETH : ${Math.round(p.charge.taux * 100)} % du maximum (${p.charge.max} fiches par semaine et par ETH)` : '') }, jauge(p.charge ? p.charge.taux : null, { inverse: true, libelle: 'charge' })),
       h('div', { class: 'jauge-vignette', title: p.pertinence ? `Part du Pareto des pannes visée par les fiches (analyse du ${dateFr(p.pertinence.date)})` : 'Pas encore d’analyse de corrélation' }, jauge(p.pertinence ? p.pertinence.taux : null, { seuil, libelle: p.pertinence ? 'pertinence' : 'non analysé' }))),

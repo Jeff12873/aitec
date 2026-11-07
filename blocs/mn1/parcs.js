@@ -57,6 +57,7 @@ export function pareto(parc) {
   const garde = cachePareto.get(parc.id)
   if (garde?.cle === cle) return garde.pareto
   const depuis = ilYa(365)
+  const avant = ilYa(730)
   const reperes = new Map(db().prepare('SELECT id, repere, designation FROM machines').all().map((m) => [m.id, m]))
   const plusFrequent = (valeurs) => [...valeurs.reduce((c, v) => c.set(v, (c.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
   const items = []
@@ -65,7 +66,9 @@ export function pareto(parc) {
       const recents = g.cas.filter((c) => c.date >= depuis)
       if (!recents.length) continue
       const m = reperes.get(id)
-      items.push({ machine: id, repere: m?.repere || '', designation: m?.designation || '', symptome: plusFrequent(g.cas.map((c) => c.symptome)).slice(0, 160), nombre: recents.length, total: g.cas.length, derniere: g.cas[0]?.date || '', cas: g.cas.map((c) => c.id), datesCas: g.cas.map((c) => c.date) })
+      // Les 12 mois d'avant, pour l'évolution de la panne.
+      const precedent = g.cas.filter((c) => c.date >= avant && c.date < depuis).length
+      items.push({ machine: id, repere: m?.repere || '', designation: m?.designation || '', symptome: plusFrequent(g.cas.map((c) => c.symptome)).slice(0, 160), nombre: recents.length, precedent, evolution: evolution(recents.length, precedent), total: g.cas.length, derniere: g.cas[0]?.date || '', cas: g.cas.map((c) => c.id), datesCas: g.cas.map((c) => c.date) })
     }
   }
   items.sort((a, b) => b.nombre - a.nombre || b.total - a.total)
@@ -77,6 +80,54 @@ export function pareto(parc) {
   })
   cachePareto.set(parc.id, { cle, pareto: liste })
   return liste
+}
+
+// L'évolution d'une panne : ses cas des 12 derniers mois face aux 12 d'avant (2 cas et un quart d'écart au moins).
+export function evolution(recent, precedent) {
+  if (!precedent) return 'nouvelle'
+  if (recent - precedent >= 2 && recent >= precedent * 1.25) return 'monte'
+  if (precedent - recent >= 2 && recent <= precedent * 0.75) return 'baisse'
+  return 'stable'
+}
+
+// ---------------------------------------------------------------- le plan de maintenance va-t-il dans le bon sens ?
+
+const NB_HAUT = 5 // les pannes du haut du Pareto regardées une à une
+// Le verdict d'un parc (PREVTEC) : ses correctifs des 12 derniers mois face aux 12 d'avant, et les pannes du haut
+// du Pareto qui montent (ou apparaissent, 5 cas au moins) :
+//   - malgré une fiche qui les vise (analyse de corrélation) : ce préventif ne voit pas venir la panne ;
+//   - avec du préventif sur leur machine, mais aucune fiche qui les vise : le préventif regarde peut-être ailleurs ;
+//   - sans aucun préventif sur leur machine.
+// Une baisse nette des pannes du parc (10 % et plus) tempère le verdict.
+//   → { verdict: 'bon' | 'surveiller' | 'reevaluer', raisons: [texte], correctifs, preventifs: { recent, precedent } }
+export function bilanPlan(parc, liste, analyse) {
+  const ids = machinesMaintenance(parc)
+  const compter = (famille, de, a) => (ids.length ? db().prepare(`SELECT count(*) AS n FROM interventions WHERE machine_id IN (${ids.join(',')}) AND ${sqlFamille(famille)} AND date >= ? AND date < ?`).get(de, a).n : 0)
+  const demain = ilYa(-1)
+  const correctifs = { recent: compter('Correctif', ilYa(365), demain), precedent: compter('Correctif', ilYa(730), ilYa(365)) }
+  const preventifs = { recent: compter('Préventif', ilYa(365), demain), precedent: compter('Préventif', ilYa(730), ilYa(365)) }
+  const visees = new Set((analyse?.pareto || []).filter((x) => x.fiches?.length).map((x) => x.code))
+  const preventifSur = (machine) => db().prepare(`SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND ${sqlFamille('Préventif')} AND date >= ?`).get(machine, ilYa(365)).n
+  const haut = liste.slice(0, NB_HAUT)
+  const montent = haut.filter((x) => x.evolution === 'monte' || (x.evolution === 'nouvelle' && x.nombre >= 5))
+  const malgreFiche = montent.filter((x) => visees.has(x.code))
+  const ailleurs = montent.filter((x) => !visees.has(x.code) && preventifSur(x.machine) > 0)
+  const sansRien = montent.filter((x) => !visees.has(x.code) && !preventifSur(x.machine))
+  const ecart = correctifs.precedent ? (correctifs.recent - correctifs.precedent) / correctifs.precedent : null
+  const pct = (x) => `${x > 0 ? '+' : ''}${Math.round(x * 100)} %`
+  const codes = (l) => l.map((x) => x.code).join(', ')
+  const raisons = []
+  if (ecart !== null) raisons.push(Math.abs(ecart) >= 0.05 ? `Pannes du parc : ${pct(ecart)} sur 12 mois (${correctifs.recent} contre ${correctifs.precedent}).` : `Pannes du parc stables sur 12 mois (${correctifs.recent} contre ${correctifs.precedent}).`)
+  if (malgreFiche.length) raisons.push(`${codes(malgreFiche)} : ${malgreFiche.length > 1 ? 'montent' : 'monte'} alors qu’une fiche ${malgreFiche.length > 1 ? 'les' : 'la'} vise, le contrôle ne voit pas venir la panne.`)
+  if (ailleurs.length) raisons.push(`${codes(ailleurs)} : ${ailleurs.length > 1 ? 'montent' : 'monte'} malgré du préventif sur ${ailleurs.length > 1 ? 'leur' : 'sa'} machine, sans fiche qui ${ailleurs.length > 1 ? 'les' : 'la'} vise : le préventif regarde-t-il ailleurs ?`)
+  if (sansRien.length) raisons.push(`${codes(sansRien)} : ${sansRien.length > 1 ? 'montent' : 'monte'} sans aucun préventif sur ${sansRien.length > 1 ? 'leur' : 'sa'} machine.`)
+  let verdict = 'bon'
+  if ((ecart !== null && ecart > 0.15) || malgreFiche.length >= 2) verdict = 'reevaluer'
+  else if ((ecart !== null && ecart > 0.05) || malgreFiche.length === 1 || ailleurs.length >= 3 || sansRien.length >= 2) verdict = 'surveiller'
+  // Les pannes du parc baissent nettement : le plan porte ses fruits, on ne dit au plus que « à surveiller ».
+  if (ecart !== null && ecart <= -0.1 && verdict === 'reevaluer') verdict = 'surveiller'
+  if (verdict === 'bon') raisons.push(ecart !== null && ecart < 0 ? 'Le plan va dans le bon sens : les pannes baissent.' : 'Pas de panne du haut du Pareto qui monte malgré une fiche.')
+  return { verdict, raisons, correctifs, preventifs, ecart }
 }
 
 // Les correctifs du parc, par mois, sur 12 mois (la petite courbe de la vignette).
@@ -192,6 +243,7 @@ async function indicateurs(p, parc, fiches) {
     alertes, aAnalyser,
     pareto: { nombre: liste.length, cas: liste.reduce((s, x) => s + x.nombre, 0) },
     tendance: tendance(parc),
+    plan: bilanPlan(parc, liste, analyse),
   }
 }
 
@@ -263,6 +315,7 @@ export async function detailDuParc(parcId) {
     demandes: demandes ? { total: demandes.length, ouvertes: demandes.filter((d) => !d.close).length, surMachineAvecFiche: demandes.filter((d) => machinesAvecFiche.has(d.machineId)).length, dernieres: demandes.slice(0, 15).map((d) => ({ ...d, fiche: machinesAvecFiche.get(d.machineId) ? { id: machinesAvecFiche.get(d.machineId).id, etiquette: machinesAvecFiche.get(d.machineId).etiquette } : null })) } : null,
     reglages: { parSemaine: r.parSemaine, propres: r.propres },
     tendance: tendance(parc),
+    plan: bilanPlan(parc, liste, analyse),
   }
 }
 

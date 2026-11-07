@@ -1,0 +1,65 @@
+{
+  "sections": [
+    {
+      "titre": "Commencer",
+      "pages": [
+        {
+          "id": "prevtec-premiers-pas",
+          "titre": "Premiers pas avec PREVTEC",
+          "mots": "parcours parc pareto verdict étapes",
+          "alias": [
+            "premiers-pas"
+          ]
+        },
+        {
+          "id": "prevtec-cas-usage",
+          "titre": "Cas d'usage",
+          "mots": "exemples scénarios réévaluer",
+          "alias": [
+            "cas-usage"
+          ]
+        }
+      ]
+    },
+    {
+      "titre": "Maintenance de niveau 1",
+      "pages": [
+        {
+          "id": "mn1",
+          "titre": "Vue d'ensemble",
+          "ecran": "mn1",
+          "mots": "mn1 parcs vignettes onglets",
+          "alias": [
+            "maintenance-niveau-1",
+            "plan"
+          ]
+        },
+        {
+          "id": "mn1-circuit",
+          "titre": "DI, FI, RI : le circuit",
+          "ecran": "mn1",
+          "mots": "demandes fiches rapports pastilles suite"
+        },
+        {
+          "id": "mn1-indicateurs",
+          "titre": "Indicateurs et Hall of fame",
+          "ecran": "mn1",
+          "mots": "bandeau tendance délai hall of fame conducteurs calendrier équipes"
+        },
+        {
+          "id": "mn1-fiches",
+          "titre": "Fiches focus et charge des parcs",
+          "ecran": "mn1",
+          "mots": "vignettes charge pertinence pareto eth imprimer a5"
+        },
+        {
+          "id": "mn1-fi-gmao",
+          "titre": "Créer et gérer les FI dans la GMAO",
+          "ecran": "mn1",
+          "admin": true,
+          "mots": "simuler écrire suspendre remplacer périodicité"
+        }
+      ]
+    }
+  ]
+}

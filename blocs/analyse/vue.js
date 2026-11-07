@@ -2,12 +2,18 @@
 // intervenants, dernières interventions, et le résumé de l'IA avec ses conseils (consignes derrière le rouage).
 
 import { h, vider, ic, dateFr, nombreFr, ilYa, essayer, fenetre, notifier, tableau } from '/socle/ui.js'
-import { api } from '/socle/api.js'
+import { api, appli } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { barres, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { animer } from '../tableau-de-bord/vue.js'
+import { estPrevtec, filEtapes } from '../../interface/prevtec.js'
 import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres, FREQUENCES } from '../../interface/fiches-mn1.js'
+
+// Les fiches de niveau 1 sont dans PREVTEC quand il existe (menu.js) ; sinon dans AITEC.
+const lienMn1 = () => (appli === 'aitec' && window.aitecAvecPrevtec ? '/prevtec/#/mn1' : '#/mn1')
+// Dans PREVTEC, la fiche machine et l'assistant restent dans AITEC.
+const versAitec = appli === 'prevtec' ? '/aitec/' : ''
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 
@@ -25,12 +31,13 @@ export default {
     const c = d.chiffres
     vider(
       zone,
+      estPrevtec ? filEtapes(3) : null,
       h('div', { class: 'entete-page' },
         h('button', { class: 'discret icone-seule', title: 'Retour', onclick: () => history.back() }, ic('retour')),
         h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono' }, m.repere), m.designation ? ` — ${m.designation}` : ''), h('p', { class: 'sous-titre' }, ['Fiche d’analyse', m.marque, m.modele, m.etat].filter(Boolean).join(' · '))),
         h('div', { class: 'actions' },
-          h('a', { class: 'bouton', href: `#/parc/${m.id}` }, ic('usine', 16), 'Fiche machine'),
-          h('a', { class: 'bouton', href: `#/assistant?machine=${m.id}` }, ic('etincelle', 16), 'Demander à l’assistant'))),
+          h('a', { class: 'bouton', href: `${versAitec}#/parc/${m.id}` }, ic('usine', 16), 'Fiche machine'),
+          h('a', { class: 'bouton', href: `${versAitec}#/assistant?machine=${m.id}` }, ic('etincelle', 16), 'Demander à l’assistant'))),
 
       h('div', { class: 'grille grille-4', style: { marginBottom: '16px' } },
         tuile('alerte', 'violet', 'Pannes (12 mois)', c.pannes12Mois, h('span', { class: 'ecart' }, `${c.pannes3Mois} ces 3 mois`)),
@@ -198,7 +205,7 @@ function blocMN1(gestes, formations, d) {
   const gardees = new Set((d.fichesMN1 || []).map((f) => f.action.toLowerCase()))
   return h('div', { class: 'bloc-mn1' },
     h('div', { class: 'tete-mn1' },
-      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1'), h('a', { class: 'lien-mn1', href: '#/mn1' }, 'Toutes les fiches ›')),
+      h('div', { class: 'titre-mn1' }, h('img', { src: LOGO_MN1, alt: 'MN1' }), h('span', {}, 'Maintenance de niveau 1'), h('a', { class: 'lien-mn1', href: lienMn1() }, 'Toutes les fiches ›')),
       formations.map((f) => h('div', { class: 'formation-mn1' }, ic('personne', 15), h('b', {}, 'Formation des opérateurs'), h('span', {}, f)))),
     gestes.length ? h('div', { class: 'fiches-mn1' }, gestes.slice(0, GESTES_MAX).map((g) => {
       const fiche = { ...g, frequence: frequenceCalendaire(g.frequence), repere: d.machine.repere, designation: d.machine.designation, eth: d.place?.eth || '', ligne: d.place?.ligne || '' }

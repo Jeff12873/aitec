@@ -14,6 +14,7 @@ import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregist
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
+import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -523,6 +524,12 @@ export function routes(r) {
 
   // Brouillon de fiche pour une panne du Pareto qu'aucune fiche ne vise : { code } (rien n'est enregistré).
   r.post('/api/mn1/parcs/:id/proposer', async (ctx) => proposerFiche(ctx.params.id, String((await ctx.json()).code || '')))
+
+  // L'équilibre correctif × préventif du parc (le nuage), et le classement des gammes (observation / systématique) :
+  // l'IA classe (aussi en consultation, comme l'analyse), l'administrateur corrige.
+  r.get('/api/mn1/parcs/:id/equilibre', (ctx) => equilibreDuParc(ctx.params.id))
+  r.post('/api/mn1/parcs/:id/gammes', (ctx) => classerGammes(ctx.params.id))
+  admin.post('/api/mn1/gammes', async (ctx) => corrigerGamme(await ctx.json()))
 
   // Les réglages propres au parc (administrateur) : maximum par ETH, paramètres de ses FI.
   admin.get('/api/mn1/parcs/:id/reglages', (ctx) => {

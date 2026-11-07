@@ -1,30 +1,27 @@
 <h1>Premiers pas avec AITEC</h1>
-<p class="but">AITEC est l'outil de la maintenance de premier niveau : le suivi des demandes, fiches et rapports d'intervention de niveau 1, les fiches focus des parcs, des indicateurs, et un assistant IA qui connaît le parc, l'historique et vos documents.</p>
+<p class="but">AITEC est l'assistant du dépannage : une panne, une machine, la réponse vite, avec ses sources (historique des interventions, documents, pannes connues). Le plan de maintenance et le niveau 1 sont dans <a href="#/prevtec/premiers-pas">PREVTEC</a>, sur les mêmes données.</p>
 
 <script type="application/json" data-maquette>
-{ "titre": "AITEC — Maintenance de niveau 1", "ratio": 58,
+{ "titre": "AITEC — Assistant de dépannage", "ratio": 58,
   "blocs": [
-    [0,0,17,100,"","menu"], [2,4,13,6,"AITEC","texte"], [2,16,13,5,"Tableau de bord","texte"], [2,23,13,5,"Assistant IA (Bêta)","texte"], [2,30,13,5,"Maint. niveau 1","accent"], [2,40,13,5,"Administration","texte"],
+    [0,0,17,100,"","menu"], [2,4,13,6,"AITEC","texte"], [2,16,13,5,"Tableau de bord","texte"], [2,23,13,5,"Assistant IA (Bêta)","accent"], [2,33,13,5,"Administration","texte"],
     [17,0,83,8,"","barre"], [19,2,30,5,"Recherche dans toute la base","champ"],
-    [19,11,79,14,"Bandeau : chiffres de la zone, une idée qui tourne","carte"],
-    [19,28,79,7,"Zones : Tous · USINAGE · PEINTURE…","zone"],
-    [19,38,79,13,"Hall of fame de la zone","accent"],
-    [40,54,38,7,"Demandes N1 · Fiches N1 · Rapports N1","bouton"],
-    [19,64,79,33,"Le contenu de l'onglet","zone"]
+    [19,12,79,10,"Machine concernée","champ"],
+    [19,25,79,48,"La réponse, avec ses sources","zone"],
+    [19,76,79,10,"Votre question","champ"],
+    [19,89,30,6,"Ajouter un savoir","bouton"]
   ],
   "reperes": [
-    [9,33,"Le menu : la maintenance de niveau 1, le tableau de bord, l'assistant ; l'administration pour l'administrateur."],
+    [9,26,"Le menu : l'assistant, le tableau de bord ; l'administration pour l'administrateur."],
     [21,4,"La barre de recherche : cherche partout sans passer par l'IA."],
-    [21,31,"Le choix de la zone : tous les chiffres de l'écran la suivent."],
-    [21,44,"Le Hall of fame de la zone, pour le mois écoulé."],
-    [59,57,"Les trois onglets du circuit DI → FI → RI."]
+    [21,15,"La machine concernée : l'assistant cherche d'abord dans son historique et ses documents."],
+    [21,92,"Après un dépannage : transmettre ce qu'il faut savoir au prochain."]
   ] }
 </script>
 
 <h2>Pas à pas</h2>
 <ol>
 <li>Ouvrez AITEC depuis le portail.</li>
-<li><b>Maintenance de niveau 1</b> : choisissez votre zone, puis l'onglet (demandes, fiches, rapports).</li>
 <li><b>Assistant IA</b> : posez une question comme à un collègue (« le compresseur est en alarme température, que vérifier ? »).</li>
 <li><b>Tableau de bord</b> : la vue d'ensemble du parc.</li>
 </ol>

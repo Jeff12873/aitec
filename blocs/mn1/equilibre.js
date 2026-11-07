@@ -1,0 +1,163 @@
+// L'équilibre correctif × préventif d'un parc, équipement par équipement (le nuage de la fiche MN1 du parc) :
+// pour chaque machine de maintenance, ses correctifs et ses préventifs des 12 derniers mois.
+//   - rouge  : beaucoup de pannes et peu de préventif (sous-entretien) ;
+//   - orange : beaucoup de préventif et peu de pannes (sur-entretien possible) ;
+//   - vert   : équilibré.
+// On compare des parts : la part des correctifs du parc que porte l'équipement, et sa part du préventif (la couleur
+// est calculée par l'écran, interface/mn1-equilibre.js, selon la bascule niveau 1 / techniciens / tout).
+//
+// Seul le préventif d'observation compte (contrôles, inspections, surveillance de l'état) : un préventif
+// systématique (« changer telle pièce ») renouvelle sans regarder et ne dit rien des pannes. Chaque gamme (le titre
+// de l'intervention, avant « - ») est classée une fois par l'IA, observation ou systématique ; l'administrateur
+// corrige. Le classement est gardé dans le fichier (réglage « mn1_gammes »). Sans classement : une première idée
+// d'après les mots du titre (échange, remplacement…).
+//
+// Préventif de niveau 1 : les RI de la requête du site « RI N1 », ou une FI au modèle de numéro des fiches MN1 ;
+// le reste du préventif est celui des techniciens.
+
+import { db, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
+import { ErreurHttp } from 'ktec/http.js'
+import { exigerEcriture } from 'ktec/partage.js'
+import { discuter, iaInstallee } from 'ktec/ia.js'
+import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
+import { familleDe } from '../../lib/types.js'
+import { lireRiN1 } from './circuit.js'
+import { reglagesDuParc } from './gmao.js'
+import { motifs } from './fi.js'
+
+const JOURS = 365
+const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
+
+const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
+const texteSeul = (t) => String(t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+
+// La gamme d'une intervention : son titre, avant « - » (« Vérification du tunnel de rinçage - ras » → la 1re partie).
+export function gammeDe(description) {
+  const t = texteSeul(description)
+  const i = t.indexOf(' - ')
+  return (i > 0 ? t.slice(0, i) : t).slice(0, 120).trim()
+}
+const cleDe = (gamme) => gamme.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+// Première idée sans IA : les mots du renouvellement à date fixe.
+const SYSTEMATIQUE = /\b(echange|echanger|remplac\w*|chang(?:er|ement)|vidange\w*|renouvel\w*|substitu\w*)\b/
+const devinee = (cle) => (SYSTEMATIQUE.test(cle) ? 'systematique' : 'observation')
+
+// { cle: { classe: 'observation' | 'systematique', par: 'ia' | 'admin', gamme } }
+const classement = () => reglageJson('mn1_gammes', {}) || {}
+const classeDe = (c, cle) => c[cle]?.classe || devinee(cle)
+
+// Les préventifs et correctifs des machines de maintenance d'un parc (12 mois).
+async function interventionsDuParc(parc) {
+  const ids = new Set(parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines)
+  const lignes = db().prepare('SELECT machine_id, numero, type, description FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
+  // Le niveau 1 : les RI de la requête du site (si elle est réglée et la GMAO joignable), et les FI au modèle MN1.
+  let riN1 = new Set()
+  try {
+    riN1 = new Set(((await lireRiN1()) || []).map((r) => r.numero))
+  } catch {}
+  const modele = motifs(reglagesDuParc(parc.id).numero).regex
+  const deNiveau1 = (l) => riN1.has(String(l.numero).trim()) || [...String(l.description || '').matchAll(/FI\s*:\s*([\w-]+)/g)].some((m) => modele.test(m[1]))
+  return { ids, lignes, deNiveau1 }
+}
+
+export async function equilibreDuParc(parcId) {
+  const p = await lireParcs()
+  const parc = p?.parcs.find((x) => x.id === parcId && x.id !== NON_CLASSE)
+  if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+  const { lignes, deNiveau1 } = await interventionsDuParc(parc)
+  const c = classement()
+  const parMachine = new Map()
+  const gammes = new Map() // cle → { gamme, nombre, classe, par }
+  for (const l of lignes) {
+    const famille = familleDe(l.type)
+    if (famille !== 'Correctif' && famille !== 'Préventif') continue
+    const m = parMachine.get(l.machine_id) || { correctifs: 0, n1: 0, techniciens: 0, systematiques: 0 }
+    if (famille === 'Correctif') m.correctifs++
+    else {
+      const gamme = gammeDe(l.description)
+      const cle = cleDe(gamme)
+      const g = gammes.get(cle) || { cle, gamme, nombre: 0, classe: classeDe(c, cle), par: c[cle]?.par || 'mots' }
+      g.nombre++
+      gammes.set(cle, g)
+      if (g.classe === 'systematique') m.systematiques++
+      else if (deNiveau1(l)) m.n1++
+      else m.techniciens++
+    }
+    parMachine.set(l.machine_id, m)
+  }
+  const reperes = db().prepare('SELECT id, repere, designation FROM machines').all()
+  const machine = new Map(reperes.map((x) => [x.id, x]))
+  const equipements = [...parMachine].map(([id, m]) => ({ id, repere: machine.get(id)?.repere || '', designation: machine.get(id)?.designation || '', analyse: machineAnalysable(p, id) || null, ...m }))
+  const listeGammes = [...gammes.values()].sort((a, b) => b.nombre - a.nombre)
+  return {
+    jours: JOURS,
+    equipements,
+    gammes: {
+      total: listeGammes.length,
+      aClasser: listeGammes.filter((g) => g.par === 'mots').length,
+      systematiques: listeGammes.filter((g) => g.classe === 'systematique').length,
+      liste: listeGammes.slice(0, 400),
+    },
+    iaInstallee: iaInstallee(),
+  }
+}
+
+// ---------------------------------------------------------------- classement des gammes par l'IA
+
+const CONSIGNES = `Tu es un expert en maintenance industrielle. On te donne des titres de gammes de maintenance préventive (codes G…).
+Classe chaque gamme :
+- "observation" : on regarde l'état pour détecter une dérive ou une panne qui vient (contrôle, vérification, inspection, mesure, relevé, surveillance, nettoyage avec contrôle, serrage contrôlé, essai) ;
+- "systematique" : on renouvelle ou on remplace à date fixe sans regarder l'état (échange de pièce ou de filtre, remplacement, vidange, changement d'huile, étalonnage à date fixe, graissage systématique).
+En cas de doute, "observation".
+Réponds seulement avec un objet JSON, sans texte autour : {"G1":"observation","G2":"systematique"}`
+
+let enCours = new Set()
+
+// L'IA classe les gammes du parc qui ne le sont pas encore (classées par les mots seulement).
+export async function classerGammes(parcId) {
+  if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
+  if (enCours.has(parcId)) throw new ErreurHttp(409, 'Classement déjà en cours pour ce parc.')
+  enCours.add(parcId)
+  try {
+    const { gammes } = await equilibreDuParc(parcId)
+    const aClasser = gammes.liste.filter((g) => g.par === 'mots')
+    const classees = {}
+    for (let i = 0; i < aClasser.length; i += PAR_LOT) {
+      const lot = aClasser.slice(i, i + PAR_LOT)
+      const texte = await discuter([{ role: 'system', content: CONSIGNES }, { role: 'user', content: lot.map((g, j) => `G${j + 1} · ${g.gamme}`).join('\n') }], { temperature: 0.1, maxMots: 1200 })
+      const debut = texte.indexOf('{')
+      let lu = null
+      try {
+        lu = JSON.parse(texte.slice(debut, texte.lastIndexOf('}') + 1))
+      } catch {}
+      if (!lu) continue // lot illisible : il restera « à classer », un nouveau clic le reprend
+      lot.forEach((g, j) => {
+        const classe = lu[`G${j + 1}`]
+        if (classe === 'observation' || classe === 'systematique') classees[g.cle] = { classe, par: 'ia', gamme: g.gamme }
+      })
+    }
+    exigerEcriture({ pourTous: true }) // comme l'analyse de corrélation : possible en consultation
+    // Relu juste avant d'écrire : une correction de l'administrateur faite pendant ce temps est gardée.
+    const c = classement()
+    for (const [cle, x] of Object.entries(classees)) if (c[cle]?.par !== 'admin') c[cle] = x
+    modifierReglage('mn1_gammes', c)
+    noterModification()
+    return { classees: Object.keys(classees).length, restantes: aClasser.length - Object.keys(classees).length }
+  } finally {
+    enCours.delete(parcId)
+  }
+}
+
+// L'administrateur corrige une gamme : { cle, classe } (classe vide : retour à la première idée).
+export function corrigerGamme({ cle, gamme, classe }) {
+  const c = classement()
+  const k = String(cle || '')
+  if (!k) throw new ErreurHttp(400, 'Gamme manquante.')
+  if (!classe) delete c[k]
+  else if (classe === 'observation' || classe === 'systematique') c[k] = { classe, par: 'admin', gamme: String(gamme || c[k]?.gamme || '').slice(0, 120) }
+  else throw new ErreurHttp(400, 'Classe inconnue.')
+  modifierReglage('mn1_gammes', c)
+  noterModification()
+  return { cle: k, classe: c[k]?.classe || devinee(k), par: c[k]?.par || 'mots' }
+}

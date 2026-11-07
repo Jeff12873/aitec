@@ -18,7 +18,13 @@ import pannes from '../blocs/pannes/vue.js'
 import analyse from '../blocs/analyse/vue.js'
 import mn1 from '../blocs/mn1/vue.js'
 
-export const blocs = [tableauDeBord, assistant, pannes, mn1, administration, parc, interventions, documents, importGmao, aide, recherche, analyse]
+import { api, appli } from '/socle/api.js'
+
+// La maintenance de niveau 1 et le plan de maintenance ont leur porte, PREVTEC (app.json « portes ») : AITEC ne garde
+// que le dépannage. Avec un K.NOVA trop ancien pour les portes, l'écran reste ici.
+const avecPrevtec = appli === 'aitec' && (await api('/api/ktec/applis').catch(() => [])).some((a) => a.id === 'prevtec')
+window.aitecAvecPrevtec = avecPrevtec
+export const blocs = [tableauDeBord, assistant, pannes, ...(avecPrevtec ? [] : [mn1]), administration, parc, interventions, documents, importGmao, aide, recherche, analyse]
 export { assistant as accueil }
 
 // Le champ de recherche est créé une seule fois : redessiner la barre ne doit pas effacer ce qu'on tape.

@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.8.0",
+      "date": "2026-11-07",
+      "points": [
+        "PREVTEC : la réévaluation du plan de maintenance a sa porte à elle (tuile du portail, couleur, logo, wiki), sur le même code et les mêmes données qu'AITEC ; AITEC garde l'assistant du dépannage",
+        "Toute la maintenance de niveau 1 passe dans PREVTEC telle quelle : charge par ETH, fiches focus et leurs FI, circuit DI → FI → RI, indicateurs, calendrier des équipes",
+        "Le fil des étapes en haut de PREVTEC : Mon parc › Son Pareto › Une machine › Je décide › Je fais",
+        "Le verdict du plan de chaque parc (dans le bon sens, à surveiller, à réévaluer) : pannes des 12 derniers mois face aux 12 d'avant, pannes du haut du Pareto qui montent malgré une fiche, sans fiche ou sans préventif",
+        "Le Pareto a une colonne Évolution (monte, baisse, nouvelle, stable) ; les vignettes donnent les pannes et le nombre de préventifs du parc sur deux ans",
+        "Nouvelle vue Correctif × préventif par équipement (nuage en couleurs, bascule niveau 1 / techniciens), préventif systématique écarté grâce au classement des gammes par l'IA",
+        "Impression des fiches : une feuille A5 portrait pliée en deux par le milieu, la moitié du bas tête-bêche ; la carte finie est un A6 paysage recto verso"
+      ]
+    },
+    {
       "version": "0.7.18",
       "date": "2026-11-06",
       "points": [
