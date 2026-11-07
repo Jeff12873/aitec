@@ -55,7 +55,7 @@ export function nuageEquilibre(d) {
     const surEntretien = liste.filter((e) => e.zone === 'orange').sort((a, b) => b.preventifs - a.preventifs)
     const g = donnees.gammes
 
-    const boutonClasser = h('button', { class: 'petit', title: 'L’IA lit le titre de chaque gamme de préventif du parc : observation (contrôle, vérification) ou systématique (échange, remplacement). Gardé dans le fichier.' }, ic('etincelle', 13), g.aClasser ? `Classer ${g.aClasser} gamme${g.aClasser > 1 ? 's' : ''} par l’IA` : 'Gammes classées')
+    const boutonClasser = h('button', { class: 'petit', title: 'L’IA lit le titre de chaque gamme de préventif de la ligne : observation (contrôle, vérification) ou systématique (échange, remplacement). Gardé dans le fichier.' }, ic('etincelle', 13), g.aClasser ? `Classer ${g.aClasser} gamme${g.aClasser > 1 ? 's' : ''} par l’IA` : 'Gammes classées')
     boutonClasser.disabled = !g.aClasser || !donnees.iaInstallee
     boutonClasser.onclick = async () => {
       boutonClasser.disabled = true
@@ -74,8 +74,8 @@ export function nuageEquilibre(d) {
           h('span', { class: 'pastille-zone vert' }), `${compte('vert')} équilibré${compte('vert') > 1 ? 's' : ''}`)),
       liste.length
         ? graphique(liste, totaux)
-        : h('p', { class: 'discret' }, 'Ni correctif ni préventif sur les machines de maintenance de ce parc ces 12 derniers mois.'),
-      h('p', { class: 'discret petit-texte' }, `${liste.length} équipement${liste.length > 1 ? 's' : ''}, ${totaux.correctifs} correctifs et ${totaux.preventifs} préventifs d’observation sur 12 mois. Une couleur compare deux parts : celle des pannes du parc que porte l’équipement, et celle du préventif qu’il reçoit (le double de l’autre, au moins).`),
+        : h('p', { class: 'discret' }, 'Ni correctif ni préventif sur les machines de maintenance de cette ligne ces 12 derniers mois.'),
+      h('p', { class: 'discret petit-texte' }, `${liste.length} équipement${liste.length > 1 ? 's' : ''}, ${totaux.correctifs} correctifs et ${totaux.preventifs} préventifs d’observation sur 12 mois. Une couleur compare deux parts : celle des pannes de la ligne que porte l’équipement, et celle du préventif qu’il reçoit (le double de l’autre, au moins).`),
       aRegarder.length || surEntretien.length ? h('div', { class: 'a-regarder' },
         aRegarder.length ? h('div', {}, h('b', {}, 'À regarder d’abord'), aRegarder.slice(0, 8).map(puce)) : null,
         surEntretien.length ? h('div', {}, h('b', {}, 'Préventif à alléger ?'), surEntretien.slice(0, 8).map(puce)) : null) : null,

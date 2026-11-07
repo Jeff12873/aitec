@@ -33,7 +33,7 @@ export function routes(r) {
     ctx.exigerModeAdmin?.()
     const p = await lireParcs()
     const parc = p?.parcs.find((x) => x.id === ctx.params.id && x.id !== NON_CLASSE)
-    if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+    if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
     const noms = new Map(db().prepare('SELECT id, repere, designation FROM machines').all().map((m) => [m.id, m]))
     const aPlat = (racines) => racines.flatMap((id) => p.detail(id)).filter((n) => n.machine && n.niveau > 1)
     const production = aPlat(parc.production)

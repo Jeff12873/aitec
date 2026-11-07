@@ -70,7 +70,7 @@ export const CHAMPS = {
     { nom: 'numero', libelle: 'Numéro de la RI', obligatoire: true },
     { nom: 'date', libelle: 'Date de la RI', obligatoire: true },
     { nom: 'personne', libelle: 'Exécutant', obligatoire: true, aide: 'nom et prénom' },
-    { nom: 'profil', libelle: 'Profil', aide: 'rattache la personne à son parc (réglé sur chaque parc)' },
+    { nom: 'profil', libelle: 'Profil', aide: 'rattache la personne à sa ligne (réglé sur chaque ligne)' },
     { nom: 'categorie', libelle: 'Catégorie', obligatoire: true, aide: '« 01.Libellé » : le numéro range les catégories' },
   ],
 }

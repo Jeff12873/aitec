@@ -21,7 +21,7 @@ import { routes as routesSynchronisation } from './synchronisation.js'
 // (en minuscules, sans accents). Ajoutez ici les intitulés de votre GMAO.
 export const CIBLES = {
   machines: {
-    libelle: 'Machines (parc)',
+    libelle: 'Machines (ligne)',
     champs: [
       { nom: 'repere', libelle: 'Repère (code machine)', obligatoire: true, synonymes: ['repere', 'code machine', 'code equipement', 'equipement', 'code materiel', 'n equipement', 'numero equipement', 'code', 'asset', 'tag', 'machine'] },
       { nom: 'designation', libelle: 'Désignation', obligatoire: true, synonymes: ['designation', 'libelle', 'libelle equipement', 'description', 'denomination', 'intitule', 'nom'] },

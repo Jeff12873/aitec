@@ -1,4 +1,4 @@
-// La fiche d'analyse d'une machine (ouverte depuis « Machines les plus en panne » du tableau de bord) :
+// La fiche d'analyse d'une machine (ouverte depuis le Pareto, l'assistant ou la recherche) :
 // ses chiffres sur 12 mois, ses pannes connues, ses intervenants, ses dernières interventions, et un résumé
 // de l'IA avec quelques conseils. Les consignes de ce résumé sont modifiables (le rouage de l'encart).
 
@@ -9,17 +9,15 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { sansBalises } from '../recherche/passages.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { sqlFamille } from '../../lib/types.js'
-import { lireArborescencesTableau, lireArborescence } from '../../lib/arborescence.js'
+import { lireArborescence } from '../../lib/arborescence.js'
 
 // La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau, sous la ligne).
 async function placeDe(machineId) {
-  for (const lire of [lireArborescencesTableau, lireArborescence]) {
-    const a = await lire().catch(() => null)
-    for (const ligne of a?.lignes || []) {
-      if (!ligne.machines.includes(machineId)) continue
-      const eth = ligne.enfants.find((e) => e.machines.includes(machineId))
-      return { ligne: ligne.libelle, eth: eth?.libelle || '' }
-    }
+  const a = await lireArborescence().catch(() => null)
+  for (const ligne of a?.lignes || []) {
+    if (!ligne.machines.includes(machineId)) continue
+    const eth = ligne.enfants.find((e) => e.machines.includes(machineId))
+    return { ligne: ligne.libelle, eth: eth?.libelle || '' }
   }
   return null
 }
@@ -91,11 +89,11 @@ function donnees(id) {
   chiffres.frequencePannes = chiffres.pannes12Mois ? `${enClair(365 / chiffres.pannes12Mois)} (${chiffres.pannes12Mois} pannes en 12 mois)` : 'aucune panne en 12 mois'
   const lignes = db()
     .prepare(`SELECT substr(date, 1, 7) AS mois, sum(${sqlFamille('Correctif')}) AS correctif, sum(${sqlFamille('Préventif')}) AS preventif, sum(${sqlFamille('Autre')}) AS autre
-              FROM interventions WHERE machine_id = ? AND date >= date('now', 'start of month', '-11 months') GROUP BY mois`)
+              FROM interventions WHERE machine_id = ? AND date >= date('now', 'start of month', '-12 months') AND date < date('now', 'start of month') GROUP BY mois`)
     .all(id)
   const parMois = []
   const aujourdhui = new Date()
-  for (let i = 11; i >= 0; i--) {
+  for (let i = 12; i >= 1; i--) {
     const d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() - i, 1)
     const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const l = lignes.find((x) => x.mois === cle)

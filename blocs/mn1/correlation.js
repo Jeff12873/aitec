@@ -21,7 +21,7 @@ import { points } from './textes.js'
 
 const NB_PARETO = 15
 
-const CONSIGNES = `Tu es un expert en maintenance autonome (TPM, maintenance de niveau 1). On te donne le Pareto des pannes d'un parc de machines (codes P1, P2…), les fiches de maintenance de niveau 1 que font les opérateurs (codes F…) et des demandes d'intervention récentes (codes D…).
+const CONSIGNES = `Tu es un expert en maintenance autonome (TPM, maintenance de niveau 1). On te donne le Pareto des pannes d'une ligne de machines (codes P1, P2…), les fiches de maintenance de niveau 1 que font les opérateurs (codes F…) et des demandes d'intervention récentes (codes D…).
 Pour chaque panne du Pareto, dis quelles fiches visent cette panne : un point de contrôle de la fiche permettrait de la voir venir ou de l'éviter (même organe ou même mode de défaillance, sur la même machine ou une machine du même type). Fais de même pour les demandes qui décrivent cette panne ou ses signes avant-coureurs.
 Sois strict : une fiche ne vise une panne que si le lien est concret. N'invente aucun code.
 Réponds seulement avec un objet JSON, sans texte autour :
@@ -42,13 +42,13 @@ let enCours = new Set()
 
 export async function analyser(parcId) {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
-  if (enCours.has(parcId)) throw new ErreurHttp(409, 'Analyse déjà en cours pour ce parc.')
+  if (enCours.has(parcId)) throw new ErreurHttp(409, 'Analyse déjà en cours pour cette ligne.')
   const p = await lireParcs()
   const parc = p?.parcs.find((x) => x.id === parcId && x.id !== NON_CLASSE)
-  if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+  if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
   const fiches = fichesDesParcs(p).parParc.get(parc.id) || []
   const liste = pareto(parc)
-  if (!liste.length) throw new ErreurHttp(409, 'Pas de panne qui revient sur les machines de maintenance de ce parc (12 mois) : rien à corréler. Vérifiez les racines de maintenance du parc.')
+  if (!liste.length) throw new ErreurHttp(409, 'Pas de panne qui revient sur les machines de maintenance de cette ligne (12 mois) : rien à corréler. Vérifiez les racines de maintenance de la ligne.')
   enCours.add(parcId)
   try {
     const haut = liste.slice(0, NB_PARETO)
@@ -113,7 +113,7 @@ export async function proposerFiche(parcId, code) {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
   const p = await lireParcs()
   const parc = p?.parcs.find((x) => x.id === parcId)
-  if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+  if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
   const panne = pareto(parc).find((x) => x.code === code)
   if (!panne) throw new ErreurHttp(404, 'Panne introuvable dans le Pareto')
   return redigerFiche(panne)

@@ -5,9 +5,7 @@
 import { h, ic } from '/socle/ui.js'
 import { estConcombre, concombreMasque } from './concombre.js'
 import { selecteurParc, rafraichirParcs } from './parcs.js'
-import tableauDeBord from '../blocs/tableau-de-bord/vue.js'
 import assistant from '../blocs/assistant/vue.js'
-import parc from '../blocs/parc/vue.js'
 import interventions from '../blocs/interventions/vue.js'
 import documents from '../blocs/documents/vue.js'
 import importGmao from '../blocs/import-gmao/vue.js'
@@ -24,7 +22,7 @@ import { api, appli } from '/socle/api.js'
 // que le dépannage. Avec un K.NOVA trop ancien pour les portes, l'écran reste ici.
 const avecPrevtec = appli === 'aitec' && (await api('/api/ktec/applis').catch(() => [])).some((a) => a.id === 'prevtec')
 window.aitecAvecPrevtec = avecPrevtec
-export const blocs = [tableauDeBord, assistant, pannes, ...(avecPrevtec ? [] : [mn1]), administration, parc, interventions, documents, importGmao, aide, recherche, analyse]
+export const blocs = [assistant, pannes, ...(avecPrevtec ? [] : [mn1]), administration, interventions, documents, importGmao, aide, recherche, analyse]
 export { assistant as accueil }
 
 // Le champ de recherche est créé une seule fois : redessiner la barre ne doit pas effacer ce qu'on tape.

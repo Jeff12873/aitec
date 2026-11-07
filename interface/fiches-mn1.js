@@ -99,7 +99,7 @@ export function montrerFiche(f, pourquoi = []) {
     f.evite ? ['Ce qu’elle évite', `${f.evite} : la panne relevée dans les rapports d’intervention que ce geste doit prévenir.`] : null,
     ['Qui la fait', `${f.eth ? `L’équipe de production « ${f.eth} »` : 'L’équipe de production de la machine'}, sur ${nomMachine(f) || 'la machine'}.`],
     f.fi_gmao !== undefined ? ['Dans la GMAO', f.fi_gmao ? `Portée par la FI ${f.fi_gmao} : elle apparaît dans les FI de niveau 1 et compte dans la charge des opérateurs.` : 'Pas encore dans une FI de la GMAO : tant qu’elle n’y est pas, les opérateurs ne la voient pas dans leurs FI.'] : null,
-    f.sansCible ? ['Sans cible', `L’analyse de corrélation ne lui trouve aucune panne du Pareto du parc à prévenir.${f.suggestion ? ` Passer en ${f.suggestion.frequence.toLowerCase()} libérerait du temps : est-ce envisageable ?` : ' Vise-t-elle une panne qui ne revient plus, ou une panne pas encore relevée ?'}`] : null,
+    f.sansCible ? ['Sans cible', `L’analyse de corrélation ne lui trouve aucune panne du Pareto de la ligne à prévenir.${f.suggestion ? ` Passer en ${f.suggestion.frequence.toLowerCase()} libérerait du temps : est-ce envisageable ?` : ' Vise-t-elle une panne qui ne revient plus, ou une panne pas encore relevée ?'}`] : null,
     f.demandes ? ['Des demandes malgré la fiche', `${f.demandes} demande${f.demandes > 1 ? 's' : ''} de niveau 1 sur cette machine ces 12 derniers mois. Le geste est-il fait comme prévu, ou la fiche mérite-t-elle d’être revue ?`] : null,
     ...pourquoi,
   ].filter(Boolean)

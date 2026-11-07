@@ -1,7 +1,7 @@
 // Le circuit de la maintenance de niveau 1 : les indicateurs du bandeau (et le Hall of fame), les pastilles FI / RI
 // des demandes, l'onglet FI N1 (FI issues de DI, arborescences manquantes) et l'onglet RI N1.
 
-import { h, vider, ic, dateFr, nombreFr, tableau, notifier } from '/socle/ui.js'
+import { h, vider, ic, dateFr, nombreFr, tableau, notifier, fenetre } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { avecParc, parcChoisi, nomParcChoisi } from './parcs.js'
 import { peutModifier } from '/socle/etat.js'
@@ -41,15 +41,7 @@ export async function indicateursBandeau(zone, zoneHof = null) {
   clearInterval(minuterieMerci)
   minuterieMerci = setInterval(() => (zone.isConnected ? tourner() : clearInterval(minuterieMerci)), 11000)
   tourner()
-  const [annee, mois] = i.mois.split('-')
-  const nomMois = new Date(Number(annee), Number(mois) - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
-  const hof = i.podium.length || i.podiumRi?.length ? h('div', { class: 'hall-of-fame' },
-    // La portée dite dans le titre : la zone choisie, ou l'usine complète.
-    h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${parcChoisi() ? nomParcChoisi() : 'Usine complète'} · ${nomMois}`)),
-    h('div', { class: 'podiums' },
-      podium(i.podium, 'DI', 'Demandes'),
-      podium(i.podiumRi || [], 'RI', 'Exécutions')),
-    merci) : null
+  const hof = hallOfFame(i, parcChoisi() ? nomParcChoisi() : 'Usine complète', merci)
   if (zoneHof) vider(zoneHof, hof)
   vider(zone,
     h('div', { class: 'indicateurs-mn1' },
@@ -62,6 +54,29 @@ export async function indicateursBandeau(zone, zoneHof = null) {
       tuile(i.focusEnRetard ?? '—', 'FI focus en retard', { titre: `FI focus dont l’échéance est passée sans RI. Retard médian des FI focus faites : ${jours(i.retardFocus)}`, alerte: i.focusEnRetard > 0 })),
     alertes.length ? h('div', { class: 'alertes-mn1' }, alertes) : null,
     zoneHof ? null : hof)
+}
+
+// Le Hall of fame du mois : les deux premiers demandeurs (DI) et exécutants (RI), et la portée dans le titre.
+function hallOfFame(i, portee, merci = null) {
+  if (!i.podium.length && !i.podiumRi?.length) return null
+  const [annee, mois] = i.mois.split('-')
+  const nomMois = new Date(Number(annee), Number(mois) - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
+  return h('div', { class: 'hall-of-fame' },
+    h('div', { class: 'titre-hof' }, h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${portee} · ${nomMois}`)),
+    h('div', { class: 'podiums' },
+      podium(i.podium, 'DI', 'Demandes'),
+      podium(i.podiumRi || [], 'RI', 'Exécutions')),
+    merci)
+}
+
+// PREVTEC, « Ma ligne » : le Hall of fame de cette ligne seule (une ligne discrète s'il n'y a encore personne).
+export function hallOfFameLigne(parc) {
+  const zone = h('div', { class: 'zone-hof-ligne' })
+  api(`/api/mn1/indicateurs?parc=${encodeURIComponent(parc.id)}`).then((i) => {
+    if (!i?.reglee) return vider(zone)
+    vider(zone, hallOfFame(i, parc.nom) || h('p', { class: 'discret hof-vide' }, ic('etincelle', 14), `Pas encore de demande ni d’exécution ce mois-ci sur ${parc.nom}.`))
+  }).catch(() => vider(zone))
+  return zone
 }
 
 // Un podium du Hall of fame : les deux premiers, et ce qu'ils ont fait.
@@ -179,7 +194,7 @@ async function encartActivites(zone) {
     h('button', { class: `petit${m === moisActivites ? ' choisi' : ' discret'}`, onclick: () => { moisActivites = m; encartActivites(zone) } }, texte)))
   const parc = parcChoisi()
   const reglageProfil = parc && peutModifier()
-    ? h('label', { class: 'profil-parc discret', title: 'Le texte contenu dans le profil de la GMAO des conducteurs de ce parc' }, 'Profil des conducteurs de ce parc',
+    ? h('label', { class: 'profil-parc discret', title: 'Le texte contenu dans le profil de la GMAO des conducteurs de cette ligne' }, 'Profil des conducteurs de cette ligne',
       h('input', { type: 'text', value: a.profil, placeholder: 'ex. LIGNE 2', onchange: async (e) => {
         try {
           await api(`/api/mn1/profils/${encodeURIComponent(parc)}`, { methode: 'POST', corps: { profil: e.target.value } })
@@ -189,7 +204,7 @@ async function encartActivites(zone) {
     : null
   const avertissement = parc && !a.profil
     ? h('p', { class: 'discret', style: { margin: '0 0 8px' } }, `Aucun profil réglé pour ${nomParcChoisi()} : toutes les personnes de la requête sont comptées.`)
-    : !parc && !a.profilsRegles ? h('p', { class: 'discret', style: { margin: '0 0 8px' } }, 'Aucun profil réglé sur les parcs : toutes les personnes de la requête sont comptées. Choisissez un parc pour régler le sien.') : null
+    : !parc && !a.profilsRegles ? h('p', { class: 'discret', style: { margin: '0 0 8px' } }, 'Aucun profil réglé sur les lignes : toutes les personnes de la requête sont comptées. Choisissez une ligne pour régler le sien.') : null
   vider(zone, h('div', { class: 'carte activites-conducteurs', style: { marginBottom: '16px' } },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('personne', 18), 'Activités des conducteurs'),
       h('span', { class: 'discret' }, `${nombreFr(a.total)} exécutions · ${nombreFr(a.ri)} RI · depuis le ${dateFr(a.depuis)}`), periode),
@@ -226,6 +241,29 @@ const semaineCourante = () => {
 }
 const teinte = (r) => (r === 'X' ? 'exclue' : `equipes-${r.length}`)
 
+// PREVTEC, « Ma ligne » : le calendrier des équipes en petit, la semaine en cours et les 5 suivantes ; un clic
+// ouvre le calendrier complet (l'administrateur y change les semaines).
+export function calendrierCompact(parc, admin) {
+  const zone = h('button', { type: 'button', class: 'calendrier-compact', title: 'Ouvrir le calendrier des équipes de l’année' })
+  const ouvrir = async () => {
+    await fenetre({ titre: `Équipes — ${parc.nom}`, large: true, contenu: encartCalendrier(parc, admin), boutons: [{ texte: 'Fermer', classe: 'principal', valeur: true }] })
+    charger()
+  }
+  zone.onclick = ouvrir
+  const charger = () => api(`/api/mn1/calendrier/${encodeURIComponent(parc.id)}`).then((cal) => {
+    const [a0, s0] = semaineCourante().split('-').map(Number)
+    const semaines = []
+    for (let k = 0, a = a0, s = s0; k < 6; k++) {
+      const regime = cal.semaines[`${a}-${s}`] || cal.defaut
+      semaines.push(h('span', { class: `semaine-compacte ${teinte(regime)}${k ? '' : ' courante'}`, title: `S${s} ${a} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}` }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
+      if (++s > semainesDeLAnnee(a)) { s = 1; a++ }
+    }
+    vider(zone, h('span', { class: 'tete-compact' }, ic('calendrier', 14), 'Équipes', h('small', { class: 'discret' }, ' · cette semaine et les suivantes')), h('span', { class: 'semaines-compactes' }, semaines))
+  }).catch(() => vider(zone))
+  charger()
+  return zone
+}
+
 export function encartCalendrier(parc, admin) {
   const zone = h('div', { class: 'calendrier-parc' })
   let annee = new Date().getFullYear()
@@ -236,6 +274,29 @@ export function encartCalendrier(parc, admin) {
     clearTimeout(minuterie)
     minuterie = setTimeout(() => api(`/api/mn1/calendrier/${encodeURIComponent(parc.id)}`, { methode: 'POST', corps: { defaut: cal.defaut, semaines: cal.semaines } }).catch(() => {}), 500)
   }
+  // Le geste en cours : la case de départ, sa valeur, et s'il a glissé (null hors geste). Les cases survolées
+  // changent tout de suite ; on enregistre et on redessine quand le bouton est relâché.
+  let geste = null
+  const appliquer = (s, valeur) => {
+    const cle = `${annee}-${s}`
+    if (valeur) cal.semaines[cle] = valeur
+    else delete cal.semaines[cle]
+    const bouton = zone.querySelector(`.semaine-cal[data-s="${s}"]`)
+    if (!bouton) return
+    const regime = valeur || cal.defaut
+    bouton.className = `semaine-cal ${teinte(regime)}${valeur ? '' : ' defaut'}${cle === semaineCourante() ? ' courante' : ''}`
+    bouton.querySelector('b').textContent = regime === 'X' ? '✕' : regime
+  }
+  const relacher = () => {
+    if (!geste) return
+    const { depart, valeur, glisse } = geste
+    geste = null
+    // Sans glisser : un simple clic fait tourner la case de départ.
+    if (!glisse) appliquer(depart, CYCLE[(CYCLE.indexOf(valeur) + 1) % CYCLE.length])
+    enregistrer()
+    dessiner()
+  }
+  document.addEventListener('pointerup', relacher)
   const dessiner = () => {
     const n = semainesDeLAnnee(annee)
     const courante = semaineCourante()
@@ -248,22 +309,26 @@ export function encartCalendrier(parc, admin) {
         type: 'button',
         class: `semaine-cal ${teinte(regime)}${propre ? '' : ' defaut'}${cle === courante ? ' courante' : ''}`,
         disabled: !admin,
+        'data-s': String(s),
         title: `S${s} ${annee} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}${propre ? '' : ' — régime par défaut'}`,
-        onclick: (e) => {
+        // Clic (au relâcher, sur la même case) : la valeur suivante. Bouton gardé enfoncé en glissant : la case de
+        // départ ne change pas, les semaines survolées prennent sa valeur. Maj + clic : recopie jusqu'ici.
+        onpointerdown: (e) => {
+          if (e.button !== 0) return
+          e.preventDefault()
           if (e.shiftKey && derniere && derniere.annee === annee) {
             const valeur = cal.semaines[`${annee}-${derniere.s}`] || ''
-            for (let k = Math.min(derniere.s, s); k <= Math.max(derniere.s, s); k++) {
-              if (valeur) cal.semaines[`${annee}-${k}`] = valeur
-              else delete cal.semaines[`${annee}-${k}`]
-            }
-          } else {
-            const suivant = CYCLE[(CYCLE.indexOf(propre) + 1) % CYCLE.length]
-            if (suivant) cal.semaines[cle] = suivant
-            else delete cal.semaines[cle]
-            derniere = { annee, s }
+            for (let k = Math.min(derniere.s, s); k <= Math.max(derniere.s, s); k++) appliquer(k, valeur)
+            enregistrer()
+            return dessiner()
           }
-          enregistrer()
-          dessiner()
+          geste = { depart: s, valeur: propre, glisse: false }
+          derniere = { annee, s }
+        },
+        onpointerenter: () => {
+          if (!geste || s === geste.depart) return
+          if (!geste.glisse) geste.glisse = true
+          appliquer(s, geste.valeur)
         },
       }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
     }
@@ -279,7 +344,7 @@ export function encartCalendrier(parc, admin) {
           h('button', { class: 'discret icone-seule petit', title: 'Année suivante', onclick: () => { annee++; dessiner() } }, '›'))),
       h('div', { class: 'defaut-calendrier' }, h('span', { class: 'discret' }, 'Par défaut'), defaut),
       h('div', { class: 'grille-calendrier' }, cases),
-      h('p', { class: 'legende-calendrier' }, 'A matin · B après-midi · C nuit · ✕ exclue', admin ? h('br') : null, admin ? 'Clic : changer · Maj + clic : recopier jusqu’ici' : null))
+      h('p', { class: 'legende-calendrier' }, 'A matin · B après-midi · C nuit · ✕ exclue', admin ? h('br') : null, admin ? 'Clic : changer · clic gardé en glissant : la même valeur sur plusieurs semaines · Maj + clic : recopier jusqu’ici' : null))
   }
   api(`/api/mn1/calendrier/${encodeURIComponent(parc.id)}`).then((c) => { cal = c; dessiner() }).catch(() => vider(zone))
   return zone

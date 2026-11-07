@@ -14,7 +14,7 @@ import pannes from '../pannes/vue.js'
 
 // Les onglets de l'administration. Documents, Données GMAO et Pannes connues réutilisent les écrans de leurs blocs.
 const ONGLETS = [
-  ['parcs', 'Parcs machines', 'usine'],
+  ['parcs', 'Lignes', 'usine'],
   ['documents', 'Documents', 'document'],
   ['import', 'Données de la GMAO', 'tableur'],
   ['pannes', 'Pannes connues', 'historique'],

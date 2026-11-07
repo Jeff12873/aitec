@@ -6,7 +6,7 @@ import { api, appli } from '/socle/api.js'
 import { peutModifier } from '/socle/etat.js'
 import { barres, COULEURS } from '/socle/graphiques.js'
 import { texteIA } from '/socle/texte-ia.js'
-import { animer } from '../tableau-de-bord/vue.js'
+import { animer } from '../../interface/animer.js'
 import { estPrevtec, filEtapes } from '../../interface/prevtec.js'
 import { LOGO_MN1, carteFiche, frequenceCalendaire, definirParametres, FREQUENCES } from '../../interface/fiches-mn1.js'
 
@@ -45,7 +45,7 @@ export default {
         tuile('historique', '', 'Dernière intervention', null, h('span', { class: 'texte-dernier' }, c.derniere ? `${dateFr(c.derniere)} · ${depuis(c.derniere)}` : '—'))),
 
       h('div', { class: 'grille grille-3' },
-        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois'), graphiqueMois(d.parMois)),
+        h('div', { class: 'carte', style: { gridColumn: 'span 2' } }, entete('graphique', 'Interventions par mois', '12 derniers mois terminés'), graphiqueMois(d.parMois)),
         carteResume(d),
         d.pannes.length || !d.repetees.length
           ? h('div', { class: 'carte pleine' }, entete('historique', 'Pannes connues', `${d.pannes.length} panne${d.pannes.length > 1 ? 's' : ''} qui reviennent`), listePannes(d.pannes))

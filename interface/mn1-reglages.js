@@ -46,7 +46,7 @@ export async function reglerGmao() {
 
   // Paramètres des FI : listes de la GMAO (par nom), et valeurs simples.
   const parametres = h('div', {},
-    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Les valeurs utilisées par défaut pour toutes les FI de niveau 1 (chaque parc peut en régler certaines autrement). Les listes viennent de la GMAO : on choisit un nom, AITEC garde l’identifiant.'),
+    h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Les valeurs utilisées par défaut pour toutes les FI de niveau 1 (chaque ligne peut en régler certaines autrement). Les listes viennent de la GMAO : on choisit un nom, AITEC garde l’identifiant.'),
     h('div', { class: 'grille grille-2', style: { gap: '10px' } },
       PARAMETRES.map(([cle, libelle]) => {
         champs[cle] = choixGmao(listes[cle], r[cle], { vide: Array.isArray(listes[cle]) ? '— à choisir —' : 'valeur attendue par le SQL' })
@@ -138,7 +138,7 @@ export async function reglerParc(parc) {
   }
   const libelles = { parSemaine: 'Maximum de fiches par semaine et par ETH', ...Object.fromEntries(PARAMETRES), tpsPrevu: 'Temps prévu (h)', delai: 'Retard admissible (jours)', numero: 'Modèle du numéro', titre: 'Modèle du titre' }
   const ok = await fenetre({
-    titre: `Parc ${parc.nom} : réglages`,
+    titre: `Ligne ${parc.nom} : réglages`,
     large: true,
     contenu: h('div', {},
       h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Laissez vide pour reprendre le réglage général. Baisser le maximum ne suspend aucune FI tout seul : la charge passe en alerte et vous choisissez les FI à suspendre. L’augmenter ne crée aucune FI : il laisse seulement la place d’en créer.'),
@@ -149,7 +149,7 @@ export async function reglerParc(parc) {
     ],
   })
   if (ok) {
-    notifier('Réglages du parc enregistrés')
+    notifier('Réglages de la ligne enregistrés')
     window.ktec.recharger()
   }
 }

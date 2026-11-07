@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "0.10.0",
+      "date": "2026-11-07",
+      "points": [
+        "PREVTEC refait, simple : l'accueil montre seulement le fil des étapes (centré) et les vignettes des lignes ; le niveau 1 n'arrive qu'à l'étape 5, après la décision",
+        "« Ma ligne » (étape 2) : verdict et calendrier des équipes côte à côte, Hall of fame de la ligne, quatre indicateurs (pannes, heures de dépannage, part du préventif, concentration des pannes), puis les pannes qui reviennent",
+        "Le verdict s'appuie sur les visites faites (pas sur les fiches) ; le préventif est reconnu par le code en tête du titre (niveau, ligne, type), réglé dans Administration › Lignes ; un préventif sans code ne compte pas",
+        "« Une machine » (étape 3) réduite à une question : ses pannes sont-elles regardées par une visite ? Une pastille par panne, par l'arborescence, sans IA ; puis Fiche N1 ou Point N2",
+        "Niveau 1 : une fiche ne compte que si elle est active (FI attachée, ou cochée « en service sur papier ») ; filtres Avec FI, Sur papier, Brouillons, À revoir, Nouvelles",
+        "Le mot « ligne » remplace « parc » à l'écran ; l'assistant et l'analyse des pannes proposent les lignes au lieu des racines brutes de l'arborescence",
+        "Les courbes et indicateurs ne comptent plus le mois en cours (12 mois terminés)",
+        "Calendrier des équipes : clic gardé en glissant pour changer plusieurs semaines",
+        "Supprimés : le tableau de bord, la liste des machines, l'ancien mode du niveau 1, la lecture des rapports par l'IA ; sélecteur de l'analyse des pannes réparé"
+      ]
+    },
+    {
       "version": "0.9.0",
       "date": "2026-11-07",
       "points": [

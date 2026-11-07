@@ -109,7 +109,7 @@ export async function dialogueFi(fiche, detail) {
           h('span', { class: `etiquette ${utilite ? '' : 'orange'}` }, utilite ? `vise ${utilite} cas` : detail.analyse ? 'sans cible' : 'non analysée'))
       })) : null,
       cible === 'remplacer' && !cochees.size
-        ? h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), 'Cet ETH est au maximum : cochez la FI qui reçoit cette fiche (les moins utiles sont en haut), ou choisissez « Nouvelle FI » et augmentez le maximum du parc.')
+        ? h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), 'Cet ETH est au maximum : cochez la FI qui reçoit cette fiche (les moins utiles sont en haut), ou choisissez « Nouvelle FI » et augmentez le maximum de la ligne.')
         : plan.respecte ? null : h('div', { class: 'bandeau', style: { marginTop: '10px' } }, ic('alerte'), `Au-dessus du maximum : ${cible === 'remplacer' ? 'cochez d’autres FI à libérer' : 'remplacez une FI active, ou augmentez le maximum du parc'}.`))
     boutonSimuler.disabled = !plan.respecte || (cible === 'remplacer' && !cochees.size)
   }
@@ -214,7 +214,7 @@ export async function dialogueSuspension(detail, eth) {
     large: true,
     contenu: h('div', {},
       h('p', { class: 'texte-2', style: { marginTop: 0 } }, eth.charge > eth.max + 1e-9
-        ? 'La charge de cet ETH dépasse le maximum du parc. Cochez les FI à suspendre (les moins utiles d’abord) jusqu’à repasser sous le maximum. Les numéros ne changent pas ; une FI suspendue pourra être réactivée.'
+        ? 'La charge de cet ETH dépasse le maximum de la ligne. Cochez les FI à suspendre (les moins utiles d’abord) jusqu’à repasser sous le maximum. Les numéros ne changent pas ; une FI suspendue pourra être réactivée.'
         : 'Cochez les FI à suspendre (les moins utiles d’abord). Les numéros ne changent pas ; une FI suspendue pourra être réactivée en y remettant une fiche.'),
       zone, h('div', { class: 'actions', style: { marginTop: '12px' } }, boutonSimuler, boutonSuspendre), resultat),
     boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }],

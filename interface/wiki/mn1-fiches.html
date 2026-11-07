@@ -1,26 +1,26 @@
-<h1>Fiches focus et charge des parcs</h1>
-<p class="but">Les fiches de gestes de niveau 1 de chaque parc, leur charge pour les opérateurs, et leur pertinence face aux pannes qui reviennent.</p>
+<h1>Fiches focus et charge des lignes</h1>
+<p class="but">Les fiches de gestes de niveau 1 de chaque ligne, leur charge pour les opérateurs, et leur pertinence face aux pannes qui reviennent.</p>
 
 <script type="application/json" data-maquette>
-{ "titre": "Fiches focus : une vignette par parc", "ratio": 42,
+{ "titre": "Fiches focus : une vignette par ligne", "ratio": 42,
   "blocs": [
     [2,4,60,9,"Trier par : nom · charge · pertinence · alertes · tendance","zone"],
     [2,18,30,38,"USINAGE","carte"], [35,18,30,38,"PEINTURE","carte"], [68,18,30,38,"MONTAGE","carte"],
     [4,30,26,6,"Charge 82 %","accent"], [4,39,26,6,"Pertinence 64 %","bouton"], [4,48,26,6,"Tendance","graphe"],
-    [2,62,96,34,"Parc choisi : Charge · Pertinence · Correctifs 12 mois · À faire","zone"]
+    [2,62,96,34,"Ligne choisi : Charge · Pertinence · Correctifs 12 mois · À faire","zone"]
   ],
   "reperes": [
     [6,8,"Ranger les vignettes."],
     [16,32,"La charge : les FI de la GMAO, pondérées par leur périodicité, par ETH ; rouge au-dessus de 100 %."],
     [16,41,"La pertinence : la part du Pareto des pannes visée par les fiches ; orange sous le seuil."],
     [16,50,"La tendance des correctifs sur 12 mois."],
-    [6,70,"Un parc choisi : le calcul en clair et la liste de ce qu'il reste à faire."]
+    [6,70,"Une ligne choisi : le calcul en clair et la liste de ce qu'il reste à faire."]
   ] }
 </script>
 
-<h2>Pas à pas : améliorer un parc</h2>
+<h2>Pas à pas : améliorer une ligne</h2>
 <ol>
-<li>Choisissez le parc. Lisez la partie <b>À faire</b> : fiches à analyser, sans cible, sans FI…</li>
+<li>Choisissez la ligne. Lisez la partie <b>À faire</b> : fiches à analyser, sans cible, sans FI…</li>
 <li>Ouvrez le <b>Pareto des pannes ↔ fiches</b> : les pannes qui reviennent et les fiches qui les visent.</li>
 <li><b>Analyse de corrélation</b> fait faire ce rapprochement à l'IA (tout le monde peut la lancer).</li>
 <li>Une panne qu'aucune fiche ne vise propose <b>Proposer une fiche</b> : l'IA rédige un brouillon, que l'administrateur relit.</li>
@@ -36,7 +36,7 @@
 </ul>
 
 <h2 class="admin">Exporter, importer</h2>
-<p>Les boutons Exporter et Importer passent les fiches d'un parc d'un fichier de connaissances à un autre (fichier .vignettes), sans doublons.</p>
+<p>Les boutons Exporter et Importer passent les fiches d'une ligne d'un fichier de connaissances à un autre (fichier .vignettes), sans doublons.</p>
 
 <h2>Trucs et astuces</h2>
 <ul class="astuces">

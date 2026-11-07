@@ -197,7 +197,9 @@ async function analyserLigne(ligne) {
     for (const e of ligne.enfants) for (const id of e.machines) if (!ensembleDe.has(id)) ensembleDe.set(id, e.libelle)
     const lireMachine = db().prepare('SELECT id, repere, designation FROM machines WHERE id = ?')
     const taches = []
-    for (const id of ligne.machines) {
+    // Une ligne (parc) : seulement ses machines de maintenance, celles qui portent les pannes.
+    const machines = ligne.maintenance?.length ? ligne.maintenance : ligne.machines
+    for (const id of machines) {
       const machine = lireMachine.get(id)
       if (!machine) continue
       // Les fiches relues par un administrateur restent ; on ne refait pas une panne qu'elles couvrent déjà.
@@ -207,7 +209,7 @@ async function analyserLigne(ligne) {
         taches.push({ machine, ensemble: ensembleDe.get(id) || '', groupe })
       }
     }
-    for (const f of db().prepare(`SELECT id FROM pannes WHERE validee = 0 AND machine_id IN (${ligne.machines.map(() => '?').join(',') || 'NULL'})`).all(...ligne.machines)) supprimerFiche(f.id)
+    for (const f of db().prepare(`SELECT id FROM pannes WHERE validee = 0 AND machine_id IN (${machines.map(() => '?').join(',') || 'NULL'})`).all(...machines)) supprimerFiche(f.id)
     analyse.total = taches.length
 
     for (const { machine, ensemble, groupe } of taches) {

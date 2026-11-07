@@ -6,8 +6,9 @@
 import { h } from '/socle/ui.js'
 
 export function menuDeroulant({ choix, valeur = '', surChoix, haut = false }) {
-  const actuel = choix.find((c) => c.valeur === valeur) || choix[0]
-  const bouton = h('button', { type: 'button', class: 'menu-theme-bouton' }, h('span', {}, actuel?.libelle || ''))
+  let actuel = choix.find((c) => c.valeur === valeur) || choix[0]
+  const libelle = h('span', {}, actuel?.libelle || '')
+  const bouton = h('button', { type: 'button', class: 'menu-theme-bouton' }, libelle)
   const liste = h('div', { class: 'menu-theme-liste', hidden: true })
   const filtre = choix.length > 12 ? h('input', { type: 'search', class: 'menu-theme-filtre', placeholder: 'Filtrer…' }) : null
   const options = h('div', { class: 'menu-theme-options' })
@@ -30,9 +31,13 @@ export function menuDeroulant({ choix, valeur = '', surChoix, haut = false }) {
     v.forEach((e, j) => e.classList.toggle('vise', j === surligne))
     v[surligne].scrollIntoView({ block: 'nearest' })
   }
+  // Le bouton montre tout de suite le nouveau choix (l'écran ne se redessine pas toujours après).
   function choisir(c) {
     fermer()
-    if (c.valeur !== actuel?.valeur) surChoix(c.valeur)
+    if (c.valeur === actuel?.valeur) return
+    actuel = c
+    libelle.textContent = c.libelle
+    surChoix(c.valeur)
   }
   const dehors = (e) => { if (!zone.contains(e.target)) fermer() }
   function ouvrir() {

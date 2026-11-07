@@ -10,6 +10,8 @@ import { etatPartage } from 'ktec/partage.js'
 import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe, sqlFamille } from '../../lib/types.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
+import { bilanLigne } from './visites.js'
+import { classement, classeDe, cleDe, gammeDe } from './equilibre.js'
 import { chargeDuParc, etatLecture, fiConnues, etatDeLaFi, parSemaine, periodicite } from './fi.js'
 import { reglagesDuParc } from './gmao.js'
 import { recalerEtiquettes } from './etiquettes.js'
@@ -92,53 +94,22 @@ export function evolution(recent, precedent) {
 
 // ---------------------------------------------------------------- le plan de maintenance va-t-il dans le bon sens ?
 
-const NB_HAUT = 5 // les pannes du haut du Pareto regardées une à une
-// Le verdict d'un parc (PREVTEC) : ses correctifs des 12 derniers mois face aux 12 d'avant, et les pannes du haut
-// du Pareto qui montent (ou apparaissent, 5 cas au moins) :
-//   - malgré une fiche qui les vise (analyse de corrélation) : ce préventif ne voit pas venir la panne ;
-//   - avec du préventif sur leur machine, mais aucune fiche qui les vise : le préventif regarde peut-être ailleurs ;
-//   - sans aucun préventif sur leur machine.
-// Une baisse nette des pannes du parc (10 % et plus) tempère le verdict.
-//   → { verdict: 'bon' | 'surveiller' | 'reevaluer', raisons: [texte], correctifs, preventifs: { recent, precedent } }
-export function bilanPlan(parc, liste, analyse) {
-  const ids = machinesMaintenance(parc)
-  const compter = (famille, de, a) => (ids.length ? db().prepare(`SELECT count(*) AS n FROM interventions WHERE machine_id IN (${ids.join(',')}) AND ${sqlFamille(famille)} AND date >= ? AND date < ?`).get(de, a).n : 0)
-  const demain = ilYa(-1)
-  const correctifs = { recent: compter('Correctif', ilYa(365), demain), precedent: compter('Correctif', ilYa(730), ilYa(365)) }
-  const preventifs = { recent: compter('Préventif', ilYa(365), demain), precedent: compter('Préventif', ilYa(730), ilYa(365)) }
-  const visees = new Set((analyse?.pareto || []).filter((x) => x.fiches?.length).map((x) => x.code))
-  const preventifSur = (machine) => db().prepare(`SELECT count(*) AS n FROM interventions WHERE machine_id = ? AND ${sqlFamille('Préventif')} AND date >= ?`).get(machine, ilYa(365)).n
-  const haut = liste.slice(0, NB_HAUT)
-  const montent = haut.filter((x) => x.evolution === 'monte' || (x.evolution === 'nouvelle' && x.nombre >= 5))
-  const malgreFiche = montent.filter((x) => visees.has(x.code))
-  const ailleurs = montent.filter((x) => !visees.has(x.code) && preventifSur(x.machine) > 0)
-  const sansRien = montent.filter((x) => !visees.has(x.code) && !preventifSur(x.machine))
-  const ecart = correctifs.precedent ? (correctifs.recent - correctifs.precedent) / correctifs.precedent : null
-  const pct = (x) => `${x > 0 ? '+' : ''}${Math.round(x * 100)} %`
-  const codes = (l) => l.map((x) => x.code).join(', ')
-  const raisons = []
-  if (ecart !== null) raisons.push(Math.abs(ecart) >= 0.05 ? `Pannes du parc : ${pct(ecart)} sur 12 mois (${correctifs.recent} contre ${correctifs.precedent}).` : `Pannes du parc stables sur 12 mois (${correctifs.recent} contre ${correctifs.precedent}).`)
-  if (malgreFiche.length) raisons.push(`${codes(malgreFiche)} : ${malgreFiche.length > 1 ? 'montent' : 'monte'} alors qu’une fiche ${malgreFiche.length > 1 ? 'les' : 'la'} vise, le contrôle ne voit pas venir la panne.`)
-  if (ailleurs.length) raisons.push(`${codes(ailleurs)} : ${ailleurs.length > 1 ? 'montent' : 'monte'} malgré du préventif sur ${ailleurs.length > 1 ? 'leur' : 'sa'} machine, sans fiche qui ${ailleurs.length > 1 ? 'les' : 'la'} vise : le préventif regarde-t-il ailleurs ?`)
-  if (sansRien.length) raisons.push(`${codes(sansRien)} : ${sansRien.length > 1 ? 'montent' : 'monte'} sans aucun préventif sur ${sansRien.length > 1 ? 'leur' : 'sa'} machine.`)
-  let verdict = 'bon'
-  if ((ecart !== null && ecart > 0.15) || malgreFiche.length >= 2) verdict = 'reevaluer'
-  else if ((ecart !== null && ecart > 0.05) || malgreFiche.length === 1 || ailleurs.length >= 3 || sansRien.length >= 2) verdict = 'surveiller'
-  // Les pannes du parc baissent nettement : le plan porte ses fruits, on ne dit au plus que « à surveiller ».
-  if (ecart !== null && ecart <= -0.1 && verdict === 'reevaluer') verdict = 'surveiller'
-  if (verdict === 'bon') raisons.push(ecart !== null && ecart < 0 ? 'Le plan va dans le bon sens : les pannes baissent.' : 'Pas de panne du haut du Pareto qui monte malgré une fiche.')
-  return { verdict, raisons, correctifs, preventifs, ecart }
+// Le verdict et les indicateurs de la ligne (visites.js, bilanLigne), avec la part du préventif d'observation.
+const bilan = (parc, liste) => {
+  const c = classement()
+  return bilanLigne(parc.id, liste, { classeDe: (description) => classeDe(c, cleDe(gammeDe(description))) }).catch(() => ({ plan: null, indicateurs: null }))
 }
 
-// Les correctifs du parc, par mois, sur 12 mois (la petite courbe de la vignette).
+// Les correctifs du parc, par mois, sur les 12 derniers mois terminés (la petite courbe de la vignette) : le mois
+// en cours, à peine commencé, ferait plonger la courbe.
 function tendance(parc) {
   const ids = machinesMaintenance(parc)
   if (!ids.length) return []
-  const lignes = db().prepare(`SELECT substr(date, 1, 7) AS mois, count(*) AS n FROM interventions WHERE machine_id IN (${ids.join(',')}) AND ${sqlFamille('Correctif')} AND date >= date('now', 'start of month', '-11 months') GROUP BY mois`).all()
+  const lignes = db().prepare(`SELECT substr(date, 1, 7) AS mois, count(*) AS n FROM interventions WHERE machine_id IN (${ids.join(',')}) AND ${sqlFamille('Correctif')} AND date >= date('now', 'start of month', '-12 months') AND date < date('now', 'start of month') GROUP BY mois`).all()
   const parMois = new Map(lignes.map((l) => [l.mois, l.n]))
   const mois = []
   const d0 = new Date()
-  for (let i = 11; i >= 0; i--) {
+  for (let i = 12; i >= 1; i--) {
     const d = new Date(d0.getFullYear(), d0.getMonth() - i, 1)
     const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     mois.push({ mois: cle, n: parMois.get(cle) || 0 })
@@ -216,10 +187,28 @@ async function demandesDuParc(parc) {
   return demandes.filter((d) => d.type === type && d.date >= ilYa(365)).map((d) => ({ ...d, machineId: parRepere.get(d.machine) ?? null, close: close(d.etat) })).filter((d) => d.machineId && parc.machines.has(d.machineId))
 }
 
+// Une fiche ne contrôle rien par elle-même : elle compte si elle est EN SERVICE, portée par une FI active de la
+// GMAO (qui fait valider le contrôle par un RI), ou « imprimée et en service » (carte papier). GMAO non lue : une
+// FI d'état inconnu compte.
+export const enService = (f, etatFi) => Boolean(f.papier_le) || (Boolean(f.fi_gmao) && !['supprimee', 'inactive'].includes(etatFi(f.fi_gmao)))
+
+// L'analyse de corrélation relue avec les seules fiches en service : la pertinence, les trous, et pour chaque
+// panne les fiches qui la visent ET sont faites (fichesEnService).
+function avecFichesEnService(analyse, liste, fiches, etatFi) {
+  if (!analyse) return analyse
+  const faites = new Set(fiches.filter((f) => enService(f, etatFi)).map((f) => f.id))
+  const cas = new Map(liste.map((x) => [x.code, x.nombre]))
+  const pareto = analyse.pareto.map((x) => ({ ...x, fichesEnService: (x.fiches || []).filter((id) => faites.has(id)) }))
+  const total = pareto.reduce((s, x) => s + (cas.get(x.code) || 0), 0)
+  const couvert = pareto.reduce((s, x) => s + (x.fichesEnService.length ? cas.get(x.code) || 0 : 0), 0)
+  return { ...analyse, pareto, pertinence: total ? couvert / total : null, trous: pareto.filter((x) => !x.fichesEnService.length).map((x) => x.code) }
+}
+
 // Les indicateurs d'un parc : { charge: { taux, eths: [...] }, pertinence, analyse, alertes, … }
 async function indicateurs(p, parc, fiches) {
   const liste = pareto(parc)
-  const analyse = lireAnalyse(parc.id)
+  const connues = await fiConnues().catch(() => null)
+  const analyse = avecFichesEnService(lireAnalyse(parc.id), liste, fiches, (numero) => etatDeLaFi(connues, numero))
   const seuil = seuilPertinence()
   let charge = null
   let erreurCharge = null
@@ -243,7 +232,7 @@ async function indicateurs(p, parc, fiches) {
     alertes, aAnalyser,
     pareto: { nombre: liste.length, cas: liste.reduce((s, x) => s + x.nombre, 0) },
     tendance: tendance(parc),
-    plan: bilanPlan(parc, liste, analyse),
+    ...(await bilan(parc, liste)),
   }
 }
 
@@ -277,16 +266,18 @@ export async function detailDuParc(parcId) {
     erreurCharge = e.message
   }
   const demandes = await demandesDuParc(parc)
-  // Les machines (de production ou de maintenance) qui ont une fiche : une demande sur l'une d'elles est signalée.
-  const machinesAvecFiche = new Map()
-  for (const f of fiches) {
-    for (const id of [f.machine_prod, f.machine_id, f.machine_prod && p.liens[f.machine_prod]].filter(Boolean)) machinesAvecFiche.set(id, f)
-  }
-  const sansCible = new Set(analyse?.fichesSansCible || [])
   // L'état de la FI de chaque fiche dans la GMAO (lue il y a moins de 2 minutes) : supprimée, inactive ou active ;
   // inconnu sans lecture de la GMAO.
   const connues = await fiConnues()
   const etatFi = (numero) => etatDeLaFi(connues, numero)
+  // Les machines (de production ou de maintenance) qui ont une fiche ACTIVE (FI attachée, ou carte papier en
+  // service) : une demande sur l'une d'elles est « malgré la fiche ». Une fiche brouillon ne compte pas.
+  const machinesAvecFiche = new Map()
+  for (const f of fiches.filter((x) => enService(x, etatFi))) {
+    for (const id of [f.machine_prod, f.machine_id, f.machine_prod && p.liens[f.machine_prod]].filter(Boolean)) machinesAvecFiche.set(id, f)
+  }
+  const sansCible = new Set(analyse?.fichesSansCible || [])
+  const analyseEnService = avecFichesEnService(analyse, liste, fiches, etatFi)
   const fichesDetail = fiches.map((f) => {
     const per = periodicite(f.frequence, r)
     const poids = per ? parSemaine(per[0], per[1], r) : null
@@ -296,6 +287,7 @@ export async function detailDuParc(parcId) {
       poids: poids === null ? null : Math.round(poids * 100) / 100,
       aAnalyser: aAnalyserFiche(f),
       etatFi: etatFi(f.fi_gmao),
+      enService: enService(f, etatFi),
       sansCible: sansCible.has(f.id),
       suggestion,
       avantApres: avantApres(f, debutDe(f.id), p.liens, analyse, liste),
@@ -310,12 +302,12 @@ export async function detailDuParc(parcId) {
     pareto: liste.map(({ cas, datesCas, ...x }) => x),
     // id de machine → machine du parc maintenance à analyser (les autres ne sont pas cliquables).
     analysables: Object.fromEntries([...new Set([...liste.map((x) => x.machine), ...fiches.flatMap((f) => [f.machine_id, f.machine_prod])].filter(Boolean))].map((id) => [id, machineAnalysable(p, id)]).filter(([, a]) => a)),
-    analyse: analyse ? { ...analyse, perimee: analyse.signature !== signature(liste, fiches) } : null,
+    analyse: analyseEnService ? { ...analyseEnService, perimee: analyse.signature !== signature(liste, fiches) } : null,
     seuil: seuilPertinence(),
     demandes: demandes ? { total: demandes.length, ouvertes: demandes.filter((d) => !d.close).length, surMachineAvecFiche: demandes.filter((d) => machinesAvecFiche.has(d.machineId)).length, dernieres: demandes.slice(0, 15).map((d) => ({ ...d, fiche: machinesAvecFiche.get(d.machineId) ? { id: machinesAvecFiche.get(d.machineId).id, etiquette: machinesAvecFiche.get(d.machineId).etiquette } : null })) } : null,
     reglages: { parSemaine: r.parSemaine, propres: r.propres },
     tendance: tendance(parc),
-    plan: bilanPlan(parc, liste, analyse),
+    ...(await bilan(parc, liste)),
   }
 }
 

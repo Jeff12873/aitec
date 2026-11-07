@@ -15,7 +15,8 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, lireMachine, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
+import { demonstrateur, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
+import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -187,10 +188,10 @@ async function tableau(parcVoulu = '') {
   const compter = (liste, cle) => [...liste.reduce((c, d) => (d[cle] ? c.set(d[cle], (c.get(d[cle]) || 0) + 1) : c), new Map())].sort((a, b) => b[1] - a[1])
   const parMois = []
   const aujourdhui = new Date()
-  for (let k = 11; k >= 0; k--) {
+  for (let k = 12; k >= 1; k--) {
     const d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth() - k, 1)
     const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const du = annee.filter((x) => moisDe(x.date) === cle)
+    const du = retenues.filter((x) => moisDe(x.date) === cle) // mois entiers : pas la limite des 365 jours
     parMois.push({ mois: cle, ouvertes: du.filter((x) => !x.close).length, closes: du.filter((x) => x.close).length })
   }
   // Les machines qui ont une fiche (celle de la fiche, son équipement de production, et sa machine de maintenance).
@@ -258,7 +259,7 @@ export function routes(r) {
     const propre = nettoyerFiche(f)
     const maintenant = new Date().toISOString()
     if (!f.machine_id) {
-      if (!f.parc) throw new ErreurHttp(400, 'Machine ou parc obligatoire.')
+      if (!f.parc) throw new ErreurHttp(400, 'Machine ou ligne obligatoire.')
       const id = db()
         .prepare("INSERT INTO fiches_mn1 (machine_id, pour, etiquette, machine_nom, zone, origine, action, frequence, frequence_source, evite, ligne, eth, parc, cree_le, modifie_le) VALUES (NULL, 'Production', ?, ?, ?, 'ia', ?, ?, 'manuelle', ?, '', '', ?, ?, ?)")
         .run('', String(f.machine_nom || '').trim().slice(0, 120), propre.zone, propre.action, propre.frequence, propre.evite, String(f.parc), maintenant, maintenant).lastInsertRowid
@@ -277,6 +278,17 @@ export function routes(r) {
   })
 
   // Corriger une fiche ; une fréquence choisie ici (après l'analyse de la machine) n'est plus provisoire.
+  // Fiches « imprimées et en service » (carte papier) : { ids, enService }. Elles comptent comme faites.
+  r.post('/api/mn1/fiches/papier', async (ctx) => {
+    exigerEcriture()
+    const { ids = [], enService = true } = await ctx.json()
+    const maj = db().prepare('UPDATE fiches_mn1 SET papier_le = ?, modifie_le = ? WHERE id = ?')
+    const maintenant = new Date().toISOString()
+    transaction(() => { for (const id of ids.map(Number).filter(Number.isInteger)) maj.run(enService ? maintenant : null, maintenant, id) })
+    noterModification()
+    return { ok: true }
+  })
+
   r.post('/api/mn1/fiches/:id', async (ctx) => {
     exigerEcriture()
     const entree = await ctx.json()
@@ -290,7 +302,7 @@ export function routes(r) {
       const { parc } = db().prepare('SELECT parc FROM fiches_mn1 WHERE id = ?').get(ctx.params.id)
       const { equipements } = await equipementsDuParc(parc)
       const n = equipements.find((x) => String(x.noeud) === String(entree.equipement) && x.niveau >= 2)
-      if (!n) throw new ErreurHttp(400, 'Équipement introuvable dans le parc de la fiche.')
+      if (!n) throw new ErreurHttp(400, 'Équipement introuvable dans la ligne de la fiche.')
       place = n
     }
     transaction(() => {
@@ -449,7 +461,7 @@ export function routes(r) {
 
   r.get('/api/mn1/parcs/:id', async (ctx) => {
     const d = await detailDuParc(ctx.params.id)
-    if (!d) throw new ErreurHttp(404, 'Parc introuvable')
+    if (!d) throw new ErreurHttp(404, 'Ligne introuvable')
     return d
   })
 
@@ -459,7 +471,7 @@ export function routes(r) {
     ctx.exigerAdmin()
     const p = await lireParcs()
     const parc = p?.parcs.find((x) => x.id === ctx.params.id)
-    if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+    if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
     const repere = db().prepare('SELECT repere FROM machines WHERE id = ?')
     const historique = db().prepare('SELECT numero, debut, fin, motif FROM fiches_mn1_fi WHERE fiche_id = ? ORDER BY debut')
     const fiches = (fichesDesParcs(p).parParc.get(parc.id) || []).map((f) => ({
@@ -480,7 +492,7 @@ export function routes(r) {
     if (fichier?.format !== 'aitec-vignettes' || !Array.isArray(fichier.fiches)) throw new ErreurHttp(400, 'Ce n’est pas un fichier de vignettes d’AITEC.')
     const p = await lireParcs()
     const parc = p?.parcs.find((x) => x.id === ctx.params.id)
-    if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+    if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
     let fiGmao = null
     try {
       fiGmao = new Set((await lireFiGmao({ force: true })).map((fi) => fi.numero))
@@ -534,11 +546,18 @@ export function routes(r) {
 
   // PREVTEC, une machine : le démonstrateur (pannes × préventifs), sa lecture par l'IA, et les décisions.
   r.get('/api/mn1/parcs/:id/machines/:machine', (ctx) => demonstrateur(ctx.params.id, ctx.params.machine))
-  r.post('/api/mn1/parcs/:id/machines/:machine/lire', (ctx) => lireMachine(ctx.params.id, ctx.params.machine))
   r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
   r.post('/api/mn1/parcs/:id/machines/:machine/n2', async (ctx) => {
-    const { panne = '', gamme = '' } = await ctx.json()
-    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(gamme))
+    const { panne = '', visites = '' } = await ctx.json()
+    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(visites))
+  })
+
+  // Comment reconnaître les préventifs du plan : la convention des codes (site) et la lettre de chaque ligne.
+  r.get('/api/mn1/convention', () => apercuConvention())
+  admin.post('/api/mn1/convention', async (ctx) => enregistrerConvention(await ctx.json()))
+  admin.post('/api/mn1/convention/lettre', async (ctx) => {
+    const { parc = '', lettres = '' } = await ctx.json()
+    return enregistrerLettre(String(parc), String(lettres))
   })
 
   // Les réglages propres au parc (administrateur) : maximum par ETH, paramètres de ses FI.

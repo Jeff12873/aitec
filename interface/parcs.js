@@ -7,11 +7,11 @@ import { api } from '/socle/api.js'
 
 let choisi = ''
 let liste = []
-const element = h('div', { class: 'selecteur-parc', role: 'tablist', 'aria-label': 'Parc machines' })
+const element = h('div', { class: 'selecteur-parc', role: 'tablist', 'aria-label': 'Ligne' })
 
 export const parcChoisi = () => choisi
 export const nomParcChoisi = () => liste.find((p) => p.id === choisi)?.nom || ''
-export const avecParc = (adresse) => (choisi ? `${adresse}${adresse.includes('?') ? '&' : '?'}parc=${encodeURIComponent(choisi)}` : adresse)
+export const avecParc = (adresse) => (choisi ? `${adresse}${adresse.includes('?') ? '&' : '?'}ligne=${encodeURIComponent(choisi)}` : adresse)
 
 export async function rafraichirParcs() {
   try {
@@ -39,7 +39,7 @@ function dessiner() {
     },
   }, nom)
   vider(element,
-    pastille('', 'Tous', 'Tous les parcs (sauf les racines masquées)'),
+    pastille('', 'Tous', 'Toutes les lignes (sauf les racines masquées)'),
     liste.map((p) => pastille(p.id, p.nom, `${p.nom} — ${p.machines.toLocaleString('fr-FR')} machines${p.nonClasse ? ' (racines à ranger dans Administration)' : ''}`, p.nonClasse ? 'non-classe' : '')))
 }
 

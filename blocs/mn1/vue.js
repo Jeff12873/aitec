@@ -9,11 +9,11 @@ import { barres, barresHorizontales, COULEURS } from '/socle/graphiques.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { LOGO_MN1, definirParametres } from '../../interface/fiches-mn1.js'
 import { afficherParc } from '../../interface/mn1-parc.js'
-import { afficherFiches, boutonImport, reglerParametres, reglerCreationGmao } from '../../interface/mn1-ancien.js'
+import { boutonImport } from '../../interface/mn1-import.js'
 import { reglerGmao, reglerEntete } from '../../interface/mn1-reglages.js'
 import { jauge, courbe, ecartTendance } from '../../interface/mn1-graphiques.js'
 import { avecParc, parcChoisi } from '../../interface/parcs.js'
-import { animer } from '../tableau-de-bord/vue.js'
+import { animer } from '../../interface/animer.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
 import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
 import { afficherMachine } from '../../interface/prevtec-machine.js'
@@ -49,6 +49,14 @@ export default {
     const [onglet, parc, machine] = String(id || '').split('/')
     if (onglet === 'parc' && parc) return afficherParc(zone, decodeURIComponent(parc))
     if (onglet === 'machine' && parc && machine) return afficherMachine(zone, decodeURIComponent(parc), machine)
+    if (onglet === 'n1' && parc) return afficherParc(zone, decodeURIComponent(parc), { vue: 'n1' })
+    // PREVTEC, étape 1 : seulement le fil des étapes et les vignettes des lignes. Le circuit N1 de l'usine (bandeau,
+    // Hall of fame, demandes, FI, rapports) a sa page, ouverte depuis le niveau 1 d'une ligne.
+    if (estPrevtec && !onglet) {
+      const vignettes = h('div')
+      vider(zone, filEtapes(1), vignettes)
+      return afficherVignettes(vignettes, null)
+    }
     definirParametres(await api('/api/mn1/parametres').catch(() => null))
     const contenu = h('div')
     const admin = peutModifier()
@@ -58,8 +66,8 @@ export default {
     bandeau.zoneHof = zoneHof
     vider(
       zone,
-      // PREVTEC : le fil des étapes, en haut (sur les vignettes des parcs, on est à l'étape 1).
-      estPrevtec ? filEtapes(1) : null,
+      // PREVTEC : le circuit N1 de l'usine, après la décision (étape 5).
+      estPrevtec ? filEtapes(5) : null,
       bandeau,
       zoneHof,
       h('div', { class: 'barre-onglets-mn1' },
@@ -67,10 +75,9 @@ export default {
         h('div', { class: 'segments' },
           // Le circuit, dans l'ordre : la demande, la fiche d'intervention, le rapport d'intervention.
           h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes d’intervention N1'),
-          h('button', { class: !['demandes', 'ancien', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
+          h('button', { class: !['demandes', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = estPrevtec ? '#/mn1/circuit' : '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
           h('button', { class: onglet === 'ri' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/ri') }, ic('coche', 16), 'Rapports d’intervention N1')),
         h('div', { class: 'actions-onglets-mn1' },
-          admin ? h('button', { class: 'discret petit', title: 'L’ancien écran (fiches par ligne, une FI par machine), le temps que le nouveau fasse ses preuves', onclick: () => (location.hash = '#/mn1/ancien') }, ic('historique', 14), 'Ancien mode') : null,
           admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null)),
       contenu,
     )
@@ -82,15 +89,13 @@ export default {
       dessinerBandeau(bandeau, null)
       return afficherRi(contenu)
     }
-    if (onglet === 'ancien') {
-      dessinerBandeau(bandeau, null)
-      return afficherAncien(contenu)
-    }
     // Fiches d'intervention N1 : d'abord les FI issues de DI (arborescences à compléter), puis les fiches focus.
     const zoneFi = h('div')
     const zoneFocus = h('div')
     vider(contenu, zoneFi, zoneFocus)
     afficherFiIssues(zoneFi)
+    // PREVTEC : les vignettes des lignes sont à l'étape 1, pas dans le circuit.
+    if (estPrevtec) return dessinerBandeau(bandeau, await api('/api/mn1/vignettes').catch(() => null))
     await afficherVignettes(zoneFocus, bandeau)
   },
 }
@@ -130,9 +135,9 @@ async function dessinerBandeau(bandeau, v) {
         chiffre(nombreFr(parcs.length), parcs.length > 1 ? 'parcs' : 'parc'),
         chiffre(nombreFr(fiches), fiches > 1 ? 'fiches' : 'fiche'),
         chiffre(nombreFr(parcs.reduce((s, p) => s + (p.charge?.actives || 0), 0)), 'FI actives', 'FI de niveau 1 actives dans la GMAO'),
-        chiffre(analyses.length ? `${Math.round((analyses.reduce((s, p) => s + p.pertinence.taux, 0) / analyses.length) * 100)} %` : '—', 'pertinence moyenne', 'Part du Pareto des pannes couverte par les fiches, en moyenne sur les parcs analysés'),
-        chiffre(nombreFr(parcs.reduce((s, p) => s + p.pareto.cas, 0)), 'pannes qui reviennent', 'Cas des 12 derniers mois dans les Pareto des parcs'),
-        chiffre(nombreFr(parcs.filter((p) => p.alertes.length).length), 'parcs en alerte')) : null,
+        chiffre(analyses.length ? `${Math.round((analyses.reduce((s, p) => s + p.pertinence.taux, 0) / analyses.length) * 100)} %` : '—', 'pertinence moyenne', 'Part du Pareto des pannes couverte par les fiches, en moyenne sur les lignes analysées'),
+        chiffre(nombreFr(parcs.reduce((s, p) => s + p.pareto.cas, 0)), 'pannes qui reviennent', 'Cas des 12 derniers mois dans les Pareto des lignes'),
+        chiffre(nombreFr(parcs.filter((p) => p.alertes.length).length), 'lignes en alerte')) : null,
       idee),
     zoneIndicateurs)
   indicateursBandeau(zoneIndicateurs, bandeau.zoneHof)
@@ -145,13 +150,13 @@ async function afficherVignettes(zone, bandeau) {
   const relire = Date.now() - derniereLecture > 60_000
   const v = await api(`/api/mn1/vignettes${relire ? '?relire=1' : ''}`)
   if (relire) derniereLecture = Date.now()
-  dessinerBandeau(bandeau, v)
+  if (bandeau) dessinerBandeau(bandeau, v)
   const admin = peutModifier()
   if (v.sansArborescence) return vider(zone, h('div', { class: 'carte vide' }, ic('reseau', 28), h('p', {}, 'L’arborescence de la GMAO est illisible : il faut la connexion à la GMAO et la requête d’arborescence (réglée dans PDRTEC).')))
   if (!v.parcs.length) {
     return vider(zone, h('div', { class: 'carte vide' }, ic('usine', 28),
-      h('p', {}, 'Pas encore de parc : rangez les racines de l’arborescence en parcs dans Administration › Parcs machines.'),
-      admin ? h('a', { class: 'bouton principal', href: '#/administration/parcs' }, 'Ranger les parcs') : null))
+      h('p', {}, 'Pas encore de ligne : rangez les racines de l’arborescence en lignes dans Administration › Lignes.'),
+      admin ? h('a', { class: 'bouton principal', href: '#/administration/parcs' }, 'Ranger les lignes') : null))
   }
   // Un parc choisi en haut d'AITEC : sa page directement, avec le bandeau de synthèse (plus de vignette seule).
   const choisi = parcChoisi()
@@ -174,20 +179,23 @@ async function afficherVignettes(zone, bandeau) {
   vider(zone,
     h('div', { class: 'barre-vignettes' },
       h('span', { class: 'discret' }, 'Trier par'),
-      h('div', { class: 'segments petits' }, [...(estPrevtec ? [['verdict', 'Verdict']] : []), ['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes'], ['tendance', 'Tendance']].map(([cle, texte]) =>
+      h('div', { class: 'segments petits' }, (estPrevtec ? [['verdict', 'Verdict'], ['nom', 'Nom'], ['tendance', 'Tendance']] : [['nom', 'Nom'], ['charge', 'Charge'], ['pertinence', 'Pertinence'], ['alertes', 'Alertes'], ['tendance', 'Tendance']]).map(([cle, texte]) =>
         h('button', { class: tri === cle ? 'choisi' : '', title: cle === 'tendance' ? 'Les correctifs qui montent le plus d’abord (3 derniers mois par rapport à la moyenne des 12)' : cle === 'verdict' ? 'Les plans à réévaluer d’abord' : '', onclick: () => { tri = cle; triChoisi = true; afficherVignettes(zone, bandeau) } }, texte))),
       h('div', { class: 'espace' }),
-      v.lecture?.erreur ? h('span', { class: 'etiquette orange', title: v.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : v.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO à ${new Date(v.lecture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`) : null,
-      admin && v.sansParc ? h('button', { class: 'petit', onclick: rangerSansParc }, ic('alerte', 14), `${v.sansParc} fiche${v.sansParc > 1 ? 's' : ''} sans parc`) : null,
-      admin ? boutonImport() : null),
+      // Le niveau 1 (lecture des FI, fiches sans ligne, import) : pas à l'étape 1 de PREVTEC.
+      estPrevtec ? null : v.lecture?.erreur ? h('span', { class: 'etiquette orange', title: v.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : v.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO à ${new Date(v.lecture.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`) : null,
+      admin && !estPrevtec && v.sansParc ? h('button', { class: 'petit', onclick: rangerSansParc }, ic('alerte', 14), `${v.sansParc} fiche${v.sansParc > 1 ? 's' : ''} sans ligne`) : null,
+      admin && !estPrevtec ? boutonImport() : null),
     grille)
   animer(zone)
 }
 
 function vignette(p, rang, seuil) {
   const ouvrir = () => (location.hash = `#/mn1/parc/${encodeURIComponent(p.id)}`)
+  // PREVTEC : la vignette ne parle que de la ligne (verdict, pannes, visites, courbe), rien du niveau 1.
+  if (estPrevtec) return vignetteLigne(p, rang, ouvrir)
   const pire = p.alertes.find((a) => a.niveau === 'rouge') ? 'rouge' : p.alertes.find((a) => a.niveau === 'orange') ? 'orange' : ''
-  return h('div', { class: `vignette-mn1 ${pire}`, role: 'button', tabindex: '0', style: { '--i': rang }, title: `Ouvrir la fiche MN1 du parc ${p.nom}`, onclick: ouvrir, onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), ouvrir()) },
+  return h('div', { class: `vignette-mn1 ${pire}`, role: 'button', tabindex: '0', style: { '--i': rang }, title: `Ouvrir la fiche MN1 de la ligne ${p.nom}`, onclick: ouvrir, onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), ouvrir()) },
     h('div', { class: 'tete-vignette' }, h('h2', {}, p.nom), h('span', { class: 'discret' }, `${nombreFr(p.fiches)} fiche${p.fiches > 1 ? 's' : ''} · ${nombreFr(p.charge?.actives ?? 0)} FI`)),
     // PREVTEC : le verdict du plan du parc, ses pannes et son préventif sur 12 mois face aux 12 d'avant.
     estPrevtec && p.plan ? h('div', { class: 'plan-vignette' }, pastilleVerdict(p.plan),
@@ -195,11 +203,22 @@ function vignette(p, rang, seuil) {
     h('div', { class: 'jauges-vignette' },
       h('div', { class: 'jauge-vignette', title: p.erreurCharge || (p.charge ? `Charge la plus haute d’un ETH : ${Math.round(p.charge.taux * 100)} % du maximum (${p.charge.max} fiches par semaine et par ETH)` : '') }, jauge(p.charge ? p.charge.taux : null, { inverse: true, libelle: 'charge' })),
       h('div', { class: 'jauge-vignette', title: p.pertinence ? `Part du Pareto des pannes visée par les fiches (analyse du ${dateFr(p.pertinence.date)})` : 'Pas encore d’analyse de corrélation' }, jauge(p.pertinence ? p.pertinence.taux : null, { seuil, libelle: p.pertinence ? 'pertinence' : 'non analysé' }))),
-    h('div', { class: 'tendance-vignette', title: `Correctifs du parc, mois par mois : ${p.tendance.map((x) => x.n).join(', ')}` }, courbe(p.tendance.map((x) => x.n)), h('small', { class: 'discret' }, 'correctifs, 12 derniers mois')),
+    h('div', { class: 'tendance-vignette', title: `Correctifs de la ligne, mois par mois : ${p.tendance.map((x) => x.n).join(', ')}` }, courbe(p.tendance.map((x) => x.n)), h('small', { class: 'discret' }, 'correctifs, 12 derniers mois')),
     h('div', { class: 'alertes-vignette' },
       p.alertes.map((a) => h('span', { class: `etiquette ${a.niveau === 'rouge' ? 'rouge' : a.niveau === 'orange' ? 'orange' : ''}` }, a.texte)),
       p.aAnalyser ? h('span', { class: 'etiquette' }, `${p.aAnalyser} à analyser`) : null,
       !p.alertes.length && !p.aAnalyser ? h('span', { class: 'discret petit-texte' }, p.pareto.nombre ? `${p.pareto.nombre} pannes au Pareto` : 'pas de panne qui revient') : null))
+}
+
+function vignetteLigne(p, rang, ouvrir) {
+  const verdict = p.plan?.verdict === 'reevaluer' ? 'rouge' : p.plan?.verdict === 'surveiller' ? 'orange' : ''
+  const c = p.indicateurs?.concentration
+  return h('div', { class: `vignette-mn1 ${verdict}`, role: 'button', tabindex: '0', style: { '--i': rang }, title: `Ouvrir la ligne ${p.nom}`, onclick: ouvrir, onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), ouvrir()) },
+    h('div', { class: 'tete-vignette' }, h('h2', {}, p.nom)),
+    p.plan ? h('div', { class: 'plan-vignette' }, pastilleVerdict(p.plan),
+      h('small', { class: 'discret', title: 'Pannes et visites du plan des 12 derniers mois terminés (entre parenthèses : les 12 mois d’avant)' }, `${nombreFr(p.plan.correctifs.recent)} pannes (${nombreFr(p.plan.correctifs.precedent)}) · ${nombreFr(p.plan.preventifs.recent)} visites (${nombreFr(p.plan.preventifs.precedent)})`)) : null,
+    h('div', { class: 'tendance-vignette', title: `Correctifs de la ligne, mois par mois : ${p.tendance.map((x) => x.n).join(', ')}` }, courbe(p.tendance.map((x) => x.n)), h('small', { class: 'discret' }, 'correctifs, 12 mois terminés')),
+    c?.machines?.length ? h('small', { class: 'discret concentration-vignette' }, `${c.machines.length} machines font ${Math.round((c.part || 0) * 100)} % des pannes`) : null)
 }
 
 // Les fiches importées qu'AITEC n'a rangées dans aucun parc (administrateur).
@@ -211,15 +230,15 @@ async function rangerSansParc() {
   const choix = new Map()
   const sans = fiches.filter((f) => !f.archivee && (!f.parc || !dansUnParc.has(f.parc)))
   const lignes = sans.map((f) => {
-    const select = h('select', { class: 'fin' }, h('option', { value: '' }, '— parc —'), parcs.filter((p) => !p.nonClasse).map((p) => h('option', { value: p.id }, p.nom)))
+    const select = h('select', { class: 'fin' }, h('option', { value: '' }, '— ligne —'), parcs.filter((p) => !p.nonClasse).map((p) => h('option', { value: p.id }, p.nom)))
     choix.set(f.id, select)
     return h('tr', {}, h('td', {}, f.ligne || ''), h('td', {}, f.eth || ''), h('td', {}, [f.machine_nom || f.repere, f.etiquette, f.zone].filter(Boolean).join(' · ')), h('td', {}, select))
   })
   const ok = await fenetre({
-    titre: 'Fiches sans parc',
+    titre: 'Fiches sans ligne',
     large: true,
     contenu: h('div', {},
-      h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC range les fiches d’après leur ligne ou leur machine ; celles-ci ne correspondent à aucun parc. Choisissez le leur.'),
+      h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'AITEC range les fiches d’après leur ligne ou leur machine ; celles-ci ne correspondent à aucune ligne. Choisissez la leur.'),
       h('div', { class: 'tableau-conteneur', style: { maxHeight: '55vh' } }, h('table', { class: 'tableau' }, h('thead', {}, h('tr', {}, h('th', {}, 'Ligne'), h('th', {}, 'ETH'), h('th', {}, 'Fiche'), h('th', {}, 'Parc'))), h('tbody', {}, lignes)))),
     boutons: [{ texte: 'Annuler', classe: 'discret', valeur: false }, { texte: 'Ranger', classe: 'principal', valeur: true }],
   })
@@ -231,18 +250,6 @@ async function rangerSansParc() {
   }
   notifier(`${n} fiche${n > 1 ? 's' : ''} rangée${n > 1 ? 's' : ''}`)
   window.ktec.recharger()
-}
-
-// ---------------------------------------------------------------- ancien mode
-
-async function afficherAncien(zone) {
-  const contenu = h('div')
-  vider(zone,
-    h('div', { class: 'bandeau', style: { marginBottom: '14px' } }, ic('historique'), h('span', { style: { flex: 1 } }, 'Ancien mode : fiches par ligne, une FI par machine, charge par secteur. Il sera retiré quand le mode par parcs aura fait ses preuves.'),
-      peutModifier() ? h('button', { class: 'petit', onclick: reglerParametres }, ic('reglages', 14), 'Fiches par fréquence') : null,
-      peutModifier() ? h('button', { class: 'petit', onclick: reglerCreationGmao }, ic('base', 14), 'Création (ancien)') : null),
-    contenu)
-  await afficherFiches(contenu)
 }
 
 // ---------------------------------------------------------------- demandes de niveau 1
@@ -261,7 +268,7 @@ async function afficherDemandes(zone) {
     h('div', { class: 'barre-demandes' },
       h('span', { class: 'discret' }, 'Type de demande'),
       menuDeroulant({ choix: d.types.map((x) => ({ valeur: x.nom, libelle: x.nom, nombre: x.nombre })), valeur: d.type, surChoix: async (type) => { if (await essayer(() => api('/api/mn1/type', { methode: 'POST', corps: { type } }))) window.ktec.recharger() } }),
-      parcChoisi() ? h('span', { class: 'discret' }, 'parc choisi sous le titre') : null),
+      parcChoisi() ? h('span', { class: 'discret' }, 'ligne choisie sous le titre') : null),
     h('div', { class: 'grille grille-4', style: { marginBottom: '16px' } },
       tuile('document', 'violet', `Demandes ${d.type} (12 mois)`, t.annee, null),
       tuile('horloge', '', 'Encore ouvertes', t.ouvertes, null),
@@ -278,7 +285,7 @@ async function afficherDemandes(zone) {
         // machine reste une simple étiquette.
         h('div', { class: 'liste-sans-fiche' }, d.sansFiche.map((m) => m.analyse
           ? h('a', { class: 'bouton', href: `#/analyse/${m.analyse}`, title: 'Ouvrir la fiche de la machine de maintenance' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)
-          : h('span', { class: 'etiquette', title: 'Aucune machine de maintenance reliée : Administration › Parcs machines › production ↔ maintenance' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
+          : h('span', { class: 'etiquette', title: 'Aucune machine de maintenance reliée : Administration › Lignes › production ↔ maintenance' }, h('b', { class: 'mono' }, m.repere), ` · ${m.nombre} demandes`)))) : null,
       h('div', { class: 'carte pleine' }, entete('historique', 'Demandes de niveau 1', d.liste ? 'ouvertes, et 12 derniers mois' : ''), listeDemandes(d.liste || d.dernieres, d.suivi)),
     ))
   animer(zone)

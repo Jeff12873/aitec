@@ -9,10 +9,11 @@ import { texteIA } from '/socle/texte-ia.js'
 import { LOGO_MN1, FREQUENCES, carteFiche, imprimerFiches, nomMachine } from './fiches-mn1.js'
 import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
 import { reglerParc } from './mn1-reglages.js'
-import { encartCalendrier } from './mn1-circuit.js'
+import { encartCalendrier, calendrierCompact, hallOfFameLigne } from './mn1-circuit.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 import { nuageEquilibre } from './mn1-equilibre.js'
-import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne, lienMachine } from './prevtec.js'
+import { boutonImport } from './mn1-import.js'
+import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne, lienMachine, tuilesLigne } from './prevtec.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
 const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 100) / 100).toLocaleString('fr-FR'))
@@ -23,8 +24,10 @@ const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 10
 // machine de production) ; sinon le texte seul, pas cliquable.
 const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: lienMachine(d.parc.id, d.analysables[id]), title: estPrevtec ? 'Étape 3 : cette machine, ses pannes face à tous ses préventifs' : '' }, contenu) : contenu)
 
-export async function afficherParc(zone, id, { integre = false } = {}) {
-  vider(zone, h('p', { class: 'discret curseur' }, 'Lecture du parc et des FI de la GMAO'))
+// vue (PREVTEC) : « ligne » (étape 2 : verdict, équipes, Hall of fame, indicateurs, pannes, sans rien du niveau 1)
+// ou « n1 » (étape 5 : charge, couverture par les fiches, fiches, demandes de niveau 1).
+export async function afficherParc(zone, id, { integre = false, vue = 'ligne' } = {}) {
+  vider(zone, h('p', { class: 'discret curseur' }, 'Lecture de la ligne et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
   const admin = peutModifier()
   const u = utilites(d)
@@ -37,17 +40,17 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
 
   // ---- en-tête
   const entete = h('div', { class: 'entete-parc' },
-    integre ? null : h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Tous les parcs'),
+    integre || estPrevtec ? null : h('a', { class: 'bouton petit discret', href: '#/mn1' }, ic('retour', 14), 'Toutes les lignes'),
     h('div', { class: 'titre-parc' }, h('img', { src: LOGO_MN1, alt: '' }), h('div', {}, h('h1', {}, d.parc.nom), h('p', { class: 'sous-titre' }, `${d.fiches.length} fiche${d.fiches.length > 1 ? 's' : ''} · ${d.parc.production} machines de production · ${d.parc.maintenance} de maintenance`))),
     h('div', { class: 'espace' }),
-    d.tendance?.length ? h('small', { class: 'discret legende-tendance', title: `Correctifs du parc, mois par mois : ${d.tendance.map((x) => x.n).join(', ')}` }, 'courbe : correctifs, 12 mois') : null,
-    admin ? h('button', { class: 'discret icone-seule', title: 'Réglages du parc : maximum par ETH, paramètres de ses FI', onclick: () => reglerParc(d.parc) }, ic('reglages', 18)) : null)
+    d.tendance?.length ? h('small', { class: 'discret legende-tendance', title: `Correctifs de la ligne, mois par mois : ${d.tendance.map((x) => x.n).join(', ')}` }, 'courbe : correctifs, 12 mois terminés') : null,
+    admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la ligne : maximum par ETH, paramètres de ses FI', onclick: () => reglerParc(d.parc) }, ic('reglages', 18)) : null)
 
   // ---- charge des opérateurs, par ETH
   const carteChargeParc = h('div', { class: 'carte' },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('personne', 18), 'Charge des opérateurs'), h('span', { class: 'discret' }, `maximum ${arrondi(d.reglages.parSemaine)} fiche${d.reglages.parSemaine > 1 ? 's' : ''} par semaine et par ETH · FI lues dans la GMAO ${d.lecture.date ? ilYa(d.lecture.date) : ''}`)),
     d.erreurCharge ? h('div', { class: 'bandeau' }, ic('alerte'), d.erreurCharge)
-      : !d.charge.eths.length ? h('p', { class: 'discret' }, 'Ce parc n’a pas encore de racine de production avec des ETH (Administration › Parcs machines).')
+      : !d.charge.eths.length ? h('p', { class: 'discret' }, 'Cette ligne n’a pas encore de racine de production avec des ETH (Administration › Lignes).')
         : h('div', { class: 'eths-parc' }, d.charge.eths.map((e) => h('div', { class: `eth-parc${e.taux > 1 + 1e-9 ? ' depasse' : ''}` },
           h('div', { class: 'tete-eth' }, h('b', {}, e.libelle), h('span', { class: 'discret' }, `${arrondi(e.charge)} / ${arrondi(e.max)} par semaine`),
             // Suspendre est possible à tout moment ; le bouton est rouge quand l'ETH dépasse son maximum.
@@ -57,7 +60,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
           h('div', { class: 'barre-eth' }, h('i', { style: { width: `${Math.min(100, e.taux * 100)}%` } })),
           e.fi.length ? h('div', { class: 'fi-eth' }, e.fi.map((x) => h('span', { class: `puce-fi${x.actif ? '' : ' suspendue'}`, title: `${x.numero}${x.actif ? '' : ' (suspendue)'} — ${x.fiche ? [x.fiche.etiquette, x.fiche.machine_nom, x.fiche.zone].filter(Boolean).join(' · ') : 'fiche inconnue (FI faite à la main)'} — ${arrondi(x.poids)} / semaine` }, x.numero.replace(/^.*?(\d+)$/, 'n° $1'), x.fiche?.etiquette ? h('small', {}, x.fiche.etiquette) : null))) : h('span', { class: 'discret' }, 'aucune FI'),
           e.inconnues ? h('small', { class: 'rouge' }, `${e.inconnues} FI à la périodicité inconnue (réglages de la GMAO › Périodicités)`) : null))),
-    d.charge?.horsEth?.length ? h('p', { class: 'discret', style: { fontSize: '13px' } }, `${d.charge.horsEth.length} FI du parc sur un équipement hors des ETH de production : ${d.charge.horsEth.map((x) => x.numero).join(', ')}`) : null)
+    d.charge?.horsEth?.length ? h('p', { class: 'discret', style: { fontSize: '13px' } }, `${d.charge.horsEth.length} FI de la ligne sur un équipement hors des ETH de production : ${d.charge.horsEth.map((x) => x.numero).join(', ')}`) : null)
 
   // ---- corrélation Pareto ↔ fiches
   const zoneCorrelation = h('div')
@@ -83,7 +86,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     ['part', 'Part des pannes', (l) => l.p.part, [
       'Part des pannes : ce que pèse cette panne parmi toutes les pannes qui reviennent dans le tableau (ses cas sur 12 mois, divisés par le total des cas).',
       '',
-      'Ex. 50 % : une panne sur deux du parc, c’est celle-là. Une fiche qui la vise évite beaucoup ; c’est elle à couvrir en premier.',
+      'Ex. 50 % : une panne sur deux de la ligne, c’est celle-là. Une fiche qui la vise évite beaucoup ; c’est elle à couvrir en premier.',
     ].join('\n')],
     ['fiches', 'Fiches qui la visent', (l) => l.x?.fiches.length ?? -1],
   ]
@@ -124,7 +127,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
         a ? h('div', { class: 'date-analyse' }, ic('horloge', 13), `Analyse du ${dateFr(a.date)}`, a.perimee ? h('span', { class: 'etiquette orange' }, 'à refaire : pannes ou fiches changées depuis') : null) : null,
         a?.resume ? h('div', { class: 'texte-ia resume-correlation' }, h('div', { html: texteIA(a.resume) })) : null),
       boutonAnalyse),
-    d.pareto.length ? h('div', { class: 'tableau-conteneur' }, tableauPareto) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de ce parc ces 12 derniers mois.'))
+    d.pareto.length ? h('div', { class: 'tableau-conteneur' }, tableauPareto) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de cette ligne ces 12 derniers mois.'))
   // Deux vues dans la même carte : le Pareto des pannes face aux fiches, ou le nuage correctif × préventif.
   let nuage = null
   const titreCarte = h('h2', {}, ic('graphique', 18), 'Pareto des pannes ↔ fiches')
@@ -145,36 +148,45 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
       : f.etatFi === 'supprimee' ? h('span', { class: 'etiquette rouge fi-disparue', title: 'Cette FI n’existe plus dans la GMAO : créez-en une autre, ou archivez la fiche' }, ic('alerte', 13), `${f.fi_gmao} · supprimée dans la GMAO`)
       : f.etatFi === 'inactive' ? h('span', { class: 'etiquette orange', title: 'Cette FI est inactive (suspendue ou archivée) dans la GMAO : la fiche n’est plus faite' }, ic('alerte', 13), `${f.fi_gmao} · inactive dans la GMAO`)
       : h('span', { class: 'fi-gmao', title: f.etatFi ? 'La FI de la GMAO qui porte cette fiche, active' : 'La FI de la GMAO qui porte cette fiche (GMAO non lue : état inconnu)' }, ic('coche', 13), f.fi_gmao),
+    f.papier_le ? h('span', { class: 'etiquette vert', title: `Carte imprimée en service depuis le ${dateFr(f.papier_le.slice(0, 10))} : la fiche compte comme faite` }, ic('document', 12), 'sur papier') : null,
+    !f.enService ? h('span', { class: 'etiquette', title: 'Ni FI ni carte en service : les opérateurs ne la font pas, elle ne compte nulle part' }, 'brouillon') : null,
     f.aAnalyser ? h('span', { class: 'etiquette orange', title: 'Fréquence de l’import, provisoire : analysez la machine, puis confirmez la fréquence' }, 'à analyser') : null,
     f.sansCible ? h('span', { class: 'etiquette orange', title: f.suggestion ? `Ne vise aucune panne du Pareto : passer en ${f.suggestion.frequence} libérerait ${arrondi(f.suggestion.gain)} fiche par semaine` : 'Ne vise aucune panne du Pareto' }, 'sans cible', f.suggestion ? ` · ${f.suggestion.frequence.toLowerCase()} ? (−${arrondi(f.suggestion.gain)}/sem.)` : '') : null,
-    f.demandes ? h('span', { class: 'etiquette violet', title: 'Demandes de niveau 1 sur cette machine ces 12 mois, malgré la fiche : geste mal fait, ou fiche à revoir ?' }, `${f.demandes} demande${f.demandes > 1 ? 's' : ''} malgré la fiche`) : null,
+    f.demandes ? h('span', { class: 'etiquette violet', title: 'Demandes de niveau 1 sur cette machine ces 12 mois, alors que sa fiche est active : geste mal fait, ou fiche à revoir ?' }, `${f.demandes} demande${f.demandes > 1 ? 's' : ''} malgré fiche active`) : null,
     avantApres(f.avantApres),
     h('div', { class: 'actions-fiche-mn1' },
       d.analysables?.[f.machine_id] || d.analysables?.[f.machine_prod] ? h('a', { href: `#/analyse/${d.analysables[f.machine_id] || d.analysables[f.machine_prod]}`, class: 'discret petit' }, ic('graphique', 13), 'Analyse') : null,
       admin ? h('button', { class: 'petit', title: f.fi_gmao ? 'Mettre cette fiche dans une autre FI' : 'Créer ou choisir la FI de cette fiche dans la GMAO (simulation d’abord)', onclick: () => dialogueFi(f, d) }, ic('base', 13), f.fi_gmao ? 'Changer de FI' : 'Créer la FI') : null,
+      admin ? h('button', { class: `petit${f.papier_le ? ' choisi' : ' discret'}`, title: f.papier_le ? 'La carte imprimée n’est plus utilisée' : 'La carte imprimée est en service : la fiche compte comme faite, même sans FI', onclick: () => mettreSurPapier([f], !f.papier_le) }, ic('document', 13), f.papier_le ? 'Sur papier ✓' : 'En service sur papier') : null,
       admin ? h('button', { class: 'discret petit icone-seule', title: 'Corriger la fiche', onclick: () => corrigerFiche(f) }, ic('crayon', 14)) : null,
-      admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte le parc, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null,
+      admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte la ligne, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null,
       admin && f.fi_gmao && f.etatFi !== 'supprimee' ? h('button', { class: 'discret petit icone-seule supprimer-fi', title: `Supprimer la FI ${f.fi_gmao} dans la GMAO (la fiche reste ici, sans FI)`, onclick: () => supprimerFiGmao(f) }, ic('poubelle', 14)) : null))
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : étiquette, machine, zone, geste…' })
   const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
   // Les filtres rapides, avec le nombre de fiches de chacun ; un seul à la fois.
   const ilYaJours = (date, jours) => date && Date.now() - new Date(date).getTime() < jours * 86_400_000
+  // La vie d'une fiche : brouillon (ni FI ni papier, elle n'est pas faite), active (avec une FI de la GMAO, ou sur
+  // papier), puis à revoir si elle pose question. Les filtres « cachés » servent au bandeau de synthèse d'AITEC.
+  const avecFi = (f) => Boolean(f.fi_gmao) && f.etatFi !== 'supprimee' && f.etatFi !== 'inactive'
+  const fiPerdue = (f) => Boolean(f.fi_gmao) && (f.etatFi === 'supprimee' || f.etatFi === 'inactive')
   const FILTRES = [
     ['', 'Toutes', () => true, ''],
+    ['fi', 'Avec FI', avecFi, 'Actives : portées par une FI active de la GMAO, qui fait valider le contrôle'],
+    ['papier', 'Sur papier', (f) => Boolean(f.papier_le) && !avecFi(f), 'Actives : la carte imprimée est en service (sans FI)'],
+    ['brouillons', 'Brouillons', (f) => !f.enService, 'Ni FI ni carte en service : les opérateurs ne la font pas. À mettre en service, ou à archiver'],
+    ['arevoir', 'À revoir', (f) => fiPerdue(f) || (f.enService && (f.sansCible || f.demandes > 0 || f.aAnalyser)), 'Actives mais à regarder : aucune panne visée, des demandes malgré la fiche, une fréquence provisoire, ou une FI supprimée / inactive dans la GMAO'],
     ['nouvelles', 'Nouvelles', (f) => ilYaJours(f.cree_le, 30), 'Créées ces 30 derniers jours'],
-    ['utilisees', 'Utilisées', (f) => Boolean(f.fi_gmao) && f.etatFi !== 'supprimee' && f.etatFi !== 'inactive', 'Portées par une FI active de la GMAO'],
-    ['sansfi', 'Sans FI', (f) => !f.fi_gmao || f.etatFi === 'supprimee' || f.etatFi === 'inactive', 'Pas dans une FI active : les opérateurs ne la font pas (FI supprimée ou inactive dans la GMAO comprises)'],
-    ['utiles', 'Visent le Pareto', (f) => (u.get(f.id) || 0) > 0, 'Visent au moins une panne du Pareto (d’après l’analyse de corrélation)'],
-    ['sanscible', 'Sans cible', (f) => f.sansCible, 'Ne visent aucune panne du Pareto'],
-    ['aanalyser', 'À analyser', (f) => f.aAnalyser, 'Fréquence de l’import, encore provisoire'],
-    ['demandes', 'Demandes malgré la fiche', (f) => f.demandes > 0, 'Des demandes de niveau 1 sur la machine ces 12 mois, malgré la fiche'],
+    ['sansfi', 'Sans FI', (f) => !avecFi(f), '', true],
+    ['sanscible', 'Sans cible', (f) => f.sansCible, '', true],
+    ['aanalyser', 'À analyser', (f) => f.aAnalyser, '', true],
+    ['demandes', 'Demandes malgré fiche active', (f) => f.demandes > 0, '', true],
   ]
   let filtre = ''
   const boutonsFiltre = h('div', { class: 'segments petits' })
-  const dessinerBoutonsFiltre = () => vider(boutonsFiltre, FILTRES.map(([cle, texte, garde, aide]) => {
+  const dessinerBoutonsFiltre = () => vider(boutonsFiltre, FILTRES.map(([cle, texte, garde, aide, cache]) => {
     const n = d.fiches.filter(garde).length
-    return cle && !n ? null : h('button', { class: filtre === cle ? 'choisi' : '', title: aide, onclick: () => { filtre = cle; dessinerBoutonsFiltre(); dessinerFiches() } }, texte, h('span', { class: 'nombre-filtre' }, String(n)))
+    return (cle && !n) || (cache && filtre !== cle) ? null : h('button', { class: filtre === cle ? 'choisi' : '', title: aide, onclick: () => { filtre = cle; dessinerBoutonsFiltre(); dessinerFiches() } }, texte, h('span', { class: 'nombre-filtre' }, String(n)))
   }))
   const alertes = (f) => (f.aAnalyser ? 1 : 0) + (f.sansCible ? 2 : 0) + (f.demandes ? 1 : 0)
   const reperee = (carte, id) => {
@@ -189,8 +201,8 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
     if (tri.value === 'sans') visibles.sort((x, y) => Boolean(x.fi_gmao) - Boolean(y.fi_gmao))
     if (tri.value === 'alertes') visibles.sort((x, y) => alertes(y) - alertes(x))
     // Le pourquoi en plus, propre au parc : combien de pannes du Pareto la fiche vise (analyse de corrélation).
-    const pourquoi = (f) => (a ? [['Les pannes visées', (u.get(f.id) || 0) ? `Elle vise ${u.get(f.id)} panne${u.get(f.id) > 1 ? 's' : ''} du Pareto du parc, d’après l’analyse de corrélation du ${dateFr(a.date)}.` : 'L’analyse de corrélation ne la relie à aucune panne du Pareto du parc.']] : [])
-    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f), pourquoi: pourquoi(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans ce parc : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
+    const pourquoi = (f) => (a ? [['Les pannes visées', (u.get(f.id) || 0) ? `Elle vise ${u.get(f.id)} panne${u.get(f.id) > 1 ? 's' : ''} du Pareto de la ligne, d’après l’analyse de corrélation du ${dateFr(a.date)}.` : 'L’analyse de corrélation ne la relie à aucune panne du Pareto de la ligne.']] : [])
+    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f), pourquoi: pourquoi(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans cette ligne : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
   }
   // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
   allerAFiche = (id) => {
@@ -201,7 +213,7 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
       dessinerFiches()
     }
     const carte = liste.querySelector(`[data-fiche="${id}"]`)
-    if (!carte) return notifier('Cette fiche n’est plus dans le parc (archivée ?).')
+    if (!carte) return notifier('Cette fiche n’est plus dans la ligne (archivée ?).')
     carte.scrollIntoView({ behavior: 'smooth', block: 'center' })
     carte.classList.remove('fiche-montree')
     void carte.offsetWidth
@@ -210,11 +222,12 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
   recherche.addEventListener('input', dessinerFiches)
   tri.addEventListener('change', dessinerFiches)
   const carteFiches = h('div', { class: 'carte' },
-    h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Fiches du parc'),
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('document', 18), 'Fiches de la ligne'),
       h('div', { class: 'actions' },
-        admin ? h('button', { class: 'petit discret', title: 'Reprendre les fiches d’un fichier .vignettes dans ce parc', onclick: () => importerVignettes(d, () => afficherParc(zone, id)) }, ic('dossier', 14), 'Importer') : null,
-        admin && d.fiches.length ? h('button', { class: 'petit discret', title: 'Les fiches en cours du parc dans un fichier .vignettes', onclick: () => exporterVignettes(d) }, ic('telecharger', 14), 'Exporter') : null,
+        admin ? h('button', { class: 'petit discret', title: 'Reprendre les fiches d’un fichier .vignettes dans cette ligne', onclick: () => importerVignettes(d, () => afficherParc(zone, id)) }, ic('dossier', 14), 'Importer') : null,
+        admin && d.fiches.length ? h('button', { class: 'petit discret', title: 'Les fiches en cours de la ligne dans un fichier .vignettes', onclick: () => exporterVignettes(d) }, ic('telecharger', 14), 'Exporter') : null,
         d.fiches.length ? h('button', { class: 'petit', onclick: () => imprimerFiches(d.fiches) }, ic('document', 14), `Imprimer les ${d.fiches.length}`) : null,
+        admin && d.fiches.some((f) => !f.enService) ? h('button', { class: 'petit', title: 'Imprimer les brouillons, puis les marquer « en service sur papier » : ils comptent comme faits', onclick: async () => { const b = d.fiches.filter((f) => !f.enService); imprimerFiches(b); if (await confirmer(`Les ${b.length} cartes imprimées sont-elles mises en service ? Elles compteront comme faites.`, { texte: 'Oui, en service' })) mettreSurPapier(b, true) } }, ic('document', 14), 'Imprimer et mettre en service les brouillons') : null,
         h('button', { class: 'petit discret', onclick: () => voirArchives(d) }, ic('boite', 14), `Archives (${d.archivees})`))),
     h('div', { class: 'filtres-mn1' }, recherche, tri, boutonsFiltre),
     liste)
@@ -223,12 +236,12 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
 
   // ---- demandes de niveau 1 du parc
   const carteDemandes = d.demandes ? h('div', { class: 'carte' },
-    h('div', { class: 'carte-entete' }, h('h2', {}, ic('historique', 18), 'Demandes de niveau 1 du parc'), h('span', { class: 'discret' }, `12 mois : ${d.demandes.total}, dont ${d.demandes.ouvertes} ouvertes ; ${d.demandes.surMachineAvecFiche} sur une machine qui a déjà une fiche`)),
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('historique', 18), 'Demandes de niveau 1 de la ligne'), h('span', { class: 'discret' }, `12 mois : ${d.demandes.total}, dont ${d.demandes.ouvertes} ouvertes ; ${d.demandes.surMachineAvecFiche} sur une machine qui a une fiche active`)),
     d.demandes.dernieres.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau' },
       h('thead', {}, h('tr', {}, h('th', {}, 'Date'), h('th', {}, 'Machine'), h('th', {}, 'Description'), h('th', {}, 'Fiche'), h('th', {}, 'État'))),
       h('tbody', {}, d.demandes.dernieres.map((x) => h('tr', {},
         h('td', { class: 'discret' }, dateFr(x.date)), h('td', { class: 'mono' }, x.machine), h('td', { class: 'texte-2' }, x.description),
-        h('td', {}, x.fiche ? h('span', { class: 'etiquette violet', title: 'Cette machine a déjà une fiche : signe d’un geste mal fait ou d’une fiche à revoir' }, x.fiche.etiquette || 'fiche') : ''),
+        h('td', {}, x.fiche ? h('span', { class: 'etiquette violet', title: 'Cette machine a une fiche active (FI attachée, ou version imprimée en service) : signe d’un geste mal fait ou d’une fiche à revoir' }, x.fiche.etiquette || 'fiche') : ''),
         h('td', {}, h('span', { class: `etiquette ${x.close ? '' : 'violet'}` }, x.etat || (x.close ? 'Close' : 'Ouverte')))))))) : h('p', { class: 'discret' }, 'Aucune demande sur 12 mois.')) : null
 
   // La courbe des correctifs en grand, derrière l'en-tête et la charge (floutée sous la carte).
@@ -246,14 +259,72 @@ export async function afficherParc(zone, id, { integre = false } = {}) {
   carteFiches.classList.add('carte-fiches-parc')
   const haut = h('div', { class: 'haut-parc' }, h('div', { class: 'colonne-parc' }, synthese, carteChargeParc), encartCalendrier(d.parc, admin))
   // PREVTEC suit le parcours : le fil (étape 2), le verdict du plan et le Pareto d'abord, puis la charge et les fiches.
-  if (estPrevtec) vider(zone, filEtapes(2, d.parc), h('div', { class: 'scene-parc' }, fond, entete, bandeauVerdict(d.plan)), h('div', { class: 'parc-mn1' }, carteCorrelation), haut, h('div', { class: 'parc-mn1' }, carteFiches, carteDemandes))
+  if (estPrevtec && vue === 'ligne') {
+    // Étape 2 : la ligne, sans rien du niveau 1 ; la courbe des correctifs en petit dans l'en-tête.
+    entete.querySelector('.legende-tendance')?.remove()
+    const sousTitre = entete.querySelector('.sous-titre')
+    if (sousTitre) sousTitre.textContent = `${d.parc.maintenance} machines de maintenance · ${d.parc.production} de production`
+    const courbeTete = d.tendance?.length ? h('div', { class: 'courbe-tete', title: `Correctifs de la ligne, mois par mois (12 mois terminés) : ${d.tendance.map((x) => x.n).join(', ')}` }, courbe(d.tendance.map((x) => x.n), { largeur: 220, hauteur: 44 }), h('small', { class: 'discret' }, 'correctifs, 12 mois terminés')) : null
+    entete.querySelector('.espace')?.after(courbeTete || '')
+    return vider(zone,
+      filEtapes(2, d.parc),
+      entete,
+      h('div', { class: 'haut-ligne' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin)),
+      hallOfFameLigne(d.parc),
+      tuilesLigne(d.indicateurs, d.parc),
+      h('div', { class: 'parc-mn1' }, cartePannesLigne(d)))
+  }
+  if (estPrevtec) {
+    // Étape 5 : le niveau 1 de la ligne, après la décision.
+    const titre = entete.querySelector('h1')
+    if (titre) titre.textContent = `Niveau 1 · ${d.parc.nom}`
+    return vider(zone, filEtapes(5, d.parc),
+      h('div', { class: 'scene-parc' }, entete, h('div', { class: 'outils-n1' },
+        d.lecture?.erreur ? h('span', { class: 'etiquette orange', title: d.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : d.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO ${ilYa(d.lecture.date)}`) : null,
+        admin ? boutonImport() : null,
+        h('a', { class: 'bouton petit discret lien-circuit', href: '#/mn1/circuit', title: 'Les demandes, FI et rapports de niveau 1 de toute l’usine, et leurs indicateurs' }, ic('graphique', 14), 'Circuit N1 de l’usine'))),
+      haut, h('div', { class: 'parc-mn1' }, carteFiches, carteCorrelation, carteDemandes))
+  }
   else vider(zone, h('div', { class: 'scene-parc' }, fond, entete, haut), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
+}
+
+// Cartes imprimées en service (ou plus) : elles comptent comme faites, comme une FI active.
+async function mettreSurPapier(fiches, enService) {
+  if (await essayer(() => api('/api/mn1/fiches/papier', { methode: 'POST', corps: { ids: fiches.map((f) => f.id), enService } }), enService ? 'Fiche en service sur papier' : 'Carte papier retirée')) window.ktec.recharger()
+}
+
+// PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches) ; un clic sur une machine ouvre l'étape 3. La
+// vue Correctif × préventif reste à côté.
+function cartePannesLigne(d) {
+  const pct = (x) => `${Math.round(x * 100)} %`
+  const lignes = d.pareto.slice(0, 15)
+  const tableau = lignes.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau pareto-mn1' },
+    h('thead', {}, h('tr', {}, ['Code', 'Machine', 'Panne qui revient', 'Cas (12 mois)', 'Évolution', 'Part des pannes'].map((x) => h('th', {}, x)))),
+    h('tbody', {}, lignes.map((p) => h('tr', {},
+      h('td', { class: 'mono discret' }, p.code),
+      h('td', {}, lienAnalyse(d, p.machine, h('span', { class: 'mono' }, p.repere)), p.designation ? h('div', { class: 'discret petit-texte' }, p.designation) : null),
+      h('td', {}, p.symptome),
+      h('td', { class: 'nombre' }, String(p.nombre)),
+      h('td', {}, evolutionPanne(p)),
+      h('td', {}, h('div', { class: 'part-pareto', title: `${p.nombre} cas sur 12 mois : ${pct(p.part)} des pannes qui reviennent` }, h('i', { style: { width: `${Math.round(p.part * 100)}%` } }), h('span', {}, pct(p.part))))))))) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de cette ligne ces 12 derniers mois.')
+  let nuage = null
+  const titre = h('h2', {}, ic('graphique', 18), 'Les pannes qui reviennent')
+  const corps = h('div', {}, tableau)
+  const choix = h('div', { class: 'segments petits' })
+  const montrer = (vue) => {
+    vider(choix, [['pareto', 'Pareto', 'Les pannes qui reviennent : un clic sur une machine ouvre l’étape 3'], ['nuage', 'Correctif × préventif', 'Chaque équipement : ses pannes face à ses visites (12 mois)']].map(([cle, texte, aide]) => h('button', { class: vue === cle ? 'choisi' : '', title: aide, onclick: () => montrer(cle) }, texte)))
+    vider(titre, ic('graphique', 18), vue === 'nuage' ? 'Correctif × préventif par équipement' : 'Les pannes qui reviennent')
+    if (vue === 'nuage') nuage = nuage || nuageEquilibre(d)
+    vider(corps, vue === 'nuage' ? nuage : tableau)
+  }
+  montrer('pareto')
+  return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titre, choix), corps)
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.
 function avantApres(x) {
   if (!x) return null
-  if (x.sansMachine) return h('span', { class: 'discret petit-texte', title: 'Reliez son équipement à une machine de maintenance (Administration › Parcs machines) pour mesurer l’effet' }, 'effet non mesurable')
+  if (x.sansMachine) return h('span', { class: 'discret petit-texte', title: 'Reliez son équipement à une machine de maintenance (Administration › Lignes) pour mesurer l’effet' }, 'effet non mesurable')
   if (x.evolution === null) return h('span', { class: 'discret petit-texte', title: `Depuis le ${dateFr(x.debut)} : moins d’un mois de recul` }, `en place depuis le ${dateFr(x.debut)}`)
   const baisse = x.evolution < 0
   return h('span', { class: `avant-apres ${baisse ? 'baisse' : 'hausse'}`, title: `${x.cible} : ${x.avant} en 12 mois avant le ${dateFr(x.debut)}, ${x.apres} en ${x.moisApres} mois depuis` }, ic(baisse ? 'coche' : 'alerte', 12), `${baisse ? '' : '+'}${Math.round(x.evolution * 100)} % de pannes`)
@@ -297,7 +368,7 @@ export async function corrigerFiche(f) {
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'case' }, confirmerFrequence, ' Fréquence confirmée (d’après l’analyse de la machine)')),
       h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite),
-      equipements.length ? h('div', { class: 'champ' }, h('span', {}, 'Machine et ETH : réaffecter à un équipement de production du parc'), filtre, choixEquipement) : null),
+      equipements.length ? h('div', { class: 'champ' }, h('span', {}, 'Machine et ETH : réaffecter à un équipement de production de la ligne'), filtre, choixEquipement) : null),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
       { texte: 'Enregistrer', classe: 'principal', action: async () => { await api(`/api/mn1/fiches/${f.id}`, { methode: 'POST', corps: { zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, confirmerFrequence: confirmerFrequence.checked, equipement: choixEquipement.value || null } }); return true } },
@@ -320,7 +391,7 @@ async function supprimerFiGmao(f) {
 }
 
 async function archiver(f) {
-  if (!(await confirmer('Archiver cette fiche ? Elle quitte le parc ; on pourra la ramener depuis les archives.', { texte: 'Archiver' }))) return
+  if (!(await confirmer('Archiver cette fiche ? Elle quitte la ligne ; on pourra la ramener depuis les archives.', { texte: 'Archiver' }))) return
   if (await essayer(() => api(`/api/mn1/fiches/${f.id}/ranger`, { methode: 'POST', corps: { archivee: true } }), 'Fiche archivée')) window.ktec.recharger()
 }
 
@@ -333,7 +404,7 @@ async function voirArchives(d) {
     large: true,
     contenu: fiches.length ? h('div', { class: 'archives-mn1' }, fiches.map((f) => h('div', { class: 'archive-mn1' },
       h('div', { class: 'tete-archive' }, h('b', {}, [f.etiquette, f.machine_nom || f.repere, f.zone].filter(Boolean).join(' · ') || `Fiche ${f.id}`), h('span', { class: 'discret' }, `archivée le ${dateFr(f.archivee_le)}`),
-        admin ? h('button', { class: 'petit', onclick: async (e) => { if (await essayer(() => api(`/api/mn1/fiches/${f.id}/ranger`, { methode: 'POST', corps: { archivee: false, parc: d.parc.id } }), 'Fiche ramenée dans le parc')) e.currentTarget.closest('.archive-mn1').remove() } }, ic('retour', 13), 'Ramener') : null),
+        admin ? h('button', { class: 'petit', onclick: async (e) => { if (await essayer(() => api(`/api/mn1/fiches/${f.id}/ranger`, { methode: 'POST', corps: { archivee: false, parc: d.parc.id } }), 'Fiche ramenée dans la ligne')) e.currentTarget.closest('.archive-mn1').remove() } }, ic('retour', 13), 'Ramener') : null),
       f.historique.length ? h('ul', { class: 'historique-fiche' }, f.historique.map((x) => h('li', {}, h('span', { class: 'mono' }, x.numero), ` · ${dateFr(x.debut)} → ${x.fin ? dateFr(x.fin) : 'en cours'}${x.motif ? ` (${x.motif})` : ''}`))) : h('p', { class: 'discret petit-texte' }, 'Jamais mise dans une FI.'))))
       : h('p', { class: 'discret' }, 'Aucune fiche archivée.'),
     boutons: [{ texte: 'Fermer', classe: 'principal', valeur: true }],
@@ -371,10 +442,10 @@ export async function relireFiche(parcId, b, titre, intro) {
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite))),
     boutons: admin
-      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans le parc', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: parcId, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
+      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans la ligne', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: parcId, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
       : [{ texte: 'Fermer', classe: 'principal', valeur: null }],
   })
-  if (ok) notifier('Fiche ajoutée au parc')
+  if (ok) notifier('Fiche ajoutée à la ligne')
   return Boolean(ok)
 }
 
@@ -403,7 +474,7 @@ function importerVignettes(d, apres) {
       return notifier('Ce fichier n’est pas lisible.', 'erreur')
     }
     const n = contenu?.fiches?.length || 0
-    if (!(await confirmer(`Reprendre ${n} fiche${n > 1 ? 's' : ''} de « ${contenu?.parc || fichier.name} » dans le parc ${d.parc.nom} ? Les fiches déjà présentes ne sont pas doublées.`))) return
+    if (!(await confirmer(`Reprendre ${n} fiche${n > 1 ? 's' : ''} de « ${contenu?.parc || fichier.name} » dans la ligne ${d.parc.nom} ? Les fiches déjà présentes ne sont pas doublées.`))) return
     const r = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/import`, { methode: 'POST', corps: contenu }))
     if (!r) return
     notifier(`${r.ajoutees} fiche${r.ajoutees > 1 ? 's' : ''} ajoutée${r.ajoutees > 1 ? 's' : ''}${r.deja ? `, ${r.deja} déjà là` : ''}${r.fiNonTrouvees.length ? ` ; FI absentes de cette GMAO, non reprises : ${r.fiNonTrouvees.join(', ')}` : ''}`)
@@ -423,7 +494,7 @@ function bandeauSynthese(d, { filtrer, compter }) {
   // Charge : la plus haute d'un ETH, comparée au maximum réglé.
   let charge
   if (d.erreurCharge) charge = colonne('personne', 'Charge', h('p', { class: 'discret' }, d.erreurCharge))
-  else if (!d.charge.eths.length) charge = colonne('personne', 'Charge', h('p', { class: 'discret' }, 'Pas encore d’ETH de production dans ce parc (Administration › Parcs machines).'))
+  else if (!d.charge.eths.length) charge = colonne('personne', 'Charge', h('p', { class: 'discret' }, 'Pas encore d’ETH de production dans cette ligne (Administration › Lignes).'))
   else {
     const plusHaut = d.charge.eths.reduce((m, e) => (e.taux > m.taux ? e : m))
     const total = d.charge.eths.reduce((s, e) => s + e.charge, 0)

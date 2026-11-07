@@ -6,8 +6,9 @@
 import { h, vider, ic, notifier, essayer, confirmer, fenetre, nombreFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { rafraichirParcs } from './parcs.js'
+import { encadreConvention, lettreDeLaLigne } from './reglage-convention.js'
 
-const ROLES = [['production', 'Production', 'fiches et FI de niveau 1'], ['maintenance', 'Maintenance', 'les pannes'], ['autres', 'Autres', 'comptées dans le parc']]
+const ROLES = [['production', 'Production', 'fiches et FI de niveau 1'], ['maintenance', 'Maintenance', 'les pannes'], ['autres', 'Autres', 'comptées dans la ligne']]
 
 export async function afficherReglageParcs(zone) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture de l’arborescence'))
@@ -102,9 +103,9 @@ export async function afficherReglageParcs(zone) {
   async function nouveauParc() {
     const champ = h('input', { type: 'text', placeholder: 'ex. USINAGE, PEINTURE', maxlength: 40 })
     const nom = await fenetre({
-      titre: 'Nouveau parc',
-      contenu: h('label', { class: 'champ' }, h('span', {}, 'Nom du parc'), champ),
-      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Créer', classe: 'principal', action: () => champ.value.trim() || Promise.reject(new Error('Donnez un nom au parc.')) }],
+      titre: 'Nouvelle ligne',
+      contenu: h('label', { class: 'champ' }, h('span', {}, 'Nom de la ligne'), champ),
+      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Créer', classe: 'principal', action: () => champ.value.trim() || Promise.reject(new Error('Donnez un nom à la ligne.')) }],
     })
     if (!nom) return
     etat.groupes.push({ id: `parc-${Date.now().toString(36)}`, nom, production: [], maintenance: [], autres: [] })
@@ -115,9 +116,9 @@ export async function afficherReglageParcs(zone) {
   async function renommer(g) {
     const champ = h('input', { type: 'text', value: g.nom, maxlength: 40 })
     const nom = await fenetre({
-      titre: 'Renommer le parc',
-      contenu: h('label', { class: 'champ' }, h('span', {}, 'Nom du parc'), champ),
-      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Renommer', classe: 'principal', action: () => champ.value.trim() || Promise.reject(new Error('Donnez un nom au parc.')) }],
+      titre: 'Renommer la ligne',
+      contenu: h('label', { class: 'champ' }, h('span', {}, 'Nom de la ligne'), champ),
+      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Renommer', classe: 'principal', action: () => champ.value.trim() || Promise.reject(new Error('Donnez un nom à la ligne.')) }],
     })
     if (!nom) return
     g.nom = nom
@@ -126,34 +127,41 @@ export async function afficherReglageParcs(zone) {
   }
 
   async function supprimer(g) {
-    if (!(await confirmer(`Supprimer le parc « ${g.nom} » ? Ses racines redeviennent non classées.`, { texte: 'Supprimer', danger: true }))) return
+    if (!(await confirmer(`Supprimer la ligne « ${g.nom} » ? Ses racines redeviennent non classées.`, { texte: 'Supprimer', danger: true }))) return
     etat.groupes = etat.groupes.filter((x) => x !== g)
     enregistrer()
     dessiner()
   }
+
+  // « Comment reconnaître les préventifs » (PREVTEC) : lu à part, redessiné quand un réglage change.
+  let apercu = null
+  const chargerApercu = () => api('/api/mn1/convention').then((a) => { apercu = a; dessiner() }).catch(() => {})
 
   function dessiner() {
     const deja = rangees()
     const libres = [...racines.keys()].filter((id) => !deja.has(id))
     vider(zone,
       h('div', { class: 'carte' },
-        h('div', { class: 'carte-entete' }, h('h2', {}, ic('usine', 18), 'Parcs machines'),
-          h('button', { class: 'principal petit', onclick: nouveauParc }, ic('plus', 15), 'Nouveau parc')),
-        h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Rangez les racines de l’arborescence dans des parcs (USINAGE, PEINTURE…) : glissez-les, ou cliquez dessus. Dans chaque parc, la production porte les fiches et les FI de niveau 1, la maintenance porte les pannes. Une racine masquée ne compte plus nulle part dans AITEC ; une racine non classée reste visible, dans « Non classé ». Tout est enregistré au fur et à mesure.'),
+        h('div', { class: 'carte-entete' }, h('h2', {}, ic('usine', 18), 'Lignes'),
+          h('button', { class: 'principal petit', onclick: nouveauParc }, ic('plus', 15), 'Nouvelle ligne')),
+        h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Rangez les racines de l’arborescence dans des lignes (USINAGE, PEINTURE…) : glissez-les, ou cliquez dessus. Dans chaque ligne, la production porte les fiches et les FI de niveau 1, la maintenance porte les pannes. Une racine masquée ne compte plus nulle part dans AITEC ; une racine non classée reste visible, dans « Non classé ». Tout est enregistré au fur et à mesure.'),
         libres.length ? h('div', { class: 'bandeau', style: { marginBottom: '12px' } }, ic('alerte'), `${libres.length} racine${libres.length > 1 ? 's' : ''} à ranger ou à masquer.`) : null),
+      apercu ? encadreConvention(apercu, chargerApercu) : null,
       h('div', { class: 'grille-parcs' },
         etat.groupes.map((g) => h('div', { class: 'carte carte-parc' },
           h('div', { class: 'carte-entete' }, h('h2', {}, g.nom),
             h('div', { class: 'actions' },
               h('button', { class: 'petit', title: 'Relier chaque machine de production à sa machine de maintenance', onclick: () => ouvrirLiens(g, etat, enregistrer) }, ic('lien', 15), 'Production ↔ maintenance'),
               h('button', { class: 'discret icone-seule petit', title: 'Renommer', onclick: () => renommer(g) }, ic('crayon', 15)),
-              h('button', { class: 'discret icone-seule petit', title: 'Supprimer le parc', onclick: () => supprimer(g) }, ic('poubelle', 15)))),
-          ROLES.map(([role, libelle, aide]) => zoneDepot({ parc: g.id, role }, libelle, aide, g[role], `role-${role}`))))),
+              h('button', { class: 'discret icone-seule petit', title: 'Supprimer la ligne', onclick: () => supprimer(g) }, ic('poubelle', 15)))),
+          ROLES.map(([role, libelle, aide]) => zoneDepot({ parc: g.id, role }, libelle, aide, g[role], `role-${role}`)),
+          apercu ? lettreDeLaLigne(g, apercu, chargerApercu) : null))),
       h('div', { class: 'grille grille-2', style: { marginTop: '16px' } },
         zoneDepot(null, 'Non classées', 'visibles, dans « Non classé »', libres, 'zone-libres'),
         zoneDepot({ masque: true }, 'Masquées', 'ne comptent nulle part', etat.masques, 'zone-masquees')))
   }
   dessiner()
+  chargerApercu()
 }
 
 // La fenêtre des liens : une ligne par machine de production, avec sa machine de maintenance.
@@ -164,7 +172,7 @@ async function ouvrirLiens(g, etat, enregistrer) {
   } catch (erreur) {
     return notifier(erreur.message, 'erreur')
   }
-  if (!d.production.length) return notifier(`Le parc « ${g.nom} » n’a pas encore de racine de production avec des machines.`, 'erreur')
+  if (!d.production.length) return notifier(`La ligne « ${g.nom} » n’a pas encore de racine de production avec des machines.`, 'erreur')
   const choix = [{ valeur: '', libelle: '— non reliée —' }, ...d.maintenance.map((m) => ({ valeur: String(m.machine), libelle: `${m.code}${m.designation ? ' — ' + m.designation : ''}` }))]
   const selects = new Map()
   const ligneMachine = (p) => {

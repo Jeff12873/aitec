@@ -37,7 +37,7 @@
       ]
     },
     {
-      "titre": "Suivi du parc",
+      "titre": "Suivi de la ligne",
       "pages": [
         {
           "id": "pannes",
@@ -69,7 +69,7 @@
         },
         {
           "id": "administration",
-          "titre": "Parcs et réglages",
+          "titre": "Lignes et réglages",
           "ecran": "administration",
           "admin": true,
           "mots": "parcs racines production maintenance glossaire modèle"

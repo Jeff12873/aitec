@@ -24,6 +24,7 @@ import { familleDe } from '../../lib/types.js'
 import { lireRiN1 } from './circuit.js'
 import { reglagesDuParc } from './gmao.js'
 import { motifs } from './fi.js'
+import { convention, conventionReglee, lireCode, estDuPlan } from './visites.js'
 
 const JOURS = 365
 const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
@@ -58,14 +59,20 @@ export async function interventionsDuParc(parc) {
     riN1 = new Set(((await lireRiN1()) || []).map((r) => r.numero))
   } catch {}
   const modele = motifs(reglagesDuParc(parc.id).numero).regex
-  const deNiveau1 = (l) => riN1.has(String(l.numero).trim()) || [...String(l.description || '').matchAll(/FI\s*:\s*([\w-]+)/g)].some((m) => modele.test(m[1]))
-  return { ids, lignes, deNiveau1 }
+  // Convention des codes réglée : le niveau vient du code (P = 1, I = 2…), et un préventif sans code ne compte pas.
+  const c = convention()
+  const reglee = conventionReglee(c)
+  const deNiveau1 = reglee
+    ? (l) => lireCode(l.description, c)?.niveau === 1
+    : (l) => riN1.has(String(l.numero).trim()) || [...String(l.description || '').matchAll(/FI\s*:\s*([\w-]+)/g)].some((m) => modele.test(m[1]))
+  const duPlan = (l) => familleDe(l.type) !== 'Préventif' || estDuPlan(l.description, c)
+  return { ids, lignes: lignes.filter(duPlan), deNiveau1 }
 }
 
 export async function equilibreDuParc(parcId) {
   const p = await lireParcs()
   const parc = p?.parcs.find((x) => x.id === parcId && x.id !== NON_CLASSE)
-  if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
+  if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
   const { lignes, deNiveau1 } = await interventionsDuParc(parc)
   const c = classement()
   const parMachine = new Map()
@@ -118,7 +125,7 @@ let enCours = new Set()
 // L'IA classe les gammes du parc qui ne le sont pas encore (classées par les mots seulement).
 export async function classerGammes(parcId) {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
-  if (enCours.has(parcId)) throw new ErreurHttp(409, 'Classement déjà en cours pour ce parc.')
+  if (enCours.has(parcId)) throw new ErreurHttp(409, 'Classement déjà en cours pour cette ligne.')
   enCours.add(parcId)
   try {
     const { gammes } = await equilibreDuParc(parcId)

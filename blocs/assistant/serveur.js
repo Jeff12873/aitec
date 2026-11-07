@@ -18,7 +18,7 @@ import fs from 'node:fs'
 import { chercher, decrirePassage } from '../recherche/recherche.js'
 import { sansBalises } from '../recherche/passages.js'
 import { pannesProches } from '../pannes/serveur.js'
-import { resumeChiffres } from '../tableau-de-bord/serveur.js'
+import { resumeChiffres } from './chiffres.js'
 import { lireArborescence } from '../../lib/arborescence.js'
 import { familleDe } from '../../lib/types.js'
 
