@@ -17,7 +17,8 @@ import { db, reglageJson, modifierReglage, noterModification } from '../../lib/b
 import { ErreurHttp } from 'ktec/http.js'
 import { lireParcs, NON_CLASSE } from '../../lib/parcs.js'
 import { familleDe } from '../../lib/types.js'
-import { lireRiN1 } from './circuit.js'
+import { lireRiN1, lireDepanneurs } from './circuit.js'
+import { etiquettes } from './affichage.js'
 import { classement, classeDe, cleDe, gammeDe } from './equilibre.js'
 
 export const NIVEAU_MACHINE = 3
@@ -141,24 +142,53 @@ export async function visitesDuParc(parcId) {
   for (const l of lignes) {
     if (familleDe(l.type) !== 'Préventif') continue
     const code = lireCode(l.description, c)
-    if (code) visites.push({ ...l, recente: l.date >= depuis, code, nature: classeDe(classes, cleDe(gammeDe(l.description))), place: places.get(l.machine_id) || null })
-    else (dn1.has(String(l.numero).trim()) ? remontees : ponctuels).push(l)
+    const commun = { ...l, recente: l.date >= depuis, code, place: places.get(l.machine_id) || null }
+    if (code) visites.push({ ...commun, nature: classeDe(classes, cleDe(gammeDe(l.description))) })
+    else if (dn1.has(String(l.numero).trim())) remontees.push({ ...commun, nature: 'remontee' })
+    else ponctuels.push({ ...commun, nature: 'ponctuel' })
   }
-  return { p, parc, places, visites, observation: visites.filter((x) => x.nature !== 'systematique'), remontees, ponctuels, reglee: conventionReglee(c), convention: c, lignes }
+  const toutes = [...visites, ...remontees, ...ponctuels]
+  const lesEtiquettes = etiquettes()
+  // Le préventif qui compte dans un écran : celui des étiquettes cochées pour cet écran.
+  const pourEcran = (ecran) => {
+    const cochees = new Set(lesEtiquettes.filter((e) => e.role === 'visite' && e.ecrans[ecran]).map((e) => e.id))
+    return toutes.filter((x) => cochees.has(x.nature))
+  }
+  return { p, parc, places, visites, toutes, pourEcran, remontees, ponctuels, reglee: conventionReglee(c), convention: c, lignes }
 }
 
-// Ce que dit le rapport d'un passage : l'observation du mainteneur suit le titre (« P2M-Titre - RAS ------- texte de
-// la FI »). « rien » : rien trouvé (RAS, OK, conforme…) ; « note » : il a noté autre chose ; null : rien d'écrit, ou
-// seulement « fait », ce qui ne dit pas ce qu'il a vu.
-export function resultatDuPassage(description) {
-  const m = /^[a-z][0-9a-z][a-z]\s*-\s*(.*)$/.exec(texteSeul(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
+// Les morceaux du rapport d'un passage (« P2M-Titre - observation ------- FI : numéro (libellé) ------- contenu de
+// la FI ») : { observation, fi, contenu }.
+export function morceauxPassage(description) {
+  const m = /^[A-Za-z][0-9A-Za-z][A-Za-z]\s*-\s*(.*)$/.exec(texteSeul(description))
   const debut = m ? m[1].indexOf(' - ') : -1
-  if (debut < 0) return null
-  const observation = m[1].slice(debut + 3).split(/-{4,}/)[0].replace(/[\s.-]+$/, '').trim()
+  if (debut < 0) return { observation: '', fi: '', contenu: '' }
+  const [avant, entete = '', ...suite] = m[1].slice(debut + 3).split(/\s*-{4,}\s*/)
+  return { observation: avant.replace(/[\s.-]+$/, '').trim(), fi: /^fi\s*:\s*(.+)$/i.exec(entete.trim())?.[1] || entete.trim(), contenu: suite.join(' ').trim() }
+}
+
+// Ce que dit le rapport d'un passage : « rien » : rien trouvé (RAS, OK, conforme…) ; « note » : le mainteneur a noté
+// autre chose ; null : rien d'écrit, ou seulement « fait », ce qui ne dit pas ce qu'il a vu.
+export function resultatDuPassage(description) {
+  const observation = morceauxPassage(description).observation.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   if (!observation) return null
   const ras = /(^|[^a-z0-9])r\.?a\.?s\b|rien a signaler/.test(observation)
   if ((ras && observation.length <= 40) || /^(r\.?a\.?s\b|rien a signaler|ok\b|conforme$|bon( etat)?$|(controle |niveau |controle niveau )ok$)/.test(observation)) return 'rien'
   return /^fait\b/.test(observation) ? null : 'note'
+}
+
+// Une visite posée sur la machine entière dont le titre nomme un organe : cet organe, s'il n'y a pas de doute (le
+// plus de mots en commun, sans égalité). equipements : [{ id, repere, designation }] de la machine.
+const MOTS_VAGUES = new Set('visite visites sous ensemble ensembles controle controles verification general generale generales machine machines complet complete marche arret audio visuelle systeme groupe niveau partie etat ligne'.split(' '))
+const motsDe = (t) => new Set(String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z]+/).filter((m) => m.length >= 4 && !MOTS_VAGUES.has(m)).map((m) => m.replace(/(s|x)$/, '')))
+export function organeDuTitre(titre, equipements) {
+  const mots = motsDe(titre)
+  if (!mots.size) return null
+  const classes = equipements.map((e) => {
+    const siens = motsDe(`${String(e.designation || '').split('/').pop()} ${e.repere}`)
+    return { id: e.id, score: [...mots].filter((m) => [...siens].some((s) => s === m || (Math.min(s.length, m.length) >= 5 && (s.startsWith(m) || m.startsWith(s))))).length }
+  }).filter((x) => x.score).sort((a, b) => b.score - a.score)
+  return classes.length && classes[0].score !== classes[1]?.score ? classes[0].id : null
 }
 
 // Une visite regarde-t-elle une panne posée sur l'équipement « machineId » ?
@@ -189,7 +219,8 @@ export async function bilanLigne(parcId, liste) {
   const correctifs = v.lignes.filter((l) => familleDe(l.type) === 'Correctif')
   const compte = (liste2, a, b) => liste2.filter((l) => dans(l, a, b)).length
   const pannes = { recent: compte(correctifs, milieu, fin), precedent: compte(correctifs, debut, milieu) }
-  const preventifs = { recent: compte(v.visites, milieu, fin), precedent: compte(v.visites, debut, milieu) }
+  const comptees = v.pourEcran('indicateurs')
+  const preventifs = { recent: compte(comptees, milieu, fin), precedent: compte(comptees, debut, milieu) }
   // Heures de dépannage : la durée notée sur les interventions (et la part des correctifs qui en ont une).
   const heures = (a, b) => {
     const du = correctifs.filter((l) => dans(l, a, b))
@@ -204,21 +235,29 @@ export async function bilanLigne(parcId, liste) {
     const parties = String(texte || '').split(/\s*,\s*/).filter(Boolean)
     return parties.length >= 2 && parties.length % 2 === 0 ? parties.reduce((acc, x, i) => (i % 2 ? acc : [...acc, `${x}, ${parties[i + 1]}`]), []) : parties.length ? [parties.join(', ')] : []
   }
-  const equipe = (a, b) => {
-    const du = correctifs.filter((l) => dans(l, a, b) && String(l.intervenant || '').trim())
+  // Seulement les dépanneurs de leur groupe, si la requête du site « Dépanneurs » est réglée et reconnaît les noms.
+  const groupe = await lireDepanneurs().catch(() => null)
+  const nomPropre = (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '')
+  const equipe = (a, b, garder) => {
     const noms = new Set()
     let total = 0
-    for (const l of du) {
-      const ps = personnes(l.intervenant)
+    let pannesVues = 0
+    for (const l of correctifs.filter((x) => dans(x, a, b) && String(x.intervenant || '').trim())) {
+      const ps = personnes(l.intervenant).filter(garder)
+      if (!ps.length) continue
+      pannesVues++
       total += ps.length
       ps.forEach((x) => noms.add(x))
     }
-    return { moyenne: du.length ? total / du.length : null, noms }
+    return { moyenne: pannesVues ? total / pannesVues : null, noms }
   }
-  const equipeRecente = equipe(milieu, fin)
-  const equipeAvant = equipe(debut, milieu)
-  const tmcd = { recent: equipeRecente.moyenne, precedent: equipeAvant.moyenne, depanneurs: equipeRecente.noms.size, nouveaux: [...equipeRecente.noms].filter((x) => !equipeAvant.noms.has(x)).length }
-  const recentes = v.visites.filter((l) => dans(l, milieu, fin))
+  const dansGroupe = (x) => groupe.has(nomPropre(x))
+  const filtre = Boolean(groupe?.size) && equipe(milieu, fin, dansGroupe).moyenne !== null
+  const garder = filtre ? dansGroupe : () => true
+  const equipeRecente = equipe(milieu, fin, garder)
+  const equipeAvant = equipe(debut, milieu, garder)
+  const tmcd = { recent: equipeRecente.moyenne, precedent: equipeAvant.moyenne, depanneurs: equipeRecente.noms.size, nouveaux: [...equipeRecente.noms].filter((x) => !equipeAvant.noms.has(x)).length, filtre }
+  const recentes = comptees.filter((l) => dans(l, milieu, fin))
   const observation = recentes.length ? recentes.filter((l) => l.nature !== 'systematique').length / recentes.length : null
   // Les machines qui concentrent les pannes (remontées à leur machine de niveau 3).
   const parMachine = new Map()
@@ -238,7 +277,7 @@ export async function bilanLigne(parcId, liste) {
     ponctuels: v.ponctuels.filter((l) => dans(l, milieu, fin)).length,
   }
 
-  const recentesVisites = v.observation.filter((l) => l.recente) // le corrélateur : l'observation seule
+  const recentesVisites = v.pourEcran('verdict').filter((l) => l.recente) // par défaut, l'observation seule
   const regardee = (machine) => recentesVisites.some((x) => regarde(x, machine, v.places))
   const montent = liste.slice(0, NB_HAUT).filter((x) => x.evolution === 'monte' || (x.evolution === 'nouvelle' && x.nombre >= 5))
   const malgre = montent.filter((x) => regardee(x.machine))

@@ -10,12 +10,13 @@ import { executerRequete } from 'ktec/mysql.js'
 import { lireTableur } from '../../lib/tableurs.js'
 import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, remplir, reglagesDuParc, enregistrerReglagesDuParc, PROPRES_AU_PARC } from './gmao.js'
 import { lireDemandes, close } from './demandes.js'
-import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, podiumDemandeurs, profilsDesParcs, enregistrerProfil } from './circuit.js'
+import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, concentrationExecutants, podiumDemandeurs, profilsDesParcs, enregistrerProfil } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, ficheDeVisite, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
+import { demonstrateur, decisionEquipement, ficheDeVisite, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
+import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
@@ -393,7 +394,7 @@ export function routes(r) {
     const execs = await lireActivites().catch(() => null)
     // Le Hall of fame suit la zone choisie (l'usine complète sans choix) ; les exécutants : les profils de conducteurs réglés sur le parc.
     const podiumRi = execs ? podiumExecutants(activitesDuParc(execs, String(ctx.query.parc || ''))) : []
-    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }), podium: podiumDemandeurs(n1.retenues), podiumRi }
+    return { reglee: true, ...indicateurs({ demandes: n1.retenues, parcs: n1.parcs, fi: fiN1, ri, parcDuNoeud: (noeud) => n1.noeuds.get(String(noeud))?.parc || null, classer }), podium: podiumDemandeurs(n1.retenues), podiumRi, concentrationRi: execs ? concentrationExecutants(activitesDuParc(execs, String(ctx.query.parc || ''))) : null }
   })
 
   // Les activités des conducteurs (RI qu'ils ont exécutées, par catégorie) : ?parc=…&mois=1|3|12
@@ -546,12 +547,18 @@ export function routes(r) {
 
   // PREVTEC, une machine : le démonstrateur (pannes × préventifs), sa lecture par l'IA, et les décisions.
   r.get('/api/mn1/parcs/:id/machines/:machine', (ctx) => demonstrateur(ctx.params.id, ctx.params.machine))
+  r.get('/api/mn1/parcs/:id/machines/:machine/decider', (ctx) => decisionEquipement(ctx.params.id, ctx.params.machine, ctx.query.equipement))
   r.get('/api/mn1/parcs/:id/machines/:machine/visite', (ctx) => ficheDeVisite(ctx.params.id, ctx.params.machine, ctx.query))
   r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
   r.post('/api/mn1/parcs/:id/machines/:machine/n2', async (ctx) => {
-    const { panne = '', visites = '' } = await ctx.json()
-    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(visites))
+    const { panne = '', visites = '', fi = '' } = await ctx.json()
+    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(visites), String(fi))
   })
+
+  // L'affichage de « Ma ligne » et les étiquettes du préventif, communs au site.
+  r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes() }))
+  admin.post('/api/mn1/affichage', async (ctx) => enregistrerAffichage(await ctx.json()))
+  admin.post('/api/mn1/etiquettes', async (ctx) => enregistrerEtiquettes((await ctx.json()).etiquettes))
 
   // Comment reconnaître les préventifs du plan : la convention des codes (site) et la lettre de chaque ligne.
   r.get('/api/mn1/convention', () => apercuConvention())

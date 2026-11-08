@@ -85,6 +85,8 @@ MODE QCM (toujours) :
   Exemple : Le voyant du relais K12 est-il allumé ?
   CHOIX : Oui, allumé | Non, éteint | Il clignote | C’est réparé | Je ne peux pas vérifier
 - À la réponse de l'agent : écarte ou confirme les pistes en une ligne chacune, puis la vérification suivante, toujours avec sa ligne CHOIX. Ne répète pas les pistes déjà écartées.
+- Jamais de question sur l'accessibilité d'un organe, un démontage ou ce que l'agent peut atteindre : les réponses CHOIX disent toujours un état constaté (voyant, valeur, bruit, jeu, position).
+- Ligne DERNIÈRES INTERVENTIONS présente : l'agent les voit déjà au-dessus de ta réponse, ne les recopie pas ; une réparation ou un réglage récent est une piste à citer.
 - « Je ne peux pas vérifier » : propose une autre vérification qui départage les mêmes pistes.
 - Pour une question d'information : réponds, puis CHOIX avec 2 à 4 suites utiles.`
 export const REPERES_CONSIGNES = ['{atelier}', '{date}', '{glossaire}']
@@ -148,6 +150,10 @@ export function routes(r) {
       const filtre = machineIds?.length ? machineIds : machineId
       const recents = preventifRecent(machineIds?.length ? machineIds : machineId ? [machineId] : [])
       flux.envoyer('preventif', recents)
+      // Au début d'un dépannage seulement : ce qui s'est passé sur la machine, avant les pistes.
+      const dernieres = historique.length ? [] : dernieresInterventions(machineIds?.length ? machineIds : machineId ? [machineId] : [], recents)
+      flux.envoyer('dernieres', dernieres)
+      flux.envoyer('savoirs', historique.length ? { experiences: [], documents: [] } : savoirsAssocies(machineIds?.length ? machineIds : machineId ? [machineId] : []))
       // Les pannes connues des machines visées qui ressemblent à la question passent en tête des sources.
       const proches = pannesProches(question, machineIds?.length ? machineIds : machineId ? [machineId] : []).map(decrirePassage).filter(Boolean)
       const trouves = await chercher(texteDeRecherche(question, historique), { machineId: filtre, limite: 8 })
@@ -161,7 +167,7 @@ export function routes(r) {
         return flux.envoyer('fin', {})
       }
 
-      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null, precisions, recents), {
+      await discuter(construireMessages(question, historique, passages, machineId, machineIds?.length ? { nom: groupe, nombre: machineIds.length } : null, precisions, recents, dernieres), {
         surMorceau: (morceau) => flux.envoyer('texte', morceau),
         signal: arret.signal,
         // Réponses courtes et régulières : une limite de longueur, peu de fantaisie.
@@ -184,7 +190,7 @@ function texteDeRecherche(question, historique) {
   return [question, ...precedents.reverse()].join('\n')
 }
 
-function construireMessages(question, historique, passages, machineId, groupe = null, precisions = [], recents = []) {
+function construireMessages(question, historique, passages, machineId, groupe = null, precisions = [], recents = [], dernieres = []) {
   const consignes = consignesAssistant().replace('{atelier}', reglage('nom_atelier', 'Atelier'))
     .replace('{date}', new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
     .replace('{glossaire}', glossaire()) + MODE_QCM
@@ -197,6 +203,7 @@ function construireMessages(question, historique, passages, machineId, groupe = 
     contexte += `La question porte sur ${groupe.nom || 'un ensemble de machines'} (${groupe.nombre} machine${groupe.nombre > 1 ? 's' : ''} de l'arborescence).\n\n`
   }
   if (recents.length) contexte += `PRÉVENTIF RÉCENT (48 dernières heures) :\n${recents.map((r) => `- ${r.dateFr}, ${r.repere || 'machine ?'}, ${r.numero || 'sans n°'}, par ${r.intervenant || 'intervenant inconnu'} : ${r.description}`).join('\n')}\n\n`
+  if (dernieres.length) contexte += `DERNIÈRES INTERVENTIONS :\n${dernieres.map((r) => `- ${r.dateFr}, ${r.repere || 'machine ?'}, ${r.type} : ${r.description}`).join('\n')}\n\n`
   if (Array.isArray(precisions) && precisions.length) contexte += `PRÉCISIONS (cochées par l'agent, sûres) : ${precisions.map(String).join(' ; ')}.\n\n`
   contexte += passages.length
     ? 'SOURCES :\n\n' + passages.map((p, i) => `[${i + 1}] ${p.titre}\n${p.texte}`).join('\n\n')
@@ -246,6 +253,35 @@ function preventifRecent(ids) {
       intervenant: i.intervenant,
       description: sansBalises(i.description).replace(/\s+/g, ' ').slice(0, 160),
     }))
+}
+
+// Ce que le site a écrit ou déposé sur les machines visées : les retours d'expérience et les documents, 6 de chaque.
+const SAVOIRS_MAX = 6
+function savoirsAssocies(ids) {
+  ids = new Set((ids || []).map(Number).filter(Boolean))
+  if (!ids.size) return { experiences: [], documents: [] }
+  const experiences = db().prepare('SELECT id, genre, situation, texte, auteur, machines FROM savoirs ORDER BY id DESC').all()
+    .filter((s) => { try { return JSON.parse(s.machines).some((m) => ids.has(Number(m))) } catch { return false } })
+    .slice(0, SAVOIRS_MAX)
+    .map((s) => ({ id: s.id, auteur: s.auteur, texte: sansBalises(s.situation || s.texte).replace(/\s+/g, ' ').slice(0, 140) }))
+  const liste = [...ids].join(',')
+  const documents = db().prepare(`SELECT DISTINCT d.id, d.nom FROM documents d LEFT JOIN documents_machines dm ON dm.document_id = d.id
+                                  WHERE d.machine_id IN (${liste}) OR dm.machine_id IN (${liste}) ORDER BY d.id DESC LIMIT ${SAVOIRS_MAX}`).all()
+  return { experiences, documents }
+}
+
+// Les 5 dernières interventions (correctif ou préventif) sur les machines visées, sans celles du bandeau de préventif.
+function dernieresInterventions(ids, recents) {
+  ids = (ids || []).map(Number).filter(Boolean)
+  if (!ids.length) return []
+  const dejaVues = new Set(recents.map((r) => r.id))
+  return db()
+    .prepare(`SELECT i.id, i.date, i.numero, i.type, i.description, m.repere FROM interventions i LEFT JOIN machines m ON m.id = i.machine_id
+              WHERE i.machine_id IN (${ids.map(() => '?').join(',')}) ORDER BY i.date DESC, i.id DESC LIMIT 40`)
+    .all(...ids)
+    .filter((i) => ['Correctif', 'Préventif'].includes(familleDe(i.type)) && !dejaVues.has(i.id))
+    .slice(0, 5)
+    .map((i) => ({ id: i.id, dateFr: i.date.split('-').reverse().join('/'), repere: i.repere, type: i.type, famille: familleDe(i.type), description: sansBalises(i.description).replace(/\s+/g, ' ').slice(0, 160) }))
 }
 
 const IMAGES_MAX = 2

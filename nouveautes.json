@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "0.16.0",
+      "date": "2026-11-08",
+      "points": [
+        "PREVTEC : la maintenance de niveau 1 passe au menu à gauche, le fil s'arrête à « Je décide », un retour à l'écran d'avant en haut de chaque page",
+        "Paramètres de « Ma ligne » (administrateur) : indicateurs affichés, Pareto ou Démonstrateur, contenu et nom des carrés des ETH",
+        "Étiquettes du préventif définissables, avec les écrans où chacune compte",
+        "Démonstrateur compact (noms en biais, cases carrées), zoom fluide, légende fixe du tableau ; une visite sur la machine entière compte sur l'organe que nomme son titre",
+        "« Je décide » devient une page : la visite actuelle, sa FI, ses observations, des conseils, puis fiche N1, point N2 ou fiche de visite",
+        "TMCD limité aux dépanneurs de leur groupe (requête « Dépanneurs »), message quand une personne fait la majorité des DI ou des RI",
+        "Assistant : les dernières interventions et les savoirs associés à la machine avant les pistes ; plus de question sur l'accessibilité d'un organe ; « Ajouter un savoir » choisit plusieurs machines dans l'arborescence"
+      ]
+    },
+    {
       "version": "0.15.1",
       "date": "2026-11-08",
       "points": [

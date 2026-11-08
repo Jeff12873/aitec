@@ -846,3 +846,114 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 
 /* Démonstrateur : le bouton de la fiche de visite */
 .bouton-fiche-visite { margin-right: 4px; vertical-align: middle; }
+
+/* Assistant : les dernières interventions, avant les pistes */
+.bandeau-preventif.dernieres { border-color: var(--bord); background: var(--carte-2); }
+.bandeau-preventif.dernieres .titre-preventif { color: var(--texte); }
+
+/* PREVTEC : retour en haut de page, grand graphique flou, équipes, légende fixe */
+.tete-page { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tete-page .fil-etapes { margin: 0; }
+.barre-retour { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; font-weight: 600; justify-self: start; width: max-content; }
+.place-retour { justify-self: start; }
+.scene-ligne { margin-bottom: 14px; min-height: 96px; }
+.scene-ligne > .haut-ligne { position: relative; z-index: 1; }
+.scene-ligne .bandeau-verdict { background: color-mix(in srgb, var(--carte) 72%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.scene-ligne .fond-tendance-parc { top: -8px; }
+.parc-mn1 { position: relative; z-index: 1; }
+.vue-machine .masque-machine { display: none; }
+.vue-machine .scene-ligne h1 { font-size: 32px; }
+.vue-machine .scene-ligne .fond-tendance-parc { height: 120px; overflow: hidden; }
+.haut-parc.sans-calendrier { grid-template-columns: 1fr; }
+.calendrier-compact { background: color-mix(in srgb, #3ea6ff 12%, var(--carte)); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+.semaine-compacte.equipes-1, .semaine-compacte.equipes-2, .semaine-compacte.equipes-3, .semaine-cal.equipes-1, .semaine-cal.equipes-2, .semaine-cal.equipes-3 { border: 2px solid transparent; background: var(--fond) padding-box, linear-gradient(var(--carte), var(--carte)) padding-box, var(--liseret) border-box; }
+.semaine-compacte.courante { outline: 2px solid #fff; outline-offset: 1px; }
+.aide-colonne { cursor: help; }
+.titre-tuile .aide-colonne { margin-left: 5px; }
+.legende-fixe { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 2px; font-size: 12px; color: var(--texte-2); }
+.legende-fixe span { display: inline-flex; align-items: center; gap: 6px; }
+.case-legende { width: 16px; height: 12px; border-radius: 3px; border: 1px solid var(--bord); }
+.case-legende.rouge { background: color-mix(in srgb, #c0605a 45%, transparent); }
+.case-legende.violet { background: color-mix(in srgb, #9c8fc4 45%, transparent); }
+.case-legende.orange { background: color-mix(in srgb, #c49a52 45%, transparent); }
+.case-legende.vert { background: color-mix(in srgb, #5fa77c 45%, transparent); }
+.case-legende.gris { background: color-mix(in srgb, var(--texte-3) 18%, transparent); }
+.carte.en-inception { overflow: hidden; }
+.puce-case b, .puce-case { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Le Démonstrateur compact : noms en biais, cases carrées */
+.matrice-demo { min-width: 0; width: max-content; border-spacing: 2px; }
+.matrice-demo th, .matrice-demo td { padding: 2px 6px; }
+.matrice-demo .carre { width: 34px; min-width: 34px; max-width: 34px; height: 34px; padding: 0; text-align: center; line-height: 1; }
+.coin-demo { min-width: 300px; vertical-align: bottom; }
+.titre-visite { max-width: 300px; }
+.biais { height: 118px; width: 34px; min-width: 34px; max-width: 34px; padding: 0 !important; position: relative; background: none !important; vertical-align: bottom; }
+.biais > div { position: absolute; left: 16px; bottom: 6px; transform-origin: 0 100%; transform: rotate(-45deg); white-space: nowrap; font-size: 11.5px; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.biais.rouge > div { color: #e8928c; }
+.biais.violet > div { color: #c4b8ea; }
+.biais.vert > div { color: #8fd0a8; }
+.biais.orange > div { color: #e0bb7a; }
+.col-clic { cursor: pointer; }
+td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1px solid var(--accent); }
+.matrice-demo .nb-pannes b { display: inline; font-size: 13px; }
+.matrice-demo .nb-pannes small { font-size: 10px; margin-left: 1px; }
+.matrice-demo .nb-pannes small.rouge { color: var(--rouge); }
+.matrice-demo .nb-pannes small.vert { color: var(--vert); }
+.matrice-demo .diag-demo { font-size: 15px; font-weight: 800; }
+.croisee.posee.titre { color: var(--accent); }
+.cle-demo { display: inline-flex; align-items: center; gap: 6px; }
+.carre-legende { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0 !important; border-radius: 5px; font-size: 12px; font-weight: 800; }
+
+/* Je décide */
+.tete-machine h1 { margin: 0; font-size: 30px; }
+.tete-machine { margin-bottom: 12px; }
+.page-decider { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 14px; align-items: start; }
+.liste-decider { display: grid; gap: 5px; position: sticky; top: 10px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.equipement-decider { display: grid; gap: 1px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--bord); border-left-width: 4px; background: var(--carte); color: var(--texte); text-decoration: none; }
+.equipement-decider small { color: var(--texte-3); font-size: 11px; }
+.equipement-decider.rouge { border-left-color: #c0605a; }
+.equipement-decider.violet { border-left-color: #9c8fc4; }
+.equipement-decider.vert { border-left-color: #5fa77c; }
+.equipement-decider.orange { border-left-color: #c49a52; }
+.equipement-decider.choisi { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--carte)); text-decoration: none; }
+.detail-decider { display: grid; gap: 12px; }
+.detail-decider > .carte { margin: 0; }
+.tete-decider { display: flex; justify-content: space-between; gap: 16px; }
+.tete-decider h2 { margin: 0 0 6px; }
+.chiffre-decider { display: grid; justify-items: end; align-content: start; }
+.chiffre-decider b { font-size: 30px; line-height: 1; }
+.chiffre-decider small { color: var(--texte-3); }
+.conseils-decider, .observations-decider { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; }
+.visite-decider { padding: 8px 0; border-top: 1px solid var(--bord); }
+.visite-decider:first-of-type { border-top: 0; }
+.tete-visite-decider { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.tete-visite-decider button { margin-left: auto; }
+.fi-actuelle { max-height: 260px; overflow-y: auto; white-space: pre-wrap; font-size: 12.5px; color: var(--texte-2); padding: 8px; border-radius: 8px; background: var(--carte-2); margin: 6px 0 0; }
+.suite-decision:not(:empty) { margin-top: 10px; }
+@media (max-width: 900px) { .page-decider { grid-template-columns: 1fr; } .liste-decider { position: static; max-height: 200px; } .tete-page { grid-template-columns: 1fr; } }
+
+/* Paramètres de Ma ligne, entrée du niveau 1 */
+.section-parametres { margin-top: 14px; }
+.section-parametres h3 { margin: 0 0 6px; font-size: 14px; }
+.cases-parametres { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.noms-eth { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+.grille-etiquettes .centre { text-align: center; }
+.grille-etiquettes input[type='text'] { width: 100%; min-width: 130px; }
+.tete-niveau1 { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.tete-niveau1 h1 { margin: 0; flex: 1; }
+.tete-niveau1 img { width: 40px; height: 40px; }
+
+/* Assistant : savoirs associés ; Ajouter un savoir : l'arborescence à cocher */
+.ligne-savoir { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 0; border: 0; background: none; color: var(--texte-2); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.ligne-savoir:hover { background: none; color: var(--texte); text-decoration: none; }
+.ligne-savoir > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulle-initiales, .bulle-document { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50% 50% 50% 4px; background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--texte); font-size: 10.5px; font-weight: 700; }
+.bulle-document { border-radius: 5px; background: var(--carte-3); }
+.arbre-machines { max-height: 240px; overflow-y: auto; margin-top: 6px; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte-2); }
+.noeud-machine { display: flex; align-items: center; gap: 4px; min-height: 26px; font-size: 13.5px; }
+.noeud-machine label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.noeud-machine.feuille { display: flex; cursor: pointer; padding-left: 4px; }
+.enfants-machines { margin-left: 18px; border-left: 1px solid var(--bord); padding-left: 6px; }
+.puce-machine.seule { padding-right: 10px; }
+.arbre-machines input[type='checkbox'], .cases-parametres input, .grille-etiquettes input[type='checkbox'] { width: auto; flex: none; margin: 0; }
+.arbre-machines .noeud-machine.feuille { justify-content: flex-start; gap: 6px; }

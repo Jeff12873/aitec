@@ -28,6 +28,13 @@ async function lire(cle, colonnes) {
   return lignes
 }
 
+// Les dépanneurs du site (requête « depanneurs », colonne nom) : un ensemble de noms sans accents ni ponctuation ;
+// null si la requête n'est pas réglée.
+export async function lireDepanneurs() {
+  const lignes = await lire('depanneurs', ['nom'])
+  return lignes ? new Set(lignes.map((l) => String(l.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '')).filter(Boolean)) : null
+}
+
 // Les FI de niveau 1, une par numéro (et par occurrence : les lignes archivées d'une FI périodique sont gardées),
 // avec leurs équipements. → [{ numero, titre, date, echeance, actif, di, equipements: [noeud], ri, dateRi }]
 export async function lireFiN1() {
@@ -118,6 +125,14 @@ export function podiumExecutants(lignes) {
   const compte = new Map()
   for (const l of uniques(lignes.filter((x) => x.date >= debut && x.date < fin))) compte.set(l.personne, (compte.get(l.personne) || 0) + 1)
   return [...compte].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr')).slice(0, 2).map(([nom, nombre]) => ({ nom, nombre }))
+}
+
+// Une seule personne fait plus de la moitié des RI exécutées des 8 dernières semaines (10 RI au moins).
+export function concentrationExecutants(lignes) {
+  const depuis = new Date(Date.now() - 56 * 86_400_000).toISOString().slice(0, 10)
+  const sur8 = uniques(lignes.filter((x) => x.date >= depuis))
+  const parPersonne = [...sur8.reduce((m, l) => m.set(l.personne, (m.get(l.personne) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])
+  return sur8.length >= 10 && parPersonne[0][1] / sur8.length > 0.5 ? { nom: parPersonne[0][0], part: parPersonne[0][1] / sur8.length, total: sur8.length } : null
 }
 
 // L'observation d'une RI est écrite en HTML par la GMAO : le texte seul, sans le rappel « ------- FI : … ------- ».

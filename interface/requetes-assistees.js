@@ -65,6 +65,10 @@ export const CHAMPS = {
     { nom: 'intervenant', libelle: 'Intervenant' },
     { nom: 'observation', libelle: 'Observation' },
   ],
+  // Les dépanneurs de leur groupe : le TMCD ne compte qu'eux.
+  depanneurs: [
+    { nom: 'nom', libelle: 'Nom', obligatoire: true, aide: 'écrit comme sur les interventions : NOM, PRÉNOM' },
+  ],
   // Les RI exécutées par les conducteurs : une ligne par RI et par personne.
   riConducteurs: [
     { nom: 'numero', libelle: 'Numéro de la RI', obligatoire: true },

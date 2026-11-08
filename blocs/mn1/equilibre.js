@@ -21,7 +21,8 @@ import { exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe } from '../../lib/types.js'
-import { convention, lireCode, estDuPlan, placesDuParc } from './visites.js'
+import { convention, lireCode, estDuPlan, placesDuParc, visitesDuParc } from './visites.js'
+import { etiquettes } from './affichage.js'
 
 const JOURS = 365
 const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
@@ -43,13 +44,17 @@ const SYSTEMATIQUE = /\b(echange|echanger|remplac\w*|chang(?:er|ement)|vidange\w
 const devinee = (cle) => (SYSTEMATIQUE.test(cle) ? 'systematique' : 'observation')
 
 // { cle: { classe: 'observation' | 'systematique', par: 'ia' | 'admin', gamme } }
-export const classement = () => reglageJson('mn1_gammes', {}) || {}
+// (une étiquette retirée depuis : la gamme revient à sa première idée)
+export const classement = () => {
+  const connues = new Set(etiquettes().map((e) => e.id))
+  return Object.fromEntries(Object.entries(reglageJson('mn1_gammes', {}) || {}).filter(([, x]) => connues.has(x.classe)))
+}
 export const classeDe = (c, cle) => c[cle]?.classe || devinee(cle)
 
 // Les préventifs et correctifs des machines de maintenance d'un parc (12 mois).
 export async function interventionsDuParc(parc) {
   const ids = new Set(parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines)
-  const lignes = db().prepare('SELECT id, date, machine_id, numero, type, description FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
+  const lignes = db().prepare('SELECT id, date, machine_id, numero, type, description, duree_h FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
   // Seules les visites à code comptent (le fréquentiel) ; le niveau vient du code (convention réglée).
   const c = convention()
   const deNiveau1 = (l) => lireCode(l.description, c)?.niveau === 1
@@ -63,24 +68,34 @@ export async function equilibreDuParc(parcId) {
   if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
   const { lignes, deNiveau1 } = await interventionsDuParc(parc)
   const c = classement()
+  const cochees = new Set(etiquettes().filter((e) => e.role === 'visite' && e.ecrans.tableau).map((e) => e.id))
   const parMachine = new Map()
   const gammes = new Map() // cle → { gamme, nombre, classe, par }
+  const machineDe = (id) => {
+    if (!parMachine.has(id)) parMachine.set(id, { correctifs: 0, heures: 0, n1: 0, techniciens: 0 })
+    return parMachine.get(id)
+  }
   for (const l of lignes) {
     const famille = familleDe(l.type)
     if (famille !== 'Correctif' && famille !== 'Préventif') continue
-    const m = parMachine.get(l.machine_id) || { correctifs: 0, n1: 0, techniciens: 0, systematiques: 0 }
-    if (famille === 'Correctif') m.correctifs++
-    else {
+    const m = machineDe(l.machine_id)
+    if (famille === 'Correctif') {
+      m.correctifs++
+      m.heures += Number(l.duree_h) > 0 ? Number(l.duree_h) : 0
+    } else {
       const gamme = gammeDe(l.description)
       const cle = cleDe(gamme)
       const g = gammes.get(cle) || { cle, gamme, nombre: 0, classe: classeDe(c, cle), par: c[cle]?.par || 'mots' }
       g.nombre++
       gammes.set(cle, g)
-      if (g.classe === 'systematique') m.systematiques++
-      else if (deNiveau1(l)) m.n1++
-      else m.techniciens++
     }
-    parMachine.set(l.machine_id, m)
+  }
+  // Le préventif compté : celui des étiquettes cochées pour le tableau.
+  for (const l of (await visitesDuParc(parcId)).pourEcran('tableau')) {
+    if (!l.recente) continue
+    const m = machineDe(l.machine_id)
+    if (l.nature === 'remontee' || deNiveau1(l)) m.n1++
+    else m.techniciens++
   }
   const reperes = db().prepare('SELECT id, repere, designation FROM machines').all()
   const machine = new Map(reperes.map((x) => [x.id, x]))
@@ -98,10 +113,11 @@ export async function equilibreDuParc(parcId) {
   return {
     jours: JOURS,
     equipements,
+    etiquettes: etiquettes().filter((e) => e.role === 'visite'),
     gammes: {
       total: listeGammes.length,
       aClasser: listeGammes.filter((g) => g.par === 'mots').length,
-      systematiques: listeGammes.filter((g) => g.classe === 'systematique').length,
+      ecartes: listeGammes.filter((g) => !cochees.has(g.classe)).length,
       liste: listeGammes.slice(0, 400),
     },
     iaInstallee: iaInstallee(),
@@ -160,7 +176,7 @@ export function corrigerGamme({ cle, gamme, classe }) {
   const k = String(cle || '')
   if (!k) throw new ErreurHttp(400, 'Gamme manquante.')
   if (!classe) delete c[k]
-  else if (classe === 'observation' || classe === 'systematique') c[k] = { classe, par: 'admin', gamme: String(gamme || c[k]?.gamme || '').slice(0, 120) }
+  else if (etiquettes().some((e) => e.id === classe && e.role === 'visite')) c[k] = { classe, par: 'admin', gamme: String(gamme || c[k]?.gamme || '').slice(0, 120) }
   else throw new ErreurHttp(400, 'Classe inconnue.')
   modifierReglage('mn1_gammes', c)
   noterModification()

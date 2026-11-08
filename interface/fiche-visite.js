@@ -72,7 +72,7 @@ function pageDeLaFiche(f) {
 
 // L'aperçu par-dessus la page, comme les fiches de niveau 1 ; « Imprimer » imprime la feuille seule.
 export async function ouvrirFicheVisite(base, g) {
-  const f = await essayer(() => api(`${base}/visite?equipement=${g.equipement}&titre=${encodeURIComponent(g.titre)}`))
+  const f = await essayer(() => api(`${base}/visite?equipement=${g.pose}&titre=${encodeURIComponent(g.titre)}${g.dapresTitre ? `&organe=${g.equipement}` : ''}`))
   if (!f) return
   const cadre = h('iframe', { class: 'cadre-fiche', title: 'Fiche de visite', srcdoc: pageDeLaFiche(f) })
   const fermer = () => { voile.remove(); document.removeEventListener('keydown', surEchap) }

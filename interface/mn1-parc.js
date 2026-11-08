@@ -13,7 +13,8 @@ import { encartCalendrier, calendrierCompact, hallOfFameLigne } from './mn1-circ
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 import { nuageEquilibre } from './mn1-equilibre.js'
 import { boutonImport } from './mn1-import.js'
-import { estPrevtec, filEtapes, bandeauVerdict, evolutionPanne, lienMachine, tuilesLigne } from './prevtec.js'
+import { estPrevtec, filEtapes, barreRetour, bandeauVerdict, evolutionPanne, lienMachine, tuilesLigne } from './prevtec.js'
+import { reglerAffichage } from './parametres-ligne.js'
 
 const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)} %`)
 const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 100) / 100).toLocaleString('fr-FR'))
@@ -24,8 +25,8 @@ const arrondi = (n) => (n === null || n === undefined ? '?' : (Math.round(n * 10
 // machine de production) ; sinon le texte seul, pas cliquable.
 const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: lienMachine(d.parc.id, d.analysables[id]), title: estPrevtec ? 'Étape 3 : cette machine, ses pannes face à tous ses préventifs' : '' }, contenu) : contenu)
 
-// vue (PREVTEC) : « ligne » (étape 2 : verdict, équipes, Hall of fame, indicateurs, pannes, sans rien du niveau 1)
-// ou « n1 » (étape 5 : charge, couverture par les fiches, fiches, demandes de niveau 1).
+// vue (PREVTEC) : « ligne » (étape 2 : verdict, équipes, contributeurs, indicateurs, pannes, sans rien du niveau 1)
+// ou « n1 » (menu Maintenance de niveau 1 : charge, couverture par les fiches, fiches, demandes de niveau 1).
 export async function afficherParc(zone, id, { integre = false, vue = 'ligne', machine = null } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture de la ligne et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
@@ -71,7 +72,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     if (r) window.ktec.recharger()
     else { bouton.disabled = false; vider(bouton, ic('etincelle', 15), 'Analyse de corrélation') }
   }
-  const boutonAnalyse = h('button', { class: 'principal', disabled: Boolean(etat.partage?.autreAdmin), title: etat.partage?.autreAdmin ? 'Un autre poste modifie le fichier : réessayez plus tard' : '', onclick: (e) => lancer(e.currentTarget) }, ic('etincelle', 15), d.analyse ? 'Refaire l’analyse de corrélation' : 'Analyse de corrélation')
+  const boutonAnalyse = h('button', { class: `principal${!d.analyse || d.analyse.perimee ? ' ia-a-faire' : ''}`, disabled: Boolean(etat.partage?.autreAdmin), title: etat.partage?.autreAdmin ? 'Un autre poste modifie le fichier : réessayez plus tard' : '', onclick: (e) => lancer(e.currentTarget) }, ic('etincelle', 15), d.analyse ? 'Refaire l’analyse de corrélation' : 'Analyse de corrélation')
   const a = d.analyse
   let allerAFiche = () => {} // défini avec la liste des fiches, plus bas
   const tableauPareto = h('table', { class: 'tableau pareto-mn1' })
@@ -260,31 +261,44 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
   const haut = h('div', { class: 'haut-parc' }, h('div', { class: 'colonne-parc' }, synthese, carteChargeParc), encartCalendrier(d.parc, admin))
   // PREVTEC suit le parcours : le fil (étape 2), le verdict du plan et le Pareto d'abord, puis la charge et les fiches.
   if (estPrevtec && vue === 'ligne') {
-    // Étape 2 : la ligne, sans rien du niveau 1 ; la courbe des correctifs en petit dans l'en-tête.
+    // Étape 2 : la ligne, sans rien du niveau 1 ; la courbe des correctifs en grand, floutée derrière le haut de page.
     entete.querySelector('.legende-tendance')?.remove()
     entete.querySelector('.titre-parc img')?.remove() // le logo jaune est celui du niveau 1 : pas à l'étape 2
     const sousTitre = entete.querySelector('.sous-titre')
     if (sousTitre) sousTitre.textContent = `${d.parc.maintenance} machines de maintenance · ${d.parc.production} de production`
-    const courbeTete = d.tendance?.length ? h('div', { class: 'courbe-tete', title: `Correctifs de la ligne, mois par mois (12 mois terminés) : ${d.tendance.map((x) => x.n).join(', ')}` }, courbe(d.tendance.map((x) => x.n), { largeur: 220, hauteur: 44 }), h('small', { class: 'discret' }, 'correctifs, 12 mois terminés')) : null
-    entete.querySelector('.espace')?.after(courbeTete || '')
-    return vider(zone,
-      filEtapes(2, d.parc),
-      entete,
-      h('div', { class: 'haut-ligne' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin)),
-      hallOfFameLigne(d.parc),
-      tuilesLigne(d.indicateurs, d.parc),
-      h('div', { class: 'parc-mn1' }, cartePannesLigne(d, machine)))
+    const { affichage } = await api('/api/mn1/affichage')
+    const titreMachine = entete.querySelector('h1')
+    entete.querySelector('button.icone-seule')?.remove()
+    if (admin) entete.append(h('button', { class: 'discret icone-seule', title: 'Paramètres de « Ma ligne » : indicateurs, panneau, carrés, étiquettes', onclick: () => reglerAffichage(d.parc, () => window.ktec.recharger()) }, ic('reglages', 20)))
+    const placeRetour = h('div', { class: 'place-retour' }, barreRetour('Les lignes', '#/mn1'))
+    const sousTitreLigne = sousTitre?.textContent || ''
+    const page = h('div', { class: 'page-ligne' })
+    // Chaque niveau du tableau : le retour en haut, le fil, et sur une machine la page ne garde que le graphique.
+    const surNiveau = ({ machine: m, eth, retour }) => {
+      vider(placeRetour, retour ? barreRetour(retour.texte, retour.action) : barreRetour('Les lignes', '#/mn1'))
+      page.querySelector('.fil-etapes')?.replaceWith(filEtapes(m ? 3 : 2, d.parc, m))
+      page.classList.toggle('vue-machine', Boolean(m))
+      titreMachine.textContent = m ? m.repere : d.parc.nom
+      if (sousTitre) sousTitre.textContent = m ? `${m.designation || ''} · ${d.parc.nom}${eth?.code ? ` · ${eth.code}` : ''}` : sousTitreLigne
+    }
+    vider(page,
+      h('div', { class: 'tete-page' }, placeRetour, filEtapes(2, d.parc)),
+      h('div', { class: 'scene-parc scene-ligne' }, fond, entete,
+        h('div', { class: 'haut-ligne masque-machine' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin))),
+      h('div', { class: 'masque-machine' }, hallOfFameLigne(d.parc), tuilesLigne(d.indicateurs, d.parc, affichage.indicateurs)),
+      h('div', { class: 'parc-mn1' }, cartePannesLigne(d, { machine, surNiveau, affichage })))
+    return vider(zone, page)
   }
   if (estPrevtec) {
-    // Étape 5 : le niveau 1 de la ligne, après la décision.
+    // Le menu Maintenance de niveau 1 : les fiches de la ligne ; le calendrier est dans « Ma ligne ».
     const titre = entete.querySelector('h1')
     if (titre) titre.textContent = `Niveau 1 · ${d.parc.nom}`
-    return vider(zone, filEtapes(5, d.parc),
+    return vider(zone, barreRetour('Maintenance de niveau 1', '#/niveau1'),
       h('div', { class: 'scene-parc' }, entete, h('div', { class: 'outils-n1' },
         d.lecture?.erreur ? h('span', { class: 'etiquette orange', title: d.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : d.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO ${ilYa(d.lecture.date)}`) : null,
         admin ? boutonImport() : null,
-        h('a', { class: 'bouton petit discret lien-circuit', href: '#/mn1/circuit', title: 'Les demandes, FI et rapports de niveau 1 de toute l’usine, et leurs indicateurs' }, ic('graphique', 14), 'Circuit N1 de l’usine'))),
-      haut, h('div', { class: 'parc-mn1' }, carteFiches, carteCorrelation, carteDemandes))
+        h('a', { class: 'bouton petit discret lien-circuit', href: '#/niveau1/circuit', title: 'Les demandes, FI et rapports de niveau 1 de toute l’usine, et leurs indicateurs' }, ic('graphique', 14), 'Circuit N1 de l’usine'))),
+      h('div', { class: 'haut-parc sans-calendrier' }, h('div', { class: 'colonne-parc' }, carteChargeParc)), h('div', { class: 'parc-mn1' }, carteFiches, carteCorrelation, carteDemandes))
   }
   else vider(zone, h('div', { class: 'scene-parc' }, fond, entete, haut), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }
@@ -294,9 +308,9 @@ async function mettreSurPapier(fiches, enService) {
   if (await essayer(() => api('/api/mn1/fiches/papier', { methode: 'POST', corps: { ids: fiches.map((f) => f.id), enService } }), enService ? 'Fiche en service sur papier' : 'Carte papier retirée')) window.ktec.recharger()
 }
 
-// PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches), et à côté le Démonstrateur (ETH › machines ›
-// une machine), qui s'ouvre directement sur une machine si l'adresse la donne (?machine=).
-function cartePannesLigne(d, machine = null) {
+// PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches) ou le Démonstrateur (ETH › machines › une
+// machine), au choix de l'administrateur ; une machine donnée par l'adresse (?machine=) ouvre son Démonstrateur.
+function cartePannesLigne(d, { machine, surNiveau, affichage }) {
   const pct = (x) => `${Math.round(x * 100)} %`
   const lignes = d.pareto.slice(0, 15)
   const tableau = lignes.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau pareto-mn1' },
@@ -308,23 +322,13 @@ function cartePannesLigne(d, machine = null) {
       h('td', { class: 'nombre' }, String(p.nombre)),
       h('td', {}, evolutionPanne(p)),
       h('td', {}, h('div', { class: 'part-pareto', title: `${p.nombre} cas sur 12 mois : ${pct(p.part)} des pannes qui reviennent` }, h('i', { style: { width: `${Math.round(p.part * 100)}%` } }), h('span', {}, pct(p.part))))))))) : h('p', { class: 'discret' }, 'Pas de panne qui revient (3 cas au moins) sur les machines de maintenance de cette ligne ces 12 derniers mois.')
-  let nuage = null
-  const titre = h('h2', {}, ic('graphique', 18), 'Les pannes qui reviennent')
-  const corps = h('div', {}, tableau)
-  const choix = h('div', { class: 'segments petits' })
-  const montrer = (vue) => {
-    vider(choix, [['pareto', 'Pareto', 'Les pannes qui reviennent : un clic sur une machine ouvre son Démonstrateur'], ['nuage', 'Démonstrateur', 'Le préventif est-il bien ciblé, en bonne quantité ? Des ETH jusqu’aux équipements d’une machine']].map(([cle, texte, aide]) => h('button', { class: vue === cle ? 'choisi' : '', title: aide, onclick: () => montrer(cle) }, texte)))
-    vider(titre, ic('graphique', 18), vue === 'nuage' ? 'Démonstrateur' : 'Les pannes qui reviennent')
-    if (vue === 'nuage') nuage = nuage || nuageEquilibre(d, { machine, surMachine })
-    vider(corps, vue === 'nuage' ? nuage : tableau)
-  }
-  // Le fil des étapes suit le zoom : 3 sur le Démonstrateur d'une machine, 2 sinon.
-  const surMachine = (m) => {
-    document.querySelector('.fil-etapes')?.replaceWith(filEtapes(m ? 3 : 2, d.parc, m))
-    vider(titre, ic('graphique', 18), m ? `Démonstrateur · ${m.repere}` : 'Démonstrateur')
-  }
-  montrer(machine ? 'nuage' : 'pareto')
-  return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titre, choix), corps)
+  const pareto = affichage.panneau === 'pareto' && !machine
+  const titre = h('h2', {}, ic('graphique', 18), pareto ? 'Les pannes qui reviennent' : 'Démonstrateur')
+  const corps = pareto ? tableau : nuageEquilibre(d, {
+    machine, affichage, seulMachine: affichage.panneau === 'pareto',
+    surNiveau: (n) => { surNiveau(n); vider(titre, ic('graphique', 18), n.machine ? `Démonstrateur · ${n.machine.repere}` : 'Démonstrateur') },
+  })
+  return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titre), corps)
 }
 
 // L'avant / après d'une fiche : correctifs par mois avant et depuis son entrée dans une FI.

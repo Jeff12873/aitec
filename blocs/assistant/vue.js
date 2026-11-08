@@ -8,7 +8,7 @@ import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api, flux } from '/socle/api.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { etat, peutModifier } from '/socle/etat.js'
-import { ajouterSavoir, voirSavoir } from '../../interface/savoirs.js'
+import { ajouterSavoir, voirSavoir, bandeauSavoirs } from '../../interface/savoirs.js'
 
 const SUGGESTIONS = [
   'Quelles machines tombent le plus souvent en panne cette année ?',
@@ -332,6 +332,8 @@ export default {
         await flux('/api/assistant', { question, historique, precisions, ...filtre }, (type, donnees) => {
           if (type === 'sources') { reponse.sources = donnees; montrerSources(reponse) }
           if (type === 'preventif') reponse.preventif = donnees
+          if (type === 'dernieres') reponse.dernieres = donnees
+          if (type === 'savoirs') reponse.savoirs = donnees
           if (type === 'texte') reponse.contenu += donnees
           if (type === 'erreur') reponse.contenu += `\n\n⚠ ${donnees.message}`
           remplacer()
@@ -473,6 +475,13 @@ function dessinerMessage(message, { envoyer, montrerSources, corriger }, origina
       'div',
       { class: 'corps' },
       // Préventif fait ces 48 dernières heures sur les machines visées : à savoir avant de chercher plus loin.
+      message.dernieres?.length
+        ? h('div', { class: 'bandeau-preventif dernieres' },
+          h('div', { class: 'titre-preventif' }, ic('historique', 15), 'Dernières interventions sur la machine'),
+          message.dernieres.map((p) => h('a', { class: 'ligne-preventif', href: `#/interventions/${p.id}`, title: p.description },
+            h('span', { class: 'intervenant' }, p.dateFr), ` · ${p.repere ? `${p.repere} · ` : ''}${p.famille === 'Correctif' ? 'Panne' : 'Préventif'} · ${p.description}`)))
+        : null,
+      bandeauSavoirs(message.savoirs),
       message.preventif?.length
         ? h('div', { class: 'bandeau-preventif' },
           h('div', { class: 'titre-preventif' }, ic('horloge', 15), `Préventif dans les dernières 48 h (${message.preventif.length})`),

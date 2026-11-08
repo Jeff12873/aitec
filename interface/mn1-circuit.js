@@ -64,7 +64,7 @@ function hallOfFame(i, portee, merci = null) {
   const nomMois = new Date(Number(annee), Number(mois) - 1, 1).toLocaleDateString('fr-FR', { month: 'long' })
   return h('div', { class: 'hall-of-fame' },
     // Le logo du niveau 1 : le Hall of fame compte les demandes et exécutions de niveau 1.
-    h('div', { class: 'titre-hof' }, h('img', { class: 'logo-hof', src: LOGO_MN1, alt: 'Niveau 1', title: 'Maintenance de niveau 1' }), h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Hall of fame'), h('span', { class: 'portee-hof' }, `${portee} · ${nomMois}`)),
+    h('div', { class: 'titre-hof' }, h('img', { class: 'logo-hof', src: LOGO_MN1, alt: 'Niveau 1', title: 'Maintenance de niveau 1' }), h('span', { class: 'etincelle-hof' }, ic('etincelle', 22)), h('span', { class: 'texte-hof' }, 'Contributeurs du mois'), h('span', { class: 'portee-hof' }, `${portee} · ${nomMois}`)),
     h('div', { class: 'podiums' },
       podium(i.podium, 'DI', 'Demandes'),
       podium(i.podiumRi || [], 'RI', 'Exécutions')),
@@ -76,7 +76,8 @@ export function hallOfFameLigne(parc) {
   const zone = h('div', { class: 'zone-hof-ligne' })
   api(`/api/mn1/indicateurs?parc=${encodeURIComponent(parc.id)}`).then((i) => {
     if (!i?.reglee) return vider(zone)
-    vider(zone, hallOfFame(i, parc.nom) || h('p', { class: 'discret hof-vide' }, ic('etincelle', 14), `Pas encore de demande ni d’exécution ce mois-ci sur ${parc.nom}.`))
+    const seul = (c, quoi) => c ? h('div', { class: 'alerte-mn1' }, ic('personne', 15), `Les ${quoi} reposent sur une seule personne : ${c.nom} en a fait ${Math.round(c.part * 100)} % (${c.total} ${quoi} sur 8 semaines).`) : null
+    vider(zone, hallOfFame(i, parc.nom) || h('p', { class: 'discret hof-vide' }, ic('etincelle', 14), `Pas encore de demande ni d’exécution ce mois-ci sur ${parc.nom}.`), seul(i.concentration, 'DI'), seul(i.concentrationRi, 'RI'))
   }).catch(() => vider(zone))
   return zone
 }
@@ -248,7 +249,14 @@ const COULEURS_EQUIPES = { A: '#6fa3c7', B: '#73b08a', C: '#9c8fc4' }
 const fondRegime = (r) => {
   if (!r || r === 'X') return ''
   const couleurs = [...r].map((l) => `color-mix(in srgb, ${COULEURS_EQUIPES[l] || '#2dd4bf'} 42%, transparent)`)
-  return couleurs.length === 1 ? couleurs[0] : `linear-gradient(135deg, ${couleurs.map((c, i) => `${c} ${Math.round((i * 100) / (couleurs.length - 1))}%`).join(', ')})`
+  return couleurs.length === 1 ? `linear-gradient(${couleurs[0]}, ${couleurs[0]})` : `linear-gradient(135deg, ${couleurs.map((c, i) => `${c} ${Math.round((i * 100) / (couleurs.length - 1))}%`).join(', ')})`
+}
+// Le liseré d'une semaine : les couleurs franches de ses équipes.
+const LISERES = { A: '#3ea6ff', B: '#2fd67e', C: '#b48cff' }
+const liseretRegime = (r) => {
+  if (!r || r === 'X') return ''
+  const c = [...r].map((l) => LISERES[l] || '#2dd4bf')
+  return c.length === 1 ? `linear-gradient(${c[0]}, ${c[0]})` : `linear-gradient(135deg, ${c.join(', ')})`
 }
 const lettreColoree = (l, texte) => h('span', { class: 'lettre-equipe', style: { color: COULEURS_EQUIPES[l] } }, texte)
 
@@ -266,7 +274,7 @@ export function calendrierCompact(parc, admin) {
     const semaines = []
     for (let k = 0, a = a0, s = s0; k < 6; k++) {
       const regime = cal.semaines[`${a}-${s}`] || cal.defaut
-      semaines.push(h('span', { class: `semaine-compacte ${teinte(regime)}${k ? '' : ' courante'}`, style: { '--fond': fondRegime(regime) }, title: `S${s} ${a} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}` }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
+      semaines.push(h('span', { class: `semaine-compacte ${teinte(regime)}${k ? '' : ' courante'}`, style: { '--fond': fondRegime(regime), '--liseret': liseretRegime(regime) }, title: `S${s} ${a} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}` }, h('small', {}, `S${s}`), h('b', {}, regime === 'X' ? '✕' : regime)))
       if (++s > semainesDeLAnnee(a)) { s = 1; a++ }
     }
     vider(zone, h('span', { class: 'tete-compact' }, ic('calendrier', 14), 'Équipes', h('small', { class: 'discret' }, ' · cette semaine et les suivantes')), h('span', { class: 'semaines-compactes' }, semaines))
@@ -297,6 +305,7 @@ export function encartCalendrier(parc, admin) {
     const regime = valeur || cal.defaut
     bouton.className = `semaine-cal ${teinte(regime)}${valeur ? '' : ' defaut'}${cle === semaineCourante() ? ' courante' : ''}`
     bouton.style.setProperty('--fond', fondRegime(regime))
+    bouton.style.setProperty('--liseret', liseretRegime(regime))
     bouton.querySelector('b').textContent = regime === 'X' ? '✕' : regime
   }
   const relacher = () => {
@@ -320,7 +329,7 @@ export function encartCalendrier(parc, admin) {
       cases.push(h('button', {
         type: 'button',
         class: `semaine-cal ${teinte(regime)}${propre ? '' : ' defaut'}${cle === courante ? ' courante' : ''}`,
-        style: { '--fond': fondRegime(regime) },
+        style: { '--fond': fondRegime(regime), '--liseret': liseretRegime(regime) },
         disabled: !admin,
         'data-s': String(s),
         title: `S${s} ${annee} : ${regime === 'X' ? 'exclue des indicateurs' : `${regime.length} équipe${regime.length > 1 ? 's' : ''} (${regime})`}${propre ? '' : ' — régime par défaut'}`,
