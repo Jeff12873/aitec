@@ -12,6 +12,12 @@ export const COULEURS_DIAGNOSTIC = { pas: 'rouge', mauvais: 'violet', ok: 'vert'
 const SIGNES = { pas: '!', mauvais: '?', ok: '✓', sur: '+', rien: '' }
 const LIBELLES = { pas: 'pas de préventif', mauvais: 'mauvais point contrôlé ou énoncé trop vague', ok: 'préventif ok', sur: 'sur maintenance' }
 const FLECHES = { monte: '↑', baisse: '↓', stable: '=', nouvelle: '✦' }
+const sensDe = (c) => ({
+  monte: `↑ en hausse : ${c.precedent} les 12 mois d’avant`,
+  baisse: `↓ en baisse : ${c.precedent} les 12 mois d’avant`,
+  stable: `= stable : ${c.precedent} les 12 mois d’avant`,
+  nouvelle: '✦ nouvelle : aucune panne les 12 mois d’avant',
+}[c.evolution] || '')
 
 // Rend { element, machine } : la matrice.
 export async function demonstrateurMachine(parcId, machineId) {
@@ -20,7 +26,7 @@ export async function demonstrateurMachine(parcId, machineId) {
   const m = d.machine
   const col = d.colonnes
   const decider = (c) => (location.hash = `#/mn1/decider/${encodeURIComponent(d.parc.id)}/${m.id}/${c.id}`)
-  const cliquable = (c) => ({ title: `${c.designation || c.repere}\n${c.pannes} pannes sur 12 mois · ${c.libelle || 'rien à signaler'}\n${c.raison || ''}\nCliquer : je décide`, onclick: () => decider(c) })
+  const cliquable = (c, enPlus = '') => ({ title: [c.designation || c.repere, enPlus, `${c.pannes} pannes sur 12 mois · ${c.diagnostic === 'rien' ? 'rien à signaler' : `${SIGNES[c.diagnostic]} ${c.libelle}`}`, c.pannes ? sensDe(c) : '', c.raison, 'Cliquer : je décide'].filter(Boolean).join('\n'), onclick: () => decider(c) })
 
   const tete = h('tr', {}, h('th', { class: 'coin-demo' }, 'Visites ↓ · équipements →'),
     h('th', { class: 'col-t', title: 'Taux t : la part des passages sans rien trouver (RAS, OK, conforme…), parmi ceux où le mainteneur a écrit une observation.' }, 't'),
@@ -36,7 +42,7 @@ export async function demonstrateurMachine(parcId, machineId) {
       g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
     h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
     h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
-    col.map((c) => h('td', { class: `carre croisee col-clic ${posee(g, c) ? `posee${g.dapresTitre ? ' titre' : ''}` : ''}`, ...cliquable(c) }, posee(g, c) ? '●' : '')),
+    col.map((c) => h('td', { class: `carre croisee col-clic ${posee(g, c) ? `posee${g.dapresTitre ? ' titre' : ''}` : ''}`, ...cliquable(c, posee(g, c) ? (g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`) : '') }, posee(g, c) ? '●' : '')),
     h('td', { class: `carre croisee ${g.machineEntiere ? 'posee vague' : ''}` }, g.machineEntiere ? '●' : '')))
   const ligneDiag = h('tr', { class: 'ligne-diagnostics' }, h('th', {}, 'diagnostic'), h('td'), h('td'),
     col.map((c) => h('td', { class: `carre diag-demo col-clic ${COULEURS_DIAGNOSTIC[c.diagnostic]}`, ...cliquable(c) }, SIGNES[c.diagnostic])), h('td', { class: 'carre' }))

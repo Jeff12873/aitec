@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.16.4",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : au survol d'une case, le sens de ses icônes (hausse, baisse, stable, nouvelle, visite posée ou rattachée)"
+      ]
+    },
+    {
       "version": "0.16.3",
       "date": "2026-11-08",
       "points": [
