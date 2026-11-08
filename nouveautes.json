@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.16.3",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : les informations sont centrées dans les cases, les en-têtes t et passages sont agrandis"
+      ]
+    },
+    {
       "version": "0.16.2",
       "date": "2026-11-08",
       "points": [

@@ -965,3 +965,10 @@ td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1
 .page-ligne { min-width: 0; max-width: 100%; }
 .page-ligne .parc-mn1 { grid-template-columns: minmax(0, 1fr); }
 .page-ligne .parc-mn1 > .carte, .equilibre-mn1, .demonstrateur { min-width: 0; max-width: 100%; }
+
+/* Démonstrateur : tout centré dans les cases, en-têtes t et passages à la taille des cases */
+.matrice-demo td, .matrice-demo .carre { text-align: center; vertical-align: middle; }
+.matrice-demo .carre { line-height: 1; }
+.matrice-demo th.col-t, .matrice-demo th.col-passages { font-size: 16px; font-weight: 700; color: var(--texte-2); vertical-align: bottom; text-align: center; padding-bottom: 10px; }
+.matrice-demo td.col-t, .matrice-demo td.col-passages { min-width: 58px; font-size: 15px; color: var(--texte-2); }
+.matrice-demo tbody th { vertical-align: middle; }
