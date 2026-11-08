@@ -19,7 +19,7 @@
 <h2>Le parcours</h2>
 <ol>
 <li><b>Mes lignes</b> : une vignette par ligne, avec le verdict de son plan (dans le bon sens, à surveiller, à réévaluer). Cliquez la vôtre.</li>
-<li><b>Ma ligne</b> : le verdict expliqué, le calendrier des équipes en haut à droite, le Hall of fame de la ligne, cinq indicateurs (pannes, temps passé à dépanner, part du préventif, dépanneurs par panne, où sont les pannes), puis les pannes qui reviennent. La vue <b>Correctif × préventif</b> est un tableau en cases : les pannes en hauteur, les visites en largeur ; d'abord les ETH de la ligne, un clic zoome sur les machines d'une ETH.</li>
+<li><b>Ma ligne</b> : le verdict expliqué, le calendrier des équipes en haut à droite, le Hall of fame de la ligne, cinq indicateurs (pannes, temps passé à dépanner, part du préventif, dépanneurs par panne, où sont les pannes), puis les pannes qui reviennent. La vue <b>Démonstrateur</b> est un tableau en cases : les pannes en hauteur, les visites en largeur ; d'abord les ETH de la ligne, un clic zoome sur leurs machines, un autre sur une machine.</li>
 <li><b>Démonstrateur</b> : un clic sur une machine du Pareto ou du tableau. Le préventif est-il bien ciblé, en bonne quantité ?</li>
 <li><b>Je décide</b> : pour une panne sans visite, ou dont la visite ne la voit pas venir, une fiche N1 ou un point N2 rédigés par l'IA.</li>
 <li><b>Niveau 1</b> : les fiches de la ligne, leur mise en service (FI ou carte papier), la charge des opérateurs, l'impression ; et le circuit N1 de l'usine.</li>
@@ -35,13 +35,23 @@
 <li><b>À réévaluer</b> : les pannes de la ligne montent nettement, ou plusieurs pannes du haut du Pareto montent malgré une visite qui les regarde (elle ne les voit pas venir).</li>
 <li><b>À surveiller</b> : une seule panne qui monte malgré une visite, ou plusieurs qui montent sans aucune visite.</li>
 <li><b>Dans le bon sens</b> : les pannes baissent ou restent stables.</li>
-<li>Une visite du plan, c'est une intervention préventive issue d'une FI, donc avec une fréquence. Une chose vue à refaire pendant une panne, notée sans fréquence, ne compte pas dans le plan : elle sert, avec les correctifs, à proposer de nouveaux préventifs. Une fiche seule ne compte pas non plus.</li>
+<li>Seules les visites du plan comptent : celles dont le titre commence par un code de 3 caractères, donc avec une fréquence. Une fiche seule ne compte pas.</li>
 </ul>
+
+<h2>Les 4 natures de préventif</h2>
+<ul>
+<li><b>Observation</b> : un code en tête du titre, on regarde l'état. Seule nature prise en compte par le Démonstrateur.</li>
+<li><b>Systématique</b> : un code en tête du titre, on renouvelle à date fixe. Du plan, mais hors du Démonstrateur.</li>
+<li><b>Remontée N1</b> : une intervention liée à une DI de niveau 1, ce qu'un conducteur a remarqué.</li>
+<li><b>Entretien ponctuel</b> : tout le reste, fait une fois, souvent signé des initiales de son auteur.</li>
+</ul>
+<p>Les remontées N1 et les entretiens ponctuels n'ont pas de fréquence : ils ne comptent pas dans le plan, mais l'IA s'en sert, avec les pannes, pour proposer de nouveaux préventifs.</p>
 
 <h2>Le Démonstrateur (étape 3)</h2>
 <p>Il répond à une question : le préventif de cette machine est-il bien ciblé, et en bonne quantité ?</p>
 <ul>
-<li><b>En colonnes</b>, les équipements de la machine (sous-ensembles, organes), le plus en panne à gauche, avec leurs pannes sur 12 mois et leur évolution ; la machine entière à part, à droite.</li>
+<li>Il se trouve dans la carte de « Ma ligne » : les ETH, puis un clic sur les machines d'une ETH, puis un clic sur une machine. Une flèche ramène au niveau d'avant.</li>
+<li><b>En colonnes</b>, les équipements de la machine (sous-ensembles, organes), le plus en panne à gauche, avec toutes leurs pannes sur 12 mois et leur évolution ; la machine entière à part, à droite.</li>
 <li><b>En lignes</b>, les visites du plan, avec leur code. <b>À la croisée</b>, un ● là où la visite est posée dans l'arborescence.</li>
 <li><b>Sous chaque colonne</b>, un diagnostic : <b>pas de préventif</b> (des pannes, aucune visite) ; <b>mauvais point contrôlé ou énoncé trop vague</b> (la panne monte malgré une visite sur l'équipement, ou la seule visite est sur la machine entière) ; <b>préventif ok</b> ; <b>sur maintenance</b> (beaucoup de passages sans panne).</li>
 <li>La colonne <b>t</b> (part des passages sans rien trouver, t = A / (A + B + C)) attend le résultat des inspections, que la GMAO n'a pas encore.</li>

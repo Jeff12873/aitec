@@ -26,7 +26,7 @@ const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: li
 
 // vue (PREVTEC) : « ligne » (étape 2 : verdict, équipes, Hall of fame, indicateurs, pannes, sans rien du niveau 1)
 // ou « n1 » (étape 5 : charge, couverture par les fiches, fiches, demandes de niveau 1).
-export async function afficherParc(zone, id, { integre = false, vue = 'ligne' } = {}) {
+export async function afficherParc(zone, id, { integre = false, vue = 'ligne', machine = null } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture de la ligne et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
   const admin = peutModifier()
@@ -273,7 +273,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne' } 
       h('div', { class: 'haut-ligne' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin)),
       hallOfFameLigne(d.parc),
       tuilesLigne(d.indicateurs, d.parc),
-      h('div', { class: 'parc-mn1' }, cartePannesLigne(d)))
+      h('div', { class: 'parc-mn1' }, cartePannesLigne(d, machine)))
   }
   if (estPrevtec) {
     // Étape 5 : le niveau 1 de la ligne, après la décision.
@@ -294,9 +294,9 @@ async function mettreSurPapier(fiches, enService) {
   if (await essayer(() => api('/api/mn1/fiches/papier', { methode: 'POST', corps: { ids: fiches.map((f) => f.id), enService } }), enService ? 'Fiche en service sur papier' : 'Carte papier retirée')) window.ktec.recharger()
 }
 
-// PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches) ; un clic sur une machine ouvre l'étape 3. La
-// vue Correctif × préventif reste à côté.
-function cartePannesLigne(d) {
+// PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches), et à côté le Démonstrateur (ETH › machines ›
+// une machine), qui s'ouvre directement sur une machine si l'adresse la donne (?machine=).
+function cartePannesLigne(d, machine = null) {
   const pct = (x) => `${Math.round(x * 100)} %`
   const lignes = d.pareto.slice(0, 15)
   const tableau = lignes.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau pareto-mn1' },
@@ -313,12 +313,17 @@ function cartePannesLigne(d) {
   const corps = h('div', {}, tableau)
   const choix = h('div', { class: 'segments petits' })
   const montrer = (vue) => {
-    vider(choix, [['pareto', 'Pareto', 'Les pannes qui reviennent : un clic sur une machine ouvre l’étape 3'], ['nuage', 'Correctif × préventif', 'Chaque équipement : ses pannes face à ses visites (12 mois)']].map(([cle, texte, aide]) => h('button', { class: vue === cle ? 'choisi' : '', title: aide, onclick: () => montrer(cle) }, texte)))
-    vider(titre, ic('graphique', 18), vue === 'nuage' ? 'Correctif × préventif par équipement' : 'Les pannes qui reviennent')
-    if (vue === 'nuage') nuage = nuage || nuageEquilibre(d)
+    vider(choix, [['pareto', 'Pareto', 'Les pannes qui reviennent : un clic sur une machine ouvre son Démonstrateur'], ['nuage', 'Démonstrateur', 'Le préventif est-il bien ciblé, en bonne quantité ? Des ETH jusqu’aux équipements d’une machine']].map(([cle, texte, aide]) => h('button', { class: vue === cle ? 'choisi' : '', title: aide, onclick: () => montrer(cle) }, texte)))
+    vider(titre, ic('graphique', 18), vue === 'nuage' ? 'Démonstrateur' : 'Les pannes qui reviennent')
+    if (vue === 'nuage') nuage = nuage || nuageEquilibre(d, { machine, surMachine })
     vider(corps, vue === 'nuage' ? nuage : tableau)
   }
-  montrer('pareto')
+  // Le fil des étapes suit le zoom : 3 sur le Démonstrateur d'une machine, 2 sinon.
+  const surMachine = (m) => {
+    document.querySelector('.fil-etapes')?.replaceWith(filEtapes(m ? 3 : 2, d.parc, m))
+    vider(titre, ic('graphique', 18), m ? `Démonstrateur · ${m.repere}` : 'Démonstrateur')
+  }
+  montrer(machine ? 'nuage' : 'pareto')
   return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titre, choix), corps)
 }
 

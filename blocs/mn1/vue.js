@@ -16,7 +16,6 @@ import { avecParc, parcChoisi } from '../../interface/parcs.js'
 import { animer } from '../../interface/animer.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
 import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
-import { afficherMachine } from '../../interface/prevtec-machine.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 let tri = 'nom'
@@ -45,10 +44,10 @@ export default {
   menu: true,
   aide: 'maintenance-niveau-1',
 
-  async afficher(zone, { id }) {
+  async afficher(zone, { id, query }) {
     const [onglet, parc, machine] = String(id || '').split('/')
-    if (onglet === 'parc' && parc) return afficherParc(zone, decodeURIComponent(parc))
-    if (onglet === 'machine' && parc && machine) return afficherMachine(zone, decodeURIComponent(parc), machine)
+    if (onglet === 'parc' && parc) return afficherParc(zone, decodeURIComponent(parc), { machine: query?.machine })
+    if (onglet === 'machine' && parc && machine) return location.replace(`#/mn1/parc/${parc}?machine=${machine}`) // ancienne adresse
     if (onglet === 'n1' && parc) return afficherParc(zone, decodeURIComponent(parc), { vue: 'n1' })
     // PREVTEC, étape 1 : seulement le fil des étapes et les vignettes des lignes. Le circuit N1 de l'usine (bandeau,
     // Hall of fame, demandes, FI, rapports) a sa page, ouverte depuis le niveau 1 d'une ligne.

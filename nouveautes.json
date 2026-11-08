@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.13.0",
+      "date": "2026-11-08",
+      "points": [
+        "Le Démonstrateur s'ouvre dans la carte de « Ma ligne », en 3 niveaux de zoom : les ETH, leurs machines, puis le Démonstrateur d'une machine, avec une flèche de retour à chaque niveau",
+        "Quatre natures de préventif : Observation et Systématique (code de 3 caractères en tête du titre), Remontée N1 (liée à une DI de niveau 1), Entretien ponctuel (le reste). Seule l'observation entre dans le corrélateur",
+        "Remontées N1 et entretiens ponctuels, sans fréquence, restent hors du plan et nourrissent les conseils de l'IA",
+        "Le Démonstrateur compte toutes les pannes de chaque équipement ; les visites gardent un titre court",
+        "Les courbes de tendance sont resserrées sur leurs valeurs : la tendance se lit mieux"
+      ]
+    },
+    {
       "version": "0.12.1",
       "date": "2026-11-07",
       "points": [

@@ -17,6 +17,7 @@ import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { evolution } from './parcs.js'
+import { familleDe } from '../../lib/types.js'
 import { visitesDuParc, regarde, texteSeul } from './visites.js'
 import { redigerFiche, lireJson } from './correlation.js'
 
@@ -46,7 +47,16 @@ async function machineEtPannes(parcId, machineId) {
     }
   }
   pannes.sort((a, b) => b.nombre - a.nombre)
-  return { v, machine, equipements, repere, pannes }
+  // Toutes les pannes de chaque équipement (le Démonstrateur compte tout, pas seulement ce qui revient).
+  const parEquipement = new Map()
+  for (const l of v.lignes) {
+    if (!equipements.has(l.machine_id) || familleDe(l.type) !== 'Correctif') continue
+    const c = parEquipement.get(l.machine_id) || { pannes: 0, precedent: 0, cas: [] }
+    if (l.date >= depuis) { c.pannes++; c.cas.push(l.id) } else c.precedent++
+    parEquipement.set(l.machine_id, c)
+  }
+  const globales = [...parEquipement].filter(([, c]) => c.pannes).map(([e, c]) => ({ cle: `${e}:*`, equipement: e, surQuoi: repere.get(e) || '', symptome: `pannes diverses de ${repere.get(e) || 'cet équipement'}`, repere: machine.repere, designation: machine.designation, nombre: c.pannes, precedent: c.precedent, evolution: evolution(c.pannes, c.precedent), cas: c.cas }))
+  return { v, machine, equipements, repere, pannes, parEquipement, globales }
 }
 
 // Les 4 diagnostics du Démonstrateur (libellés de son auteur), par équipement de la machine :
@@ -66,8 +76,8 @@ const PANNES_MIN = 2
 const SUR_MAINTENANCE = 4
 
 export async function demonstrateur(parcId, machineId) {
-  const { v, machine, equipements, repere, pannes } = await machineEtPannes(parcId, machineId)
-  const visites = v.visites.filter((x) => x.recente && equipements.has(x.machine_id))
+  const { v, machine, equipements, repere, pannes, parEquipement: comptes, globales } = await machineEtPannes(parcId, machineId)
+  const visites = v.observation.filter((x) => x.recente && equipements.has(x.machine_id)) // ni systématique, ni ponctuel
   const titreDe = (x) => x.code?.titre || texteSeul(x.description).split(' - ')[0].slice(0, 100)
   const designation = new Map(db().prepare(`SELECT id, designation FROM machines WHERE id IN (${[...equipements].join(',')})`).all().map((m) => [m.id, m.designation]))
   // Les lignes : les visites du plan, regroupées par code, titre et équipement où elles sont posées.
@@ -83,15 +93,14 @@ export async function demonstrateur(parcId, machineId) {
   const surMachine = lignes.filter((g) => g.machineEntiere)
   // Les colonnes : les équipements qui ont des pannes ou des visites, le plus en panne à gauche ; la machine entière
   // (visites posées sur elle) en dernier.
-  const parEquipement = new Map()
-  for (const p of pannes) {
-    const c = parEquipement.get(p.equipement) || { pannes: 0, precedent: 0, liste: [] }
-    c.pannes += p.nombre
-    c.precedent += p.precedent
-    c.liste.push(p)
-    parEquipement.set(p.equipement, c)
-  }
+  const parEquipement = new Map([...comptes].filter(([, c]) => c.pannes || c.precedent).map(([id, c]) => [id, { pannes: c.pannes, precedent: c.precedent, liste: [] }]))
+  for (const p of pannes) parEquipement.get(p.equipement)?.liste.push(p)
   for (const g of lignes) if (!g.machineEntiere && !parEquipement.has(g.equipement)) parEquipement.set(g.equipement, { pannes: 0, precedent: 0, liste: [] })
+  // La panne à traiter : celle qui revient le plus, sinon l'ensemble des pannes de l'équipement.
+  const principale = (id, c) => {
+    const p = [...c.liste].sort((a, b) => b.nombre - a.nombre)[0] || globales.find((g) => g.equipement === id)
+    return p ? { cle: p.cle, symptome: p.symptome, nombre: p.nombre } : null
+  }
   const colonnes = [...parEquipement].filter(([id]) => id !== machine.id || parEquipement.get(id).pannes).map(([id, c]) => {
     const dessus = lignes.filter((g) => g.equipement === id && !g.machineEntiere)
     const passages = dessus.reduce((s, g) => s + g.passages, 0)
@@ -106,7 +115,7 @@ export async function demonstrateur(parcId, machineId) {
       else { diagnostic = 'ok'; raison = 'Des visites posées sur lui, et ses pannes ne montent pas.' }
     } else if (passages >= SUR_MAINTENANCE) { diagnostic = 'sur'; raison = `${passages} passages en 12 mois, pour ${c.pannes ? 'une seule panne' : 'aucune panne'}.` }
     else if (dessus.length) { diagnostic = 'ok'; raison = 'Peu de pannes, peu de visites.' }
-    return { id, repere: repere.get(id) || '', designation: designation.get(id) || '', pannes: c.pannes, precedent: c.precedent, evolution: ev, diagnostic, libelle: DIAGNOSTICS[diagnostic], raison, panne: c.liste.sort((a, b) => b.nombre - a.nombre)[0] ? { cle: c.liste[0].cle, symptome: c.liste[0].symptome, nombre: c.liste[0].nombre } : null, pannesListe: c.liste.slice(0, 3).map((p) => ({ symptome: p.symptome, nombre: p.nombre })) }
+    return { id, repere: repere.get(id) || '', designation: designation.get(id) || '', pannes: c.pannes, precedent: c.precedent, evolution: ev, diagnostic, libelle: DIAGNOSTICS[diagnostic], raison, panne: principale(id, c), pannesListe: c.liste.slice(0, 3).map((p) => ({ symptome: p.symptome, nombre: p.nombre })) }
   }).sort((a, b) => b.pannes - a.pannes || a.repere.localeCompare(b.repere))
   const ordreLignes = (g) => (g.machineEntiere ? colonnes.length : Math.max(0, colonnes.findIndex((c) => c.id === g.equipement)))
   return {
@@ -128,11 +137,11 @@ Réponds seulement avec un objet JSON, sans texte autour :
 // La panne, avec les choses vues à refaire sur son équipement ou sa machine (préventif sans fréquence, 12 mois) :
 // hors du plan, elles nourrissent les conseils de préventif.
 async function panneDe(parcId, machineId, cle) {
-  const { v, machine, pannes } = await machineEtPannes(parcId, machineId)
-  const panne = pannes.find((x) => x.cle === cle)
+  const { v, machine, pannes, globales } = await machineEtPannes(parcId, machineId)
+  const panne = [...pannes, ...globales].find((x) => x.cle === cle)
   if (!panne) throw new ErreurHttp(404, 'Panne introuvable sur cette machine')
   const depuis = ilYa(365)
-  const notes = v.ponctuels.filter((l) => l.date >= depuis && (l.machine_id === panne.equipement || l.machine_id === machine.id)).slice(0, 8).map((l) => `${l.date} : ${texteSeul(l.description).slice(0, 200)}`)
+  const notes = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === panne.equipement || l.machine_id === machine.id)).slice(0, 8).map((l) => `${l.date} : ${texteSeul(l.description).slice(0, 200)}`)
   return { machine, panne: { ...panne, notes } }
 }
 

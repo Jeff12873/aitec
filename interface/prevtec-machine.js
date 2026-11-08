@@ -1,19 +1,19 @@
-// PREVTEC, étapes 3 et 4 : le Démonstrateur d'une machine (clic sur une machine du Pareto ou du tableau), fidèle au
-// classeur de son auteur. En colonnes les équipements de la machine, le plus en panne à gauche ; en lignes les
+// PREVTEC, étapes 3 et 4 : le Démonstrateur d'une machine, 3e niveau de zoom de la carte de la ligne (ETH › machines
+// › Démonstrateur), fidèle au classeur de son auteur. En colonnes les équipements de la machine, le plus en panne à gauche ; en lignes les
 // visites du plan ; à la croisée, l'endroit où chaque visite est posée ; sous chaque colonne, l'un des 4 diagnostics
 // (pas de préventif, mauvais point contrôlé ou énoncé trop vague, préventif ok, sur maintenance). Puis « Je décide » :
 // une fiche N1 ou un point N2 pour les équipements sans préventif ou mal regardés. Calcul : blocs/mn1/demonstrateur.js.
 
-import { h, vider, ic, dateFr, essayer, fenetre, notifier } from '/socle/ui.js'
+import { h, ic, dateFr, essayer, fenetre, notifier } from '/socle/ui.js'
 import { api } from '/socle/api.js'
-import { filEtapes, evolutionPanne } from './prevtec.js'
+import { evolutionPanne } from './prevtec.js'
 import { relireFiche } from './mn1-parc.js'
 import { LOGO_MN1 } from './fiches-mn1.js'
 
 const COULEURS = { pas: 'rouge', mauvais: 'violet', ok: 'vert', sur: 'orange', rien: '' }
 
-export async function afficherMachine(zone, parcId, machineId) {
-  vider(zone, filEtapes(3), h('p', { class: 'discret curseur' }, 'Lecture des pannes et des visites de la machine'))
+// Rend { element, machine } : la matrice et « Je décide ».
+export async function demonstrateurMachine(parcId, machineId) {
   const base = `/api/mn1/parcs/${encodeURIComponent(parcId)}/machines/${machineId}`
   const d = await api(base)
   const m = d.machine
@@ -26,15 +26,15 @@ export async function afficherMachine(zone, parcId, machineId) {
   const lignePannes = h('tr', { class: 'ligne-pannes-demo' }, h('th', {}, 'pannes (12 mois)'), h('td'), h('td'),
     col.map((c) => h('td', { class: `nb-pannes ${COULEURS[c.diagnostic]}` }, h('b', {}, String(c.pannes)), c.pannes ? evolutionPanne({ nombre: c.pannes, precedent: c.precedent, evolution: c.evolution }) : null)), h('td'))
   const corps = d.lignes.map((g) => h('tr', {},
-    h('th', { class: 'titre-visite', title: g.titre }, g.code ? h('span', { class: 'etiquette code-visite', title: `Niveau ${g.code.niveau} · ${g.code.type}` }, g.code.code) : null, g.titre),
+    h('th', { class: 'titre-visite', title: g.titre }, g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
     h('td', { class: 'col-t discret' }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
     h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
     col.map((c) => h('td', { class: `croisee ${g.equipement === c.id && !g.machineEntiere ? 'posee' : ''}` }, g.equipement === c.id && !g.machineEntiere ? '●' : '')),
     h('td', { class: `croisee ${g.machineEntiere ? 'posee vague' : ''}` }, g.machineEntiere ? '●' : '')))
   const ligneDiag = h('tr', { class: 'ligne-diagnostics' }, h('th', {}, 'diagnostic'), h('td'), h('td'),
     col.map((c) => h('td', { class: `diag-demo ${COULEURS[c.diagnostic]}`, title: c.raison }, c.libelle)), h('td'))
-  const matrice = h('div', { class: 'carte' },
-    h('div', { class: 'carte-entete' }, h('h2', {}, ic('graphique', 18), 'Démonstrateur'), h('span', { class: 'discret' }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} du plan · 12 mois`)),
+  const matrice = h('div', {},
+    h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${m.designation || m.repere} · ${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} d’observation du plan · 12 mois`),
     col.length || d.lignes.length ? h('div', { class: 'tableau-conteneur demo-conteneur' }, h('table', { class: 'matrice-demo' }, h('thead', {}, tete, lignePannes), h('tbody', {}, corps), h('tfoot', {}, ligneDiag)))
       : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
     h('div', { class: 'legende-demo' },
@@ -77,11 +77,5 @@ export async function afficherMachine(zone, parcId, machineId) {
     h('div', { class: 'suite-etape' },
       h('a', { class: 'bouton', href: `#/mn1/n1/${encodeURIComponent(d.parc.id)}` }, h('span', { class: 'numero-etape' }, '5'), 'Niveau 1 de la ligne ›')))
 
-  vider(zone,
-    filEtapes(3, d.parc, m),
-    h('div', { class: 'entete-page' },
-      h('a', { class: 'bouton discret icone-seule', title: `Retour à la ligne ${d.parc.nom}`, href: `#/mn1/parc/${encodeURIComponent(d.parc.id)}` }, ic('retour')),
-      h('div', { style: { flex: 1 } }, h('h1', {}, h('span', { class: 'mono' }, m.repere), m.designation ? ` — ${m.designation}` : ''), h('p', { class: 'sous-titre' }, `${d.parc.nom} · le préventif est-il bien ciblé, en bonne quantité ?`)),
-      h('div', { class: 'actions' }, h('a', { class: 'bouton', href: `#/analyse/${m.id}` }, ic('graphique', 16), 'Analyse complète'))),
-    h('div', { class: 'demonstrateur' }, matrice, carteDecisions))
+  return { element: h('div', { class: 'demonstrateur' }, matrice, carteDecisions), machine: m }
 }

@@ -11,7 +11,6 @@ import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe, sqlFamille } from '../../lib/types.js'
 import { pannesDeLaMachine } from '../pannes/serveur.js'
 import { bilanLigne } from './visites.js'
-import { classement, classeDe, cleDe, gammeDe } from './equilibre.js'
 import { chargeDuParc, etatLecture, fiConnues, etatDeLaFi, parSemaine, periodicite } from './fi.js'
 import { reglagesDuParc } from './gmao.js'
 import { recalerEtiquettes } from './etiquettes.js'
@@ -94,11 +93,8 @@ export function evolution(recent, precedent) {
 
 // ---------------------------------------------------------------- le plan de maintenance va-t-il dans le bon sens ?
 
-// Le verdict et les indicateurs de la ligne (visites.js, bilanLigne), avec la part du préventif d'observation.
-const bilan = (parc, liste) => {
-  const c = classement()
-  return bilanLigne(parc.id, liste, { classeDe: (description) => classeDe(c, cleDe(gammeDe(description))) }).catch(() => ({ plan: null, indicateurs: null }))
-}
+// Le verdict et les indicateurs de la ligne (visites.js, bilanLigne).
+const bilan = (parc, liste) => bilanLigne(parc.id, liste).catch(() => ({ plan: null, indicateurs: null }))
 
 // Les correctifs du parc, par mois, sur les 12 derniers mois terminés (la petite courbe de la vignette) : le mois
 // en cours, à peine commencé, ferait plonger la courbe.

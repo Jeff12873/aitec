@@ -40,10 +40,13 @@ export function jauge(valeur, { taille = 74, seuil = null, inverse = false, libe
 export function courbe(valeurs, { largeur = 400, hauteur = 60 } = {}) {
   const svg = s('svg', { viewBox: `0 0 ${largeur} ${hauteur}`, class: 'courbe-mn1', preserveAspectRatio: 'xMidYMid meet' })
   if (!valeurs.length) return svg
+  // L'échelle resserrée sur les valeurs (pas de zéro en bas) : la tendance se lit mieux.
   const max = Math.max(1, ...valeurs)
+  const min = Math.min(...valeurs)
+  const bas = Math.max(0, min - (max - min) * 0.2)
   const marge = 6
   const pas = valeurs.length > 1 ? (largeur - 2 * marge) / (valeurs.length - 1) : 0
-  const points = valeurs.map((v, i) => [marge + i * pas, hauteur - marge - (v / max) * (hauteur - 2 * marge)])
+  const points = valeurs.map((v, i) => [marge + i * pas, hauteur - marge - ((v - bas) / (max - bas || 1)) * (hauteur - 2 * marge)])
   const trace = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
   const trait = s('path', { d: trace, class: 'trait-courbe' })
   const eclat = s('path', { d: trace, class: 'eclat-courbe' })

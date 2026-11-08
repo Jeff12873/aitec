@@ -10,6 +10,7 @@ import { h, vider, ic, essayer } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 import { modeAdmin } from '/socle/etat.js'
 import { lienMachine } from './prevtec.js'
+import { demonstrateurMachine } from './prevtec-machine.js'
 
 const ECART = 2 // même règle que le serveur (equilibre.js, zone)
 const MODES = [['tout', 'Tout', 'Le préventif de niveau 1 et celui des techniciens'], ['n1', 'Niveau 1', 'Les RI de niveau 1 (conducteurs, fiches MN1)'], ['techniciens', 'Techniciens', 'Le préventif des techniciens, hors niveau 1']]
@@ -26,20 +27,41 @@ function zone({ correctifs, preventifs }, totaux, nombre) {
 }
 
 // d : le détail du parc (pour son id). Renvoie l'élément ; les données se chargent à l'affichage.
-export function nuageEquilibre(d) {
+// machine : le Démonstrateur à ouvrir d'emblée ; surMachine(m) : appelé quand on y entre (m) ou qu'on en sort (null).
+export function nuageEquilibre(d, { machine = null, surMachine = () => {} } = {}) {
   parcCourant = d.parc.id
   const zoneNuage = h('div', { class: 'equilibre-mn1' }, h('p', { class: 'discret' }, 'Lecture des interventions…'))
   let donnees = null
   let mode = 'tout'
   let ethChoisi = null // null : les ETH de la ligne ; sinon l'id de l'ETH dont on voit les machines
+  let machineChoisie = null // l'id de la machine dont on voit le Démonstrateur (3e niveau)
 
   const charger = async () => {
     donnees = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}/equilibre`))
-    if (donnees) dessiner()
-    else vider(zoneNuage, h('p', { class: 'discret' }, 'Lecture impossible.'))
+    if (!donnees) return vider(zoneNuage, h('p', { class: 'discret' }, 'Lecture impossible.'))
+    if (machine) {
+      // Un équipement ou une machine : on la replace dans son ETH, pour la flèche de retour.
+      const e = donnees.equipements.find((x) => String(x.id) === String(machine) || String(x.machine.id) === String(machine))
+      if (e) { ethChoisi = e.eth?.id || ''; machineChoisie = e.machine.id }
+      machine = null
+    }
+    dessiner()
+  }
+  const adresse = (id) => history.replaceState(null, '', `#/mn1/parc/${encodeURIComponent(d.parc.id)}${id ? `?machine=${id}` : ''}`)
+  const ouvrirDemonstrateur = async () => {
+    const eth = donnees.equipements.find((e) => (e.eth?.id || '') === ethChoisi)?.eth
+    const retour = h('div', { class: 'retour-tableau' }, h('button', { class: 'petit discret', onclick: () => { machineChoisie = null; adresse(null); surMachine(null); dessiner() } }, ic('retour', 14), `Machines de ${eth?.code || 'Hors ETH'}`))
+    vider(zoneNuage, retour, h('p', { class: 'discret curseur' }, 'Lecture des pannes et des visites de la machine'))
+    const r = await essayer(() => demonstrateurMachine(d.parc.id, machineChoisie))
+    if (!r) return
+    vider(zoneNuage, retour, r.element)
+    adresse(r.machine.id)
+    surMachine(r.machine)
+    zoneNuage.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const dessiner = () => {
+    if (machineChoisie !== null) return ouvrirDemonstrateur()
     const tous = donnees.equipements.map((e) => ({ ...e, preventifs: preventifsDe(e, mode) })).filter((e) => e.correctifs || e.preventifs)
     // Deux niveaux : les ETH de la ligne, puis (clic) les machines d'un ETH, sous-ensembles regroupés.
     const regrouper = (equipements, cle, decrire) => {
@@ -96,9 +118,9 @@ export function nuageEquilibre(d) {
           h('span', { class: 'pastille-zone vert' }), `${compte('vert')} équilibré${compte('vert') > 1 ? 's' : ''}`)),
       ethChoisi !== null ? h('div', { class: 'retour-tableau' }, h('button', { class: 'petit discret', onclick: () => { ethChoisi = null; dessiner() } }, ic('retour', 14), 'Toutes les ETH'), h('b', {}, eth?.libelle || 'Hors ETH'), h('span', { class: 'discret' }, ' : ses machines')) : null,
       liste.length
-        ? tableauCases(liste, totaux, { niveau: ethChoisi === null ? 'eth' : 'machine', zoomer: (id) => { ethChoisi = id; dessiner() } })
+        ? tableauCases(liste, totaux, { niveau: ethChoisi === null ? 'eth' : 'machine', zoomer: (id) => { ethChoisi = id; dessiner() }, ouvrir: (id) => { machineChoisie = id; dessiner() } })
         : h('p', { class: 'discret' }, 'Ni correctif ni préventif sur les machines de maintenance de cette ligne ces 12 derniers mois.'),
-      h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. Rouge : beaucoup de pannes pour peu de visites ; orange : beaucoup de visites pour peu de pannes ; vert : équilibré.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour l’étape 3.'}`),
+      h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. Rouge : beaucoup de pannes pour peu de visites ; orange : beaucoup de visites pour peu de pannes ; vert : équilibré.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour ouvrir son Démonstrateur.'}`),
       aRegarder.length || surEntretien.length ? h('div', { class: 'a-regarder' },
         aRegarder.length ? h('div', {}, h('b', {}, 'À regarder d’abord'), aRegarder.slice(0, 8).map(puce)) : null,
         surEntretien.length ? h('div', {}, h('b', {}, 'Préventif à alléger ?'), surEntretien.slice(0, 8).map(puce)) : null) : null,
@@ -164,7 +186,7 @@ function tranchesAdaptees(valeurs) {
   return bornes.map((de, i) => ({ de, a: (bornes[i + 1] ?? Infinity) - 1, libelle: bornes[i + 1] === undefined ? (de ? `${de}+` : '0') : de === bornes[i + 1] - 1 ? String(de) : `${de}–${bornes[i + 1] - 1}` }))
 }
 
-function tableauCases(liste, totaux, { niveau, zoomer }) {
+function tableauCases(liste, totaux, { niveau, zoomer, ouvrir }) {
   // Peu d'éléments (les ETH) : des tranches adaptées ; beaucoup (les machines) : les tranches fixes.
   const lignesC = tranchesAdaptees(liste.map((e) => e.correctifs)).reverse() // beaucoup de pannes en haut
   const colonnesP = tranchesAdaptees(liste.map((e) => e.preventifs))
@@ -187,9 +209,7 @@ function tableauCases(liste, totaux, { niveau, zoomer }) {
         ? h('button', { class: `puce-case puce-eth ${e.rouges ? 'rouge alerte' : e.oranges ? 'orange' : e.zone}`, title: `${e.designation} : ${e.correctifs} pannes, ${e.preventifs} visites, ${e.machines} machines — cliquer pour voir ses machines`, onclick: () => zoomer(e.id) },
           h('b', {}, e.repere), h('small', {}, `${e.correctifs} pannes · ${e.preventifs} visites`),
           e.rouges ? h('span', { class: 'a-regarder-eth' }, `${e.rouges} à regarder`) : e.oranges ? h('span', { class: 'a-alleger-eth' }, `${e.oranges} à alléger ?`) : h('span', { class: 'ok-eth' }, 'rien d’alarmant'))
-        : e.analyse
-          ? h('a', { class: `puce-case ${e.zone}`, href: lienMachine(parcCourant, e.analyse), title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — étape 3` }, e.repere)
-          : h('span', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites` }, e.repere)
+        : h('button', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — ouvrir son Démonstrateur`, onclick: () => ouvrir(e.id) }, e.repere)
       const montrees = dedans.sort((a, b) => b.correctifs - a.correctifs).slice(0, 4)
       cases.push(h('div', { class: `case-tableau ${fond(tc, tp)}${dedans.length ? ' occupee' : ''}`, title: dedans.length > 4 ? dedans.map((e) => `${e.repere} (${e.correctifs} / ${e.preventifs})`).join('\n') : '' },
         montrees.map(puceCase),

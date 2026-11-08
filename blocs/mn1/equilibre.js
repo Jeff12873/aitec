@@ -12,8 +12,8 @@
 // corrige. Le classement est gardé dans le fichier (réglage « mn1_gammes »). Sans classement : une première idée
 // d'après les mots du titre (échange, remplacement…).
 //
-// Préventif de niveau 1 : les RI de la requête du site « RI N1 », ou une FI au modèle de numéro des fiches MN1 ;
-// le reste du préventif est celui des techniciens.
+// Seul le préventif à code (visites.js) compte : le niveau 1 est celui dont le code le dit, le reste celui des
+// techniciens.
 
 import { db, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
@@ -21,10 +21,7 @@ import { exigerEcriture } from 'ktec/partage.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { lireParcs, NON_CLASSE, machineAnalysable } from '../../lib/parcs.js'
 import { familleDe } from '../../lib/types.js'
-import { lireRiN1 } from './circuit.js'
-import { reglagesDuParc } from './gmao.js'
-import { motifs } from './fi.js'
-import { convention, conventionReglee, lireCode, estDuPlan, placesDuParc } from './visites.js'
+import { convention, lireCode, estDuPlan, placesDuParc } from './visites.js'
 
 const JOURS = 365
 const PAR_LOT = 40 // gammes envoyées à l'IA en une fois
@@ -53,18 +50,9 @@ export const classeDe = (c, cle) => c[cle]?.classe || devinee(cle)
 export async function interventionsDuParc(parc) {
   const ids = new Set(parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines)
   const lignes = db().prepare('SELECT id, date, machine_id, numero, type, description FROM interventions WHERE date >= ?').all(ilYa(JOURS)).filter((l) => ids.has(l.machine_id))
-  // Le niveau 1 : les RI de la requête du site (si elle est réglée et la GMAO joignable), et les FI au modèle MN1.
-  let riN1 = new Set()
-  try {
-    riN1 = new Set(((await lireRiN1()) || []).map((r) => r.numero))
-  } catch {}
-  const modele = motifs(reglagesDuParc(parc.id).numero).regex
-  // Convention des codes réglée : le niveau vient du code (P = 1, I = 2…), et un préventif sans code ne compte pas.
+  // Seules les visites à code comptent (le fréquentiel) ; le niveau vient du code (convention réglée).
   const c = convention()
-  const reglee = conventionReglee(c)
-  const deNiveau1 = reglee
-    ? (l) => lireCode(l.description, c)?.niveau === 1
-    : (l) => riN1.has(String(l.numero).trim()) || [...String(l.description || '').matchAll(/FI\s*:\s*([\w-]+)/g)].some((m) => modele.test(m[1]))
+  const deNiveau1 = (l) => lireCode(l.description, c)?.niveau === 1
   const duPlan = (l) => familleDe(l.type) !== 'Préventif' || estDuPlan(l.description, c)
   return { ids, lignes: lignes.filter(duPlan), deNiveau1 }
 }

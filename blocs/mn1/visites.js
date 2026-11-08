@@ -17,6 +17,8 @@ import { db, reglageJson, modifierReglage, noterModification } from '../../lib/b
 import { ErreurHttp } from 'ktec/http.js'
 import { lireParcs, NON_CLASSE } from '../../lib/parcs.js'
 import { familleDe } from '../../lib/types.js'
+import { lireRiN1 } from './circuit.js'
+import { classement, classeDe, cleDe, gammeDe } from './equilibre.js'
 
 export const NIVEAU_MACHINE = 3
 const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
@@ -33,23 +35,35 @@ export function convention() {
 }
 export const conventionReglee = (c = convention()) => Object.keys(c.niveaux).length > 0 && Object.keys(c.types).length > 0
 
-// Le code d'un titre : { code, niveau, ligne, type, nomType, titre } ou null s'il n'est pas reconnu.
+// Le code d'un titre : { code, niveau, ligne, type, nomType, titre } ou null. Forme : une lettre, une lettre ou un
+// chiffre, une lettre, puis un tiret. Convention réglée : ses lettres seules sont reconnues ; sinon toute la forme
+// compte, sans niveau ni nom de type.
 export function lireCode(description, c = convention()) {
-  const t = texteSeul(description)
-  const m = /^([A-Za-z])([0-9A-Za-z])([A-Za-z])\s*-\s*(.*)$/.exec(t)
+  const m = /^([A-Za-z])([0-9A-Za-z])([A-Za-z])\s*-\s*(.*)$/.exec(texteSeul(description))
   if (!m) return null
   const [n, l, ty] = [m[1], m[2], m[3]].map((x) => x.toUpperCase())
+  const base = { code: `${n}${l}${ty}`, ligne: l, type: ty, titre: m[4].split(' - ')[0].trim() } // la suite : FI et observation
+  if (!conventionReglee(c)) return { ...base, niveau: null, nomType: ty, jamaisEspacer: false }
   if (!c.niveaux[n] || !c.types[ty]) return null
-  return { code: `${n}${l}${ty}`, niveau: c.niveaux[n], ligne: l, type: ty, nomType: c.types[ty].nom || ty, jamaisEspacer: c.types[ty].jamaisEspacer, titre: m[4] }
+  return { ...base, niveau: c.niveaux[n], nomType: c.types[ty].nom || ty, jamaisEspacer: c.types[ty].jamaisEspacer }
 }
 
-// Seul ce qui a un fréquentiel fait partie du plan : une intervention issue d'une FI (son texte cite « FI : FI-… »).
-// Le reste du « préventif » (une chose vue à refaire pendant une panne, notée sans fréquence) n'en fait pas partie :
-// il sert de source, avec les correctifs, pour proposer de nouveaux préventifs.
-export const issueDUneFi = (description) => /\bFI\s*:\s*[A-Z]{1,4}-?\d/i.test(texteSeul(description))
+// Le préventif a quatre natures :
+//   - « observation » et « systematique » : le code en tête du titre, donc une visite avec un fréquentiel, du plan ;
+//     seule l'observation entre dans le corrélateur (le systématique renouvelle sans regarder l'état) ;
+//   - « remontee » (Remontée N1) : une RI liée à une DI de niveau 1, ce qu'un conducteur a remarqué ;
+//   - « ponctuel » : tout le reste, un entretien fait une fois (souvent les initiales de l'auteur en fin de titre).
+// Les deux dernières n'ont pas de fréquence : hors du plan, elles servent de source aux nouveaux conseils.
+export const estDuPlan = (description, c = convention()) => Boolean(lireCode(description, c))
 
-// Le préventif compte-t-il dans le plan ? Issu d'une FI, et (convention réglée) avec un code reconnu.
-export const estDuPlan = (description, c = convention()) => issueDUneFi(description) && (!conventionReglee(c) || Boolean(lireCode(description, c)))
+// Les numéros des RI liées à une DI de niveau 1 (requête du site « RI N1 » ; vide si elle n'est pas réglée).
+async function risDeDiN1() {
+  try {
+    return new Set(((await lireRiN1()) || []).filter((r) => r.di).map((r) => r.numero))
+  } catch {
+    return new Set()
+  }
+}
 
 export function enregistrerConvention({ niveaux = {}, types = {} }) {
   modifierReglage('prev_convention', { niveaux, types })
@@ -70,7 +84,7 @@ export function enregistrerLettre(parc, lettres) {
 export async function apercuConvention() {
   const c = convention()
   const p = await lireParcs()
-  const lignes = db().prepare('SELECT machine_id, type, description FROM interventions WHERE date >= ?').all(ilYa(365)).filter((l) => familleDe(l.type) === 'Préventif' && issueDUneFi(l.description))
+  const lignes = db().prepare('SELECT machine_id, type, description FROM interventions WHERE date >= ?').all(ilYa(365)).filter((l) => familleDe(l.type) === 'Préventif' && lireCode(l.description, { niveaux: {}, types: {}, lettres: {} }))
   const parcs = (p?.parcs || []).filter((x) => x.id !== NON_CLASSE).map((parc) => {
     const ids = parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines
     const du = lignes.filter((l) => ids.has(l.machine_id))
@@ -108,34 +122,29 @@ export function placesDuParc(p, parc) {
 
 // ---------------------------------------------------------------- les visites d'un parc
 
-// Les visites du plan (12 derniers mois, et les 12 d'avant pour comparer) sur les machines de maintenance du parc.
+// Le préventif des machines de maintenance du parc (24 mois) : les visites du plan (code reconnu, avec leur nature),
+// celles d'observation à part, les remontées N1 et les entretiens ponctuels.
 export async function visitesDuParc(parcId) {
   const p = await lireParcs()
   const parc = p?.parcs.find((x) => x.id === parcId && x.id !== NON_CLASSE)
-  if (!parc) throw new ErreurHttp(404, 'Ligne introuvable')
+  if (!parc) throw new ErreurHttp(404, 'Parc introuvable')
   const c = convention()
-  const reglee = conventionReglee(c)
   const ids = parc.machinesMaintenance.size ? parc.machinesMaintenance : parc.machines
   const places = placesDuParc(p, parc)
   const depuis = ilYa(365)
-  const lignes = db().prepare('SELECT id, date, machine_id, type, description, duree_h, intervenant FROM interventions WHERE date >= ?').all(ilYa(730)).filter((l) => ids.has(l.machine_id))
+  const lignes = db().prepare('SELECT id, numero, date, machine_id, type, description, duree_h, intervenant FROM interventions WHERE date >= ?').all(ilYa(730)).filter((l) => ids.has(l.machine_id))
+  const dn1 = await risDeDiN1()
+  const classes = classement()
   const visites = []
-  const ponctuels = [] // du « préventif » sans fréquence (pas issu d'une FI) : hors plan, source de conseils
-  let horsConvention = 0
+  const remontees = []
+  const ponctuels = []
   for (const l of lignes) {
     if (familleDe(l.type) !== 'Préventif') continue
-    if (!issueDUneFi(l.description)) {
-      ponctuels.push(l)
-      continue
-    }
     const code = lireCode(l.description, c)
-    if (reglee && !code) {
-      if (l.date >= depuis) horsConvention++
-      continue
-    }
-    visites.push({ ...l, recente: l.date >= depuis, code, place: places.get(l.machine_id) || null })
+    if (code) visites.push({ ...l, recente: l.date >= depuis, code, nature: classeDe(classes, cleDe(gammeDe(l.description))), place: places.get(l.machine_id) || null })
+    else (dn1.has(String(l.numero).trim()) ? remontees : ponctuels).push(l)
   }
-  return { p, parc, places, visites, ponctuels, horsConvention, reglee, convention: c, lignes }
+  return { p, parc, places, visites, observation: visites.filter((x) => x.nature !== 'systematique'), remontees, ponctuels, reglee: conventionReglee(c), convention: c, lignes }
 }
 
 // Une visite regarde-t-elle une panne posée sur l'équipement « machineId » ?
@@ -159,7 +168,7 @@ const debutMois = (decalage) => {
 // Verdict : les pannes de la ligne, et celles du haut du Pareto qui montent (ou apparaissent, 5 cas au moins),
 // malgré une visite qui les regarde (elle ne les voit pas venir) ou sans aucune visite ; une baisse nette des
 // pannes (10 % et plus) tempère le verdict.
-export async function bilanLigne(parcId, liste, { classeDe } = {}) {
+export async function bilanLigne(parcId, liste) {
   const v = await visitesDuParc(parcId)
   const [debut, milieu, fin] = [debutMois(24), debutMois(12), debutMois(0)]
   const dans = (l, a, b) => l.date >= a && l.date < b
@@ -196,7 +205,7 @@ export async function bilanLigne(parcId, liste, { classeDe } = {}) {
   const equipeAvant = equipe(debut, milieu)
   const tmcd = { recent: equipeRecente.moyenne, precedent: equipeAvant.moyenne, depanneurs: equipeRecente.noms.size, nouveaux: [...equipeRecente.noms].filter((x) => !equipeAvant.noms.has(x)).length }
   const recentes = v.visites.filter((l) => dans(l, milieu, fin))
-  const observation = classeDe && recentes.length ? recentes.filter((l) => classeDe(l.description) !== 'systematique').length / recentes.length : null
+  const observation = recentes.length ? recentes.filter((l) => l.nature !== 'systematique').length / recentes.length : null
   // Les machines qui concentrent les pannes (remontées à leur machine de niveau 3).
   const parMachine = new Map()
   for (const l of correctifs.filter((x) => dans(x, milieu, fin))) {
@@ -210,11 +219,12 @@ export async function bilanLigne(parcId, liste, { classeDe } = {}) {
     preventif: { recent: part(preventifs.recent, pannes.recent), precedent: part(preventifs.precedent, pannes.precedent), observation },
     tmcd,
     concentration: { machines: top, part: pannes.recent ? top.reduce((s, x) => s + x.n, 0) / pannes.recent : null },
-    horsConvention: v.horsConvention, conventionReglee: v.reglee,
+    conventionReglee: v.reglee,
+    remontees: v.remontees.filter((l) => dans(l, milieu, fin)).length,
     ponctuels: v.ponctuels.filter((l) => dans(l, milieu, fin)).length,
   }
 
-  const recentesVisites = v.visites.filter((l) => l.recente)
+  const recentesVisites = v.observation.filter((l) => l.recente) // le corrélateur : l'observation seule
   const regardee = (machine) => recentesVisites.some((x) => regarde(x, machine, v.places))
   const montent = liste.slice(0, NB_HAUT).filter((x) => x.evolution === 'monte' || (x.evolution === 'nouvelle' && x.nombre >= 5))
   const malgre = montent.filter((x) => regardee(x.machine))
