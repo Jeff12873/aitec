@@ -29,7 +29,7 @@ const REGLAGES = {
   valPeriot: 4,
   delai: 7, // retard admissible, en jours
   numero: 'FI-MN1-{parc}-{eth}-{nnn}',
-  titre: 'MN1-{machine} {etiquette}',
+  titre: 'MN1-{eth} {machine} {etiquette}',
   parSemaine: 2, // maximum de fiches par semaine et par ETH (charge pondérée par la périodicité)
   // Les unités de périodicité de la GMAO (code → durée en jours), et la périodicité de chaque fréquence de fiche.
   unites: { 1: { nom: 'jour', jours: 1 }, 3: { nom: 'semaine', jours: 7 }, 4: { nom: 'mois', jours: 30.44 } },

@@ -18,12 +18,13 @@ import * as mysql from 'ktec/mysql.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
 import { visitesLocales, visiteLocale } from './visites-locales.js'
 import { FORMAT_POINT, symptomesPour } from './symptomes.js'
+import { fiConnues, etatDeLaFi, chargeDuParc } from './fi.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
-import { evolution } from './parcs.js'
+import { evolution, demandesDuParc } from './parcs.js'
 import { familleDe } from '../../lib/types.js'
-import { visitesDuParc, regarde, texteSeul, resultatDuPassage, morceauxPassage, organeDuTitre } from './visites.js'
+import { visitesDuParc, regarde, texteSeul, resultatDuPassage, morceauxPassage, organeDuTitre, codeN1 } from './visites.js'
 import { redigerFiche, lireJson } from './correlation.js'
 
 const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
@@ -83,6 +84,47 @@ const DIAGNOSTICS = {
 const PANNES_MIN = 2
 const SUR_MAINTENANCE = 4
 
+// Les fiches de niveau 1 de cette machine, retrouvées par le lien production ↔ maintenance. On ne connaît en général
+// que la machine : la fiche est sur la machine entière, jusqu'à ce qu'on la glisse sur un organe (réglage
+// « prev_placements_n1 »). Active : une FI active dans la GMAO, ou en service sur papier ; sinon brouillon.
+async function fichesN1(v, machine, equipements) {
+  const connues = await fiConnues().catch(() => null)
+  const placees = reglageJson('prev_placements_n1', {}) || {}
+  const code = codeN1(v)
+  const demandes = await demandesDuParc(v.parc).catch(() => null)
+  const majuscules = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
+  const fiAllumee = (numero) => !['supprimee', 'inactive'].includes(etatDeLaFi(connues, numero))
+  return db().prepare('SELECT id, etiquette, zone, machine_nom, eth, action, frequence, fi_gmao, papier_le, machine_id, machine_prod FROM fiches_mn1 WHERE archivee = 0').all().map((f) => {
+    const liee = f.machine_id ?? v.p.liens?.[f.machine_prod] ?? null
+    if (liee === null || !equipements.has(liee)) return null
+    const active = Boolean(f.papier_le) || (Boolean(f.fi_gmao) && fiAllumee(f.fi_gmao))
+    const place = equipements.has(placees[f.id]) ? placees[f.id] : liee
+    // La GMAO ne dit pas de quelle FI vient une demande : on compte celles de niveau 1 sur sa machine.
+    const siennes = new Set([f.machine_prod, f.machine_id, f.machine_prod && v.p.liens?.[f.machine_prod]].filter(Boolean))
+    const nomStandard = [[code, 'MN1', majuscules(f.eth)].filter(Boolean).join('-'), majuscules(f.zone || f.machine_nom)].filter(Boolean).join(' ')
+    return { id: f.id, etiquette: f.etiquette, nom: f.zone || f.machine_nom || '', nomStandard, di: demandes ? demandes.filter((x) => siennes.has(x.machineId)).length : null, action: f.action, frequence: f.frequence, fi: f.fi_gmao, papier: Boolean(f.papier_le), active, equipement: place, machineEntiere: place === machine.id }
+  }).filter(Boolean).sort((a, b) => Number(b.active) - Number(a.active) || String(a.etiquette).localeCompare(String(b.etiquette)))
+}
+
+// La charge des opérateurs de l'ETH de production qui correspond à l'ETH de maintenance de cette machine (même code,
+// avec un préfixe). null si elle ne se lit pas.
+async function chargeDeLaMachine(parcId, v, machine) {
+  const code = v.places.get(machine.id)?.eth?.code
+  if (!code) return null
+  const c = await chargeDuParc(parcId).catch(() => null)
+  const e = c?.eths.find((x) => x.eth === code || x.eth.endsWith(code))
+  return e ? { eth: e.libelle || e.eth, charge: e.charge, max: e.max } : null
+}
+
+export function placerFicheN1(fiche, vers) {
+  exigerEcriture()
+  const p = reglageJson('prev_placements_n1', {}) || {}
+  p[Number(fiche)] = Number(vers)
+  modifierReglage('prev_placements_n1', p)
+  noterModification()
+  return { ok: true }
+}
+
 // deja : la machine et ses pannes, si l'appelant les a lues.
 export async function demonstrateur(parcId, machineId, deja = null) {
   const { v, machine, equipements, repere, pannes, parEquipement: comptes, globales } = deja || await machineEtPannes(parcId, machineId)
@@ -112,21 +154,23 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     groupes.set(cle, g)
   }
   const lignes = [...groupes.values()].map((g) => ({ ...g, t: g.ecrits ? g.rien / g.ecrits : null }))
+  const n1 = await fichesN1(v, machine, equipements)
+  const n1Actives = n1.filter((f) => f.active)
   // Un déplacement encore provisoire n'est pas actif : il compte à sa place d'origine, tant qu'il n'est pas validé.
-  const surMachine = lignes.filter((g) => g.machineEntiere || (g.placee && g.pose === machine.id))
+  const surMachine = [...lignes.filter((g) => g.machineEntiere || (g.placee && g.pose === machine.id)), ...n1Actives.filter((f) => f.machineEntiere)]
   // Les colonnes : les équipements qui ont des pannes ou des visites, le plus en panne à gauche ; la machine entière
   // (visites posées sur elle) en dernier.
   const parEquipement = new Map([...comptes].filter(([, c]) => c.pannes || c.precedent).map(([id, c]) => [id, { pannes: c.pannes, precedent: c.precedent, liste: [] }]))
   for (const p of pannes) parEquipement.get(p.equipement)?.liste.push(p)
-  for (const g of lignes) if (!g.machineEntiere && !parEquipement.has(g.equipement)) parEquipement.set(g.equipement, { pannes: 0, precedent: 0, liste: [] })
+  for (const g of [...lignes, ...n1]) if (!g.machineEntiere && !parEquipement.has(g.equipement)) parEquipement.set(g.equipement, { pannes: 0, precedent: 0, liste: [] })
   // La panne à traiter : celle qui revient le plus, sinon l'ensemble des pannes de l'équipement.
   const principale = (id, c) => {
     const p = [...c.liste].sort((a, b) => b.nombre - a.nombre)[0] || globales.find((g) => g.equipement === id)
     return p ? { cle: p.cle, symptome: p.symptome, nombre: p.nombre } : null
   }
   const colonnes = [...parEquipement].filter(([id]) => id !== machine.id || parEquipement.get(id).pannes).map(([id, c]) => {
-    const dessus = lignes.filter((g) => (g.placee ? g.pose === id && g.pose !== machine.id : g.equipement === id && !g.machineEntiere))
-    const passages = dessus.reduce((s, g) => s + g.passages, 0)
+    const dessus = [...lignes.filter((g) => (g.placee ? g.pose === id && g.pose !== machine.id : g.equipement === id && !g.machineEntiere)), ...n1Actives.filter((f) => f.equipement === id && !f.machineEntiere)]
+    const passages = dessus.reduce((s, g) => s + (g.passages || 0), 0)
     const ev = evolution(c.pannes, c.precedent)
     const monte = ev === 'monte' || (ev === 'nouvelle' && c.pannes >= 3)
     let diagnostic = 'rien'
@@ -147,6 +191,8 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     colonnes,
     lignes: lignes.sort((a, b) => ordreLignes(a) - ordreLignes(b) || b.passages - a.passages),
     locales: visitesLocales(machine.id),
+    fichesN1: n1,
+    charge: await chargeDeLaMachine(parcId, v, machine),
     conventionReglee: v.reglee,
     iaInstallee: iaInstallee(),
   }
@@ -291,7 +337,7 @@ export async function decisionCroisee(parcId, machineId, { equipement, pose, tit
   const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: propre(texteSeul(l.description)) }))
   const posee = g.equipement === id || (g.machineEntiere && id === machine.id)
   const liste = siennes.map((p) => ({ symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: propre(p.derniereAction) }))
-  return { parc: d.parc, machine, equipement: c, visite, posee, pannes: liste, remarques, conseils: conseilsDe(c, [visite], liste, remarques), iaInstallee: d.iaInstallee }
+  return { parc: d.parc, machine, charge: d.charge, equipement: c, visite, posee, pannes: liste, remarques, conseils: conseilsDe(c, [visite], liste, remarques), iaInstallee: d.iaInstallee }
 }
 
 const CONSIGNES_PRECONISATIONS = `Tu es un expert en maintenance industrielle. On te donne une visite préventive (sa FI, ses observations) et les pannes d'un équipement qu'elle regarde, ou pourrait regarder.

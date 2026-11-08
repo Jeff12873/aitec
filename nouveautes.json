@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.24.0",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : les fiches de niveau 1 de la machine sont groupées à part, avec la charge des opérateurs ; une fiche active compte dans le diagnostic",
+        "« Je décide » prévient si une fiche N1 ferait dépasser la charge de l'ETH",
+        "Le sélecteur Tout / Niveau 1 / Techniciens est retiré du tableau",
+        "Démonstrateur : colonne DI pour les fiches de niveau 1, et « Nouvelle fiche » ou clic droit pour en créer une sur un équipement",
+        "Fiches de niveau 1 nommées au standard du site : code, MN1, ETH"
+      ]
+    },
+    {
       "version": "0.23.1",
       "date": "2026-11-08",
       "points": [

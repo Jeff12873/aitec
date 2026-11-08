@@ -1034,3 +1034,17 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .lien-niveau1 { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; font-weight: 600; }
 .lien-niveau1 img { width: 20px; height: 20px; }
 .hof-vide .lien-niveau1 { margin-left: 12px; }
+
+/* Démonstrateur : les fiches de niveau 1, à part */
+.tete-n1 .titre-visite { display: flex; align-items: center; gap: 8px; padding-top: 14px; white-space: normal; max-width: none; color: var(--texte); }
+.tete-n1 img { width: 26px; height: 26px; }
+.charge-n1 { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, #5fa77c 22%, transparent); color: #8fd0a8; white-space: nowrap; }
+.charge-n1.depasse { background: color-mix(in srgb, #c0605a 30%, transparent); color: #f0a8a2; }
+.ligne-n1 .croisee { background: color-mix(in srgb, #e9e54a 4%, transparent); }
+.croisee.fiche-n1, .carre-legende.fiche-n1 { background: color-mix(in srgb, #e9e54a 20%, transparent); }
+.croisee.fiche-n1 img { width: 34px; height: 34px; vertical-align: middle; }
+.carre-legende.fiche-n1 img { width: 16px; height: 16px; }
+.croisee.fiche-n1.brouillon { background: color-mix(in srgb, #e9e54a 6%, transparent); }
+.croisee.fiche-n1.brouillon img { opacity: .4; filter: grayscale(.7); }
+.code-visite.brouillon { opacity: .6; }
+tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--accent) 35%, transparent); }

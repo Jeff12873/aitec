@@ -168,7 +168,7 @@ const debutDe = (ficheId) => db().prepare('SELECT debut FROM fiches_mn1_fi WHERE
 
 // ---------------------------------------------------------------- vignettes
 
-async function demandesDuParc(parc) {
+export async function demandesDuParc(parc) {
   let demandes = null
   try {
     demandes = await lireDemandes()

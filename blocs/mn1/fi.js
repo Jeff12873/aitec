@@ -16,6 +16,7 @@ import { ErreurHttp } from 'ktec/http.js'
 import * as mysql from 'ktec/mysql.js'
 import { lireParcs } from '../../lib/parcs.js'
 import { reglagesDuParc, description, remplir, valeursSql, instructions } from './gmao.js'
+import { visitesDuParc, codeN1 } from './visites.js'
 
 // ---------------------------------------------------------------- lecture des FI de la GMAO
 
@@ -212,9 +213,12 @@ export async function executer(demande, { valider = false } = {}) {
   if (manque.length) throw new ErreurHttp(409, `Réglages de la GMAO incomplets (${manque.join(', ')}).`)
   const f = plan.fiche
   const debut = /^\d{4}-\d{2}-\d{2}$/.test(demande.dateDeb || '') ? demande.dateDeb : aujourdhui()
+  // Le standard du site : le code de 3 caractères en tête du titre, puis MN1 et l'ETH.
+  const code = demande.parc ? await visitesDuParc(demande.parc).then(codeN1).catch(() => '') : ''
+  const codeFi = code ? `${code}-` : ''
   const valeurs = valeursSql(r, {
     numero: plan.numero,
-    titre: remplir(r.titre, { parc: plan.parcNom, machine: f.machine_nom || f.repere || plan.equipement.designation || plan.equipement.code, repere: plan.equipement.code, zone: f.zone, etiquette: f.etiquette, eth: sansPrefixe(plan.eth.eth), eth_fiche: f.eth, ligne: f.ligne }),
+    titre: codeFi + remplir(r.titre, { parc: plan.parcNom, machine: f.machine_nom || f.repere || plan.equipement.designation || plan.equipement.code, repere: plan.equipement.code, zone: f.zone, etiquette: f.etiquette, eth: sansPrefixe(plan.eth.eth), eth_fiche: f.eth, ligne: f.ligne }),
     obser: description([f]),
     parc: plan.equipement.noeud,
     dateDeb: debut,

@@ -7,7 +7,7 @@
 //   peu de pannes, beaucoup de visites      : trop de préventif ? (orange), ou le préventif marche si les pannes ont
 //                                             nettement baissé depuis les 12 mois d'avant (vert) ;
 //   peu de pannes, peu de visites           : rien à signaler.
-// Bascule Niveau 1 / Techniciens / Tout. Le préventif systématique (changer une pièce à date fixe) est écarté :
+// Le préventif systématique (changer une pièce à date fixe) est écarté :
 // l'IA classe chaque gamme, l'administrateur corrige (blocs/mn1/equilibre.js).
 
 import { h, vider, ic, essayer } from '/socle/ui.js'
@@ -18,8 +18,6 @@ import { demonstrateurMachine } from './prevtec-machine.js'
 import { inception } from './animer.js'
 
 const ECART = 2 // même règle que le serveur (equilibre.js, zone)
-const MODES = [['tout', 'Tout', 'Le préventif de niveau 1 et celui des techniciens'], ['n1', 'Niveau 1', 'Les RI de niveau 1 (conducteurs, fiches MN1)'], ['techniciens', 'Techniciens', 'Le préventif des techniciens, hors niveau 1']]
-const preventifsDe = (e, mode) => (mode === 'n1' ? e.n1 : mode === 'techniciens' ? e.techniciens : e.n1 + e.techniciens)
 
 const tiersHaut = (valeurs) => {
   const tri = [...valeurs].sort((a, b) => a - b)
@@ -44,7 +42,6 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
   parcCourant = d.parc.id
   const zoneNuage = h('div', { class: 'equilibre-mn1' }, h('p', { class: 'discret' }, 'Lecture des interventions…'))
   let donnees = null
-  let mode = 'tout'
   let ethChoisi = null // null : les ETH de la ligne ; sinon l'id de l'ETH dont on voit les machines
   let machineChoisie = null // l'id de la machine dont on voit le Démonstrateur (3e niveau)
 
@@ -79,7 +76,7 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
 
   const dessiner = async () => {
     if (machineChoisie !== null) return ouvrirDemonstrateur()
-    const tous = donnees.equipements.map((e) => ({ ...e, preventifs: preventifsDe(e, mode) })).filter((e) => e.correctifs || e.preventifs)
+    const tous = donnees.equipements.map((e) => ({ ...e, preventifs: e.n1 + e.techniciens })).filter((e) => e.correctifs || e.preventifs)
     // Deux niveaux : les ETH de la ligne, puis (clic) les machines d'un ETH, sous-ensembles regroupés.
     const regrouper = (equipements, cle, decrire) => {
       const groupes = new Map()
@@ -133,7 +130,6 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
     vider(zoneNuage,
       h('div', { class: 'tete-equilibre' },
         ethChoisi !== null ? h('button', { class: 'barre-retour', title: 'Revenir au tableau des ETH', onclick: () => inception(zoneNuage, null, () => { ethChoisi = null; return dessiner() }, false) }, ic('retour', 16), 'Toutes les ETH') : null,
-        h('div', { class: 'segments petits' }, MODES.map(([cle, texte, aide]) => h('button', { class: mode === cle ? 'choisi' : '', title: aide, onclick: () => { mode = cle; dessiner() } }, texte))),
         ethChoisi !== null ? h('div', { class: 'retour-tableau' }, h('b', {}, eth?.libelle || 'Hors ETH'), h('span', { class: 'discret' }, ' : ses machines')) : null),
       liste.length
         ? tableauCases(liste, { niveau: ethChoisi === null ? 'eth' : 'machine', affichage, zoomer: (id, el) => inception(zoneNuage, el, () => { ethChoisi = id; return dessiner() }), ouvrir: (id, el) => inception(zoneNuage, el, () => { machineChoisie = id; return dessiner() }) })

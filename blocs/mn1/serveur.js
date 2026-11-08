@@ -15,7 +15,7 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1 } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
 import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
@@ -574,6 +574,7 @@ export function routes(r) {
   })
 
   // Glisser une visite : dans PREVTEC seulement. Valider le déplacement : dans la GMAO (simulé d'abord).
+  admin.post('/api/mn1/fiches-n1/placer', async (ctx) => { const { fiche, vers } = await ctx.json(); return placerFicheN1(fiche, vers) })
   admin.post('/api/mn1/parcs/:id/machines/:machine/placer', async (ctx) => placerVisite(ctx.params.id, ctx.params.machine, await ctx.json()))
   admin.post('/api/mn1/parcs/:id/machines/:machine/deplacer', async (ctx) => {
     ctx.exigerAdmin()

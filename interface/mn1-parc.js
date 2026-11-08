@@ -449,7 +449,7 @@ async function proposerFiche(d, panne) {
 
 // Le brouillon d'une fiche (rédigé par l'IA), relu et corrigé avant de l'enregistrer dans le parc (administrateur).
 // Rend vrai si la fiche est enregistrée.
-export async function relireFiche(parcId, b, titre, intro) {
+export async function relireFiche(parcId, b, titre, intro, enPlus = {}) {
   const admin = peutModifier()
   const machine = h('input', { type: 'text', value: b.machine_nom })
   const zoneMachine = h('input', { type: 'text', value: b.zone })
@@ -469,7 +469,7 @@ export async function relireFiche(parcId, b, titre, intro) {
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence préconisée'), frequence),
         h('label', { class: 'champ' }, h('span', {}, 'Panne évitée'), evite))),
     boutons: admin
-      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans la ligne', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: parcId, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value } }); return true } }]
+      ? [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Enregistrer la fiche dans la ligne', classe: 'principal', action: async () => { await api('/api/mn1/fiches', { methode: 'POST', corps: { parc: parcId, machine_nom: machine.value, zone: zoneMachine.value, action: action.value, frequence: frequence.value, evite: evite.value, ...enPlus } }); return true } }]
       : [{ texte: 'Fermer', classe: 'principal', valeur: null }],
   })
   if (ok) notifier('Fiche ajoutée à la ligne')

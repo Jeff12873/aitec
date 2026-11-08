@@ -141,7 +141,9 @@ export async function visitesDuParc(parcId) {
   const ponctuels = []
   for (const l of lignes) {
     if (familleDe(l.type) !== 'Préventif') continue
-    const code = lireCode(l.description, c)
+    // Les FI des fiches de niveau 1 (« P3M-MN1-… ») ont leur groupe à part : elles ne sont pas des visites du plan.
+    const lu = lireCode(l.description, c)
+    const code = lu && !/^MN1\b/i.test(lu.titre) ? lu : null
     const commun = { ...l, recente: l.date >= depuis, code, place: places.get(l.machine_id) || null }
     if (code) visites.push({ ...commun, nature: classeDe(classes, cleDe(gammeDe(l.description))) })
     else if (dn1.has(String(l.numero).trim())) remontees.push({ ...commun, nature: 'remontee' })
@@ -189,6 +191,16 @@ export function organeDuTitre(titre, equipements) {
     return { id: e.id, score: [...mots].filter((m) => [...siens].some((s) => s === m || (Math.min(s.length, m.length) >= 5 && (s.startsWith(m) || m.startsWith(s))))).length }
   }).filter((x) => x.score).sort((a, b) => b.score - a.score)
   return classes.length && classes[0].score !== classes[1]?.score ? classes[0].id : null
+}
+
+// Le code d'une fiche de niveau 1 de cette ligne : celui, de niveau 1, le plus courant sur ses visites ; sinon la lettre
+// du niveau 1, puis la ligne et le type du code le plus courant.
+export function codeN1(v) {
+  const courant = (liste) => [...liste.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0]
+  const lettre = Object.entries(v.convention.niveaux).find(([, n]) => n === 1)?.[0] || 'P'
+  const codes = v.visites.map((x) => x.code.code)
+  const general = courant(codes)
+  return courant(codes.filter((x) => x[0] === lettre)) || (general ? `${lettre}${general.slice(1)}` : '')
 }
 
 // Une visite regarde-t-elle une panne posée sur l'équipement « machineId » ?

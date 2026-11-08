@@ -23,7 +23,11 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
   const ficheN1 = async () => {
     notifier('L’IA rédige une fiche pour cette panne…')
     const b = await essayer(() => api(`${base}/fiche`, { methode: 'POST', corps: { panne: c.panne.cle } }))
-    if (b && (await relireFiche(d.parc.id, b, `Fiche N1 — ${c.repere} : ${c.panne.symptome}`, `Rédigée par l’IA pour cette panne (${c.panne.nombre} cas en 12 mois). Relisez et corrigez : rien n’est enregistré sans vous.`))) {
+    // Prévenir si cette fiche ferait dépasser le maximum de l'ETH (on peut quand même la créer).
+    const POIDS = { Hebdomadaire: 1, Mensuelle: 12 / 52, Trimestrielle: 4 / 52, Semestrielle: 2 / 52, Annuelle: 1 / 52 }
+    const depasse = b && d.charge && d.charge.charge + (POIDS[b.frequence] || 0) > d.charge.max
+    if (depasse) notifier(`Attention : cette fiche ferait dépasser la charge de ${d.charge.eth}.`, 'erreur')
+    if (b && (await relireFiche(d.parc.id, b, `Fiche N1 — ${c.repere} : ${c.panne.symptome}`, `${depasse ? `Attention : ${d.charge.eth} est à ${d.charge.charge} fiche par semaine pour un maximum de ${d.charge.max}, cette fiche le ferait dépasser. ` : ''}Rédigée par l’IA pour cette panne (${c.panne.nombre} cas en 12 mois). Relisez et corrigez : rien n’est enregistré sans vous.`))) {
       vider(zoneSuite, h('a', { class: 'bouton principal', href: `#/niveau1/${encodeURIComponent(d.parc.id)}` }, h('img', { class: 'logo-bouton-n1', src: LOGO_MN1, alt: '' }), 'Voir cette fiche dans Maintenance de niveau 1'))
     }
   }
