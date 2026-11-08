@@ -48,7 +48,7 @@ export default {
 
   async afficher(zone, { id, query }) {
     const [onglet, parc, machine, equipement] = String(id || '').split('/')
-    if (onglet === 'decider' && parc && machine) return afficherDecider(zone, decodeURIComponent(parc), machine, equipement)
+    if (onglet === 'decider' && parc && machine) return afficherDecider(zone, decodeURIComponent(parc), machine, { equipement, pose: query?.pose, titre: query?.titre })
     // Anciennes adresses : le niveau 1 a son menu dans PREVTEC.
     if (estPrevtec && onglet === 'n1') return location.replace(`#/niveau1/${parc || ''}`)
     if (estPrevtec && ['circuit', 'demandes', 'ri'].includes(onglet)) return location.replace(`#/niveau1/${onglet}`)

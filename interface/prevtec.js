@@ -24,13 +24,13 @@ export function barreRetour(texte, cible) {
 }
 
 // etape : 1 à 4 ; parc : { id, nom } quand on est dans une ligne ; machine : { id, repere } sur son démonstrateur.
-// L'étape 3 s'ouvre d'un clic sur une machine du Pareto ou du tableau ; l'étape 4, d'un clic sur une colonne.
+// L'étape 3 s'ouvre d'un clic sur une machine du Pareto ou du tableau ; l'étape 4, d'un clic sur une case.
 export function filEtapes(etape, parc = null, machine = null) {
   const ETAPES = [
     [1, 'Les lignes', '#/mn1', 'Choisir la ligne : une vignette par ligne, avec le verdict de son plan'],
     [2, parc ? `Ma ligne · ${parc.nom}` : 'Ma ligne', parc ? `#/mn1/parc/${encodeURIComponent(parc.id)}` : null, 'Le verdict du plan, les indicateurs et les pannes qui reviennent'],
     [3, machine ? `Démonstrateur · ${machine.repere}` : 'Démonstrateur', machine ? lienMachine(parc.id, machine.id) : null, 'Clic sur une machine : le Démonstrateur, son préventif est-il bien ciblé, en bonne quantité ?'],
-    [4, 'Je décide', machine ? `#/mn1/decider/${encodeURIComponent(parc.id)}/${machine.id}` : null, 'Pour un équipement sans préventif ou mal regardé : la visite actuelle, des conseils, une fiche N1 ou un point N2'],
+    [4, 'Je décide', null, 'Un clic sur une case du Démonstrateur : cette visite face à cet équipement'],
   ]
   return h('nav', { class: 'fil-etapes', 'aria-label': 'Étapes du plan de maintenance' }, ETAPES.map(([n, texte, cible, aide], i) => {
     const classe = `etape-fil${n === etape ? ' en-cours' : ''}${n < etape ? ' faite' : ''}${cible ? '' : ' muette'}`

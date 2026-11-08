@@ -10,7 +10,7 @@
 //   - « revoir »   : une visite la regarde, et pourtant elle monte (ou apparaît, 3 cas au moins) ;
 //   - « regardee » : une visite la regarde, et elle ne monte pas.
 // Les visites : celles du plan (code reconnu, visites.js), regroupées par titre. Je décide : pour le rouge et
-// l'orange, une fiche N1 ou un point N2 rédigés par l'IA.
+// l'orange, une fiche N1 ou une FI revue, proposées par l'IA.
 
 import { db } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
@@ -195,29 +195,62 @@ export async function ficheDeVisite(parcId, machineId, { equipement, titre, orga
   }
 }
 
-// ---------------------------------------------------------------- je décide : l'état d'un équipement
+// ---------------------------------------------------------------- je décide : une visite × un équipement
 
-// Pour une page « Je décide » : les équipements de la machine (à traiter d'abord) et, pour celui qui est choisi, ce
-// qui le regarde aujourd'hui (les visites, leur FI et leurs dernières observations), ses pannes et des conseils.
-export async function decisionEquipement(parcId, machineId, equipement) {
+// La page « Je décide » d'une case du Démonstrateur : la visite telle qu'elle est écrite dans la GMAO (sa FI, ses
+// observations), et de quoi la juger face aux pannes de cet équipement.
+export async function decisionCroisee(parcId, machineId, { equipement, pose, titre }) {
   const base = await machineEtPannes(parcId, machineId)
   const { v, machine, pannes } = base
   const d = await demonstrateur(parcId, machineId, base)
-  const ordre = { pas: 0, mauvais: 1, sur: 2, ok: 3, rien: 4 }
-  const colonnes = [...d.colonnes].sort((a, b) => ordre[a.diagnostic] - ordre[b.diagnostic] || b.pannes - a.pannes)
-  const c = colonnes.find((x) => x.id === Number(equipement)) || colonnes[0]
-  const resume = colonnes.map((x) => ({ id: x.id, repere: x.repere, designation: x.designation, pannes: x.pannes, diagnostic: x.diagnostic, libelle: x.libelle }))
-  if (!c) return { parc: d.parc, machine, colonnes: [], equipement: null, iaInstallee: d.iaInstallee }
+  const id = Number(equipement)
+  const g = d.lignes.find((x) => x.pose === Number(pose) && x.titre === titre)
+  if (!g) throw new ErreurHttp(404, 'Visite introuvable sur cette machine')
+  const entiere = id === machine.id && !d.colonnes.some((x) => x.id === id && x.pannes)
+  const siennes = pannes.filter((p) => (entiere ? true : p.equipement === id)).slice(0, 6)
+  const c = d.colonnes.find((x) => x.id === id) || { id, repere: machine.repere, designation: machine.designation, pannes: d.colonnes.reduce((s, x) => s + x.pannes, 0), precedent: 0, diagnostic: 'rien', libelle: '', raison: '', panne: null }
+  if (!c.panne && siennes[0]) c.panne = { cle: siennes[0].cle, symptome: siennes[0].symptome, nombre: siennes[0].nombre }
+  if (!base.repere.has(id)) throw new ErreurHttp(404, 'Équipement introuvable sur cette machine')
+  const passages = v.toutes.filter((x) => x.machine_id === g.pose && titreDe(x) === g.titre).sort((a, b) => b.date.localeCompare(a.date))
+  const morceaux = passages.map((x) => ({ date: x.date, ...morceauxPassage(x.description) }))
+  const avecFi = morceaux.find((m) => m.contenu) || morceaux.find((m) => m.fi)
+  const visite = { ...g, fi: avecFi?.fi || '', contenu: extrait(avecFi?.contenu, 4000), observations: morceaux.filter((m) => m.observation).slice(0, 5).map((m) => ({ date: m.date, texte: extrait(m.observation, 300) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
   const depuis = ilYa(365)
-  const visites = d.lignes.filter((g) => g.equipement === c.id || g.machineEntiere).map((g) => {
-    const passages = v.toutes.filter((x) => x.machine_id === g.pose && titreDe(x) === g.titre).sort((a, b) => b.date.localeCompare(a.date))
-    const morceaux = passages.map((x) => ({ date: x.date, ...morceauxPassage(x.description) }))
-    const avecFi = morceaux.find((m) => m.fi || m.contenu)
-    return { ...g, fi: avecFi?.fi || '', contenu: extrait(avecFi?.contenu, 1600), observations: morceaux.filter((m) => m.observation).slice(0, 3).map((m) => ({ date: m.date, texte: extrait(m.observation, 200) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
-  })
-  const siennes = pannes.filter((p) => p.equipement === c.id).slice(0, 6).map((p) => ({ symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: extrait(p.derniereAction, 160) }))
-  const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === c.id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: extrait(texteSeul(l.description), 180) }))
-  return { parc: d.parc, machine, colonnes: resume, equipement: c, visites, pannes: siennes, remarques, conseils: conseilsDe(c, visites, siennes, remarques), iaInstallee: d.iaInstallee }
+  const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: extrait(texteSeul(l.description), 180) }))
+  const posee = g.equipement === id || (g.machineEntiere && id === machine.id)
+  const liste = siennes.map((p) => ({ symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: extrait(p.derniereAction, 160) }))
+  return { parc: d.parc, machine, equipement: c, visite, posee, pannes: liste, remarques, conseils: conseilsDe(c, [visite], liste, remarques), iaInstallee: d.iaInstallee }
+}
+
+const CONSIGNES_PRECONISATIONS = `Tu es un expert en maintenance industrielle. On te donne une visite préventive (sa FI, ses observations) et les pannes d'un équipement qu'elle regarde, ou pourrait regarder.
+Donne 3 préconisations au plus : simples, concrètes, 20 mots au plus chacune, tirées seulement de ce qui t'est donné. Une préconisation par ligne, sans numéro ni tiret. Formule des propositions, pas des ordres. N'invente aucune valeur ni aucun repère.`
+
+const resumeCroisee = (r) => `Machine : ${r.machine.repere} ${r.machine.designation}
+Équipement : ${r.equipement.repere} ${r.equipement.designation}${r.posee ? '' : ' (la visite n\'est pas posée sur lui)'}
+Visite : ${r.visite.titre}, ${r.visite.passages} passages en 12 mois
+Contenu actuel de la FI : ${r.visite.contenu.slice(0, 1500) || 'inconnu'}
+Observations écrites : ${r.visite.observations.map((o) => o.texte).join(' ; ') || 'aucune'}
+Pannes qui reviennent sur l'équipement (12 mois) :
+${r.pannes.map((p) => `- ${p.symptome} : ${p.nombre} cas, dernière réparation : ${p.reparation}`).join('\n') || '- aucune'}
+Déjà remarqué sur place : ${r.remarques.map((x) => x.texte).join(' ; ') || 'rien'}`
+
+// Les préconisations de l'IA pour cette case ; sans IA, les conseils tirés des chiffres.
+export async function preconisations(parcId, machineId, croisee) {
+  const r = await decisionCroisee(parcId, machineId, croisee)
+  if (!iaInstallee()) return { lignes: r.conseils, ia: false }
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_PRECONISATIONS }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 120 })
+  const lignes = texte.split('\n').map((l) => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 3)
+  return { lignes: lignes.length ? lignes : r.conseils, ia: Boolean(lignes.length) }
+}
+
+const CONSIGNES_FI = `Tu améliores le contenu d'une fiche d'intervention (FI) préventive de maintenance. Garde ce qui est utile, rends chaque point précis (l'organe, ce qu'on regarde, l'état attendu), et ajoute le contrôle qui verrait venir les pannes données. N'invente aucune valeur ni aucun repère. Réponds seulement avec le nouveau texte de la FI, un point par ligne.`
+
+// Le contenu de la FI actuelle, et une proposition de l'IA à reporter dans la GMAO.
+export async function proposerFi(parcId, machineId, croisee) {
+  if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
+  const r = await decisionCroisee(parcId, machineId, croisee)
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_FI }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 400 })
+  return { actuelle: r.visite.contenu, proposee: texte.trim() }
 }
 
 // Des conseils tirés des chiffres, sans IA : ce que disent le diagnostic, les passages et les observations.
@@ -238,11 +271,7 @@ function conseilsDe(c, visites, pannes, remarques) {
   return conseils
 }
 
-// ---------------------------------------------------------------- je décide : fiche N1 ou point N2
-
-const CONSIGNES_N2 = `Tu rédiges un point de maintenance préventive de niveau 2 (fait par un technicien de maintenance, avec outillage ou démontage léger), à reporter dans la GMAO. Il doit permettre de voir venir la panne décrite.
-Réponds seulement avec un objet JSON, sans texte autour :
-{"quoi":"le contrôle ou la mesure, concret, avec la valeur ou l'état attendu","ou":"organe ou sous-ensemble","frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","metier":"Mécanique | Électrique | Pneumatique | Hydraulique | Automatisme","pourquoi":"la panne visée et ce que le contrôle voit venir, une phrase"}`
+// ---------------------------------------------------------------- je décide : la fiche N1
 
 // La panne, avec les choses vues à refaire sur son équipement ou sa machine (préventif sans fréquence, 12 mois) :
 // hors du plan, elles nourrissent les conseils de préventif.
@@ -258,16 +287,4 @@ async function panneDe(parcId, machineId, cle) {
 export async function proposerFicheMachine(parcId, machineId, cle) {
   const { panne } = await panneDe(parcId, machineId, cle)
   return redigerFiche(panne)
-}
-
-// visites : les visites qui regardent déjà la panne sans la voir venir (à revoir), facultatives.
-export async function proposerN2(parcId, machineId, cle, visites = '', fi = '') {
-  if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
-  const { machine, panne } = await panneDe(parcId, machineId, cle)
-  const rapports = db().prepare(`SELECT date, description FROM interventions WHERE id IN (${panne.cas.slice(0, 8).join(',') || 'NULL'}) ORDER BY date DESC`).all()
-  const texte = await discuter([{ role: 'system', content: CONSIGNES_N2 }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nPanne : ${panne.symptome}${panne.surQuoi ? ` (sur ${panne.surQuoi})` : ''}, ${panne.nombre} cas en 12 mois${visites ? `\nVisite actuelle qui ne la voit pas venir : ${visites}` : ''}${fi ? `\nContenu actuel de la FI (à améliorer) : ${fi.slice(0, 900)}` : ''}\nRapports :\n${rapports.map((r) => `- ${r.date} : ${texteSeul(r.description).slice(0, 300)}`).join('\n')}${panne.notes.length ? `\nChoses vues à refaire sur cet équipement (notées pendant des pannes, sans fréquence) :\n${panne.notes.map((n) => `- ${n}`).join('\n')}` : ''}` }], { temperature: 0.3, maxMots: 400 })
-  const lu = lireJson(texte)
-  if (!lu?.quoi) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
-  const champ = (k, n = 300) => String(lu[k] || '').slice(0, n)
-  return { quoi: champ('quoi'), ou: champ('ou', 120), frequence: champ('frequence', 40), metier: champ('metier', 40), pourquoi: champ('pourquoi'), machine: machine.repere, panne: panne.symptome }
 }

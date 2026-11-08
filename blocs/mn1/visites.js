@@ -164,7 +164,7 @@ export function morceauxPassage(description) {
   const debut = m ? m[1].indexOf(' - ') : -1
   if (debut < 0) return { observation: '', fi: '', contenu: '' }
   const [avant, entete = '', ...suite] = m[1].slice(debut + 3).split(/\s*-{4,}\s*/)
-  return { observation: avant.replace(/[\s.-]+$/, '').trim(), fi: /^fi\s*:\s*(.+)$/i.exec(entete.trim())?.[1] || entete.trim(), contenu: suite.join(' ').trim() }
+  return { observation: avant.replace(/[\s.-]+$/, '').trim(), fi: /^fi\s*:\s*(.+)$/i.exec(entete.trim())?.[1] || entete.trim(), contenu: suite.join(' ').replace(/^[\s.]+/, '').trim() }
 }
 
 // Ce que dit le rapport d'un passage : « rien » : rien trouvé (RAS, OK, conforme…) ; « note » : le mainteneur a noté

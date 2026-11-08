@@ -15,7 +15,7 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionEquipement, ficheDeVisite, proposerFicheMachine, proposerN2 } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
@@ -547,13 +547,11 @@ export function routes(r) {
 
   // PREVTEC, une machine : le démonstrateur (pannes × préventifs), sa lecture par l'IA, et les décisions.
   r.get('/api/mn1/parcs/:id/machines/:machine', (ctx) => demonstrateur(ctx.params.id, ctx.params.machine))
-  r.get('/api/mn1/parcs/:id/machines/:machine/decider', (ctx) => decisionEquipement(ctx.params.id, ctx.params.machine, ctx.query.equipement))
+  r.get('/api/mn1/parcs/:id/machines/:machine/decider', (ctx) => decisionCroisee(ctx.params.id, ctx.params.machine, ctx.query))
+  r.post('/api/mn1/parcs/:id/machines/:machine/decider/preconisations', async (ctx) => preconisations(ctx.params.id, ctx.params.machine, await ctx.json()))
+  r.post('/api/mn1/parcs/:id/machines/:machine/decider/fi', async (ctx) => proposerFi(ctx.params.id, ctx.params.machine, await ctx.json()))
   r.get('/api/mn1/parcs/:id/machines/:machine/visite', (ctx) => ficheDeVisite(ctx.params.id, ctx.params.machine, ctx.query))
   r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
-  r.post('/api/mn1/parcs/:id/machines/:machine/n2', async (ctx) => {
-    const { panne = '', visites = '', fi = '' } = await ctx.json()
-    return proposerN2(ctx.params.id, ctx.params.machine, String(panne), String(visites), String(fi))
-  })
 
   // L'affichage de « Ma ligne » et les étiquettes du préventif, communs au site.
   r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes() }))

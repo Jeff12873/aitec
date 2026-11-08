@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.17.0",
+      "date": "2026-11-08",
+      "points": [
+        "« Je décide » porte sur une case du Démonstrateur, une visite face à un équipement : le contenu de la visite dans la GMAO, des préconisations de l'IA, puis une fiche N1, la FI revue ou la fiche de visite",
+        "Seules les cases à l'intérieur du Démonstrateur sont cliquables ; plus de liste d'équipements à gauche ni d'icône de fiche"
+      ]
+    },
+    {
       "version": "0.16.4",
       "date": "2026-11-08",
       "points": [

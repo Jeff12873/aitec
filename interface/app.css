@@ -897,7 +897,7 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .biais.vert > div { color: #8fd0a8; }
 .biais.orange > div { color: #e0bb7a; }
 .col-clic { cursor: pointer; }
-td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1px solid var(--accent); }
+td.col-clic:hover { filter: brightness(1.5); outline: 1px solid var(--accent); }
 .matrice-demo .nb-pannes b { display: inline; font-size: 19px; }
 .matrice-demo .nb-pannes small { font-size: 14px; margin-left: 2px; }
 .matrice-demo .nb-pannes small.rouge { color: var(--rouge); }
@@ -972,3 +972,5 @@ td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1
 .matrice-demo th.col-t, .matrice-demo th.col-passages { font-size: 16px; font-weight: 700; color: var(--texte-2); vertical-align: bottom; text-align: center; padding-bottom: 10px; }
 .matrice-demo td.col-t, .matrice-demo td.col-passages { min-width: 58px; font-size: 15px; color: var(--texte-2); }
 .matrice-demo tbody th { vertical-align: middle; }
+.titre-decider { margin: 12px 0 4px; font-size: 13px; color: var(--texte-2); }
+.detail-decider .fi-actuelle { max-height: 340px; }
