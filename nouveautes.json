@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.26.0",
+      "date": "2026-11-08",
+      "points": [
+        "Fichier de connaissances réduit de plus de moitié : bouton « Compacter le fichier » dans Administration › Réglages, à utiliser une seule fois",
+        "Les nouveaux vecteurs de recherche sont enregistrés compressés ; tous les postes doivent passer à cette version"
+      ]
+    },
+    {
       "version": "0.25.1",
       "date": "2026-11-08",
       "points": [

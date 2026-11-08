@@ -11,7 +11,7 @@ import { ErreurHttp } from 'ktec/http.js'
 import { arreterIA } from 'ktec/ia.js'
 import { dossierInstallationParDefaut, lireJson, reglagesPoste, journal } from 'ktec/installation.js'
 import { etatPartage, noterModification } from 'ktec/partage.js'
-import { relancerIndexeur, etatIndexation } from '../recherche/indexeur.js'
+import { relancerIndexeur, etatIndexation, resteACompacter, compacterVecteurs } from '../recherche/indexeur.js'
 import { etatModeles, utiliserModele } from 'ktec/modeles.js'
 import { glossaire, GLOSSAIRE_PAR_DEFAUT } from '../../lib/glossaire.js'
 
@@ -37,6 +37,15 @@ export function routes(r) {
     relancerIndexeur()
   })
 
+  // Compresse les anciens vecteurs et réduit le fichier (une seule fois, sans l'IA).
+  r.post('/api/admin/compacter', (ctx) => {
+    ctx.exigerAdmin()
+    const bilan = compacterVecteurs()
+    noterModification()
+    journal(`Fichier de connaissances compacté : ${bilan.avant} → ${bilan.apres} octets`)
+    return bilan
+  })
+
   // Les types d'intervention et leur famille (Correctif, Préventif, Autre).
   r.get('/api/admin/types', () => typesPresents())
 
@@ -58,6 +67,7 @@ export function routes(r) {
       fichier: etatPartage().fichier,
       statistiques,
       indexation: etatIndexation(),
+      aCompacter: resteACompacter(),
       ancienFichier: ancien && fs.existsSync(ancien) ? { chemin: ancien, taille: fs.statSync(ancien).size } : null,
     }
   })

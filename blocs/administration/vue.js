@@ -219,6 +219,25 @@ function carteIndex(infos) {
         }
       },
     }, ic('rafraichir', 16), 'Tout recalculer'),
+    infos.aCompacter ? boutonCompacter() : null,
+  )
+}
+
+// Visible tant que le fichier garde d'anciens vecteurs : à faire une seule fois.
+function boutonCompacter() {
+  return h('div', { style: { marginTop: '12px' } },
+    h('p', { class: 'texte-2' }, 'Le fichier peut être réduit de plus de moitié, sans l’IA et en moins d’une minute.'),
+    h('button', {
+      class: 'principal',
+      onclick: async () => {
+        if (!(await confirmer('Compacter le fichier ? À faire une seule fois, quand AITEC est à jour sur tous les postes et que les autres sont fermés. La recherche reste pratiquement identique, mais ce n’est pas réversible sans tout recalculer par l’IA.'))) return
+        await essayer(async () => {
+          const { avant, apres } = await api('/api/admin/compacter', { methode: 'POST' })
+          notifier(`Fichier réduit de ${tailleFr(avant)} à ${tailleFr(apres)}`)
+          location.reload()
+        })
+      },
+    }, ic('rafraichir', 16), 'Compacter le fichier'),
   )
 }
 

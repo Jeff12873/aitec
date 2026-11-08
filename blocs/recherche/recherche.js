@@ -8,6 +8,7 @@
 import { db } from '../../lib/base.js'
 import { etatPartage } from 'ktec/partage.js'
 import { iaInstallee, vecteurs } from 'ktec/ia.js'
+import { rangerEnMemoire } from './vecteurs.js'
 import { machinesMasquees } from '../../lib/parcs.js'
 import { titreSavoir } from '../savoirs/serveur.js'
 
@@ -102,7 +103,7 @@ function filtreMachine(machineId) {
 // ---------------------------------------------------------------- par le sens
 
 // Les vecteurs sont gardés en mémoire (une grande liste de nombres) et rechargés quand la base change.
-let memoire = { cle: null, ids: null, matrice: null, dimensions: 0 }
+let memoire = { cle: null, ids: null, nombres: null, facteurs: null, dimensions: 0 }
 
 function chargerVecteurs() {
   const { nombre, dernier } = db().prepare("SELECT count(*) AS nombre, max(id) AS dernier FROM passages WHERE vecteur IS NOT NULL AND source <> 'piece'").get()
@@ -110,20 +111,13 @@ function chargerVecteurs() {
   if (memoire.cle === cle) return memoire
 
   const lignes = db().prepare("SELECT id, vecteur FROM passages WHERE vecteur IS NOT NULL AND source <> 'piece'").all()
-  const dimensions = lignes.length ? lignes[0].vecteur.byteLength / 4 : 0
-  const ids = new Int32Array(lignes.length)
-  const matrice = new Float32Array(lignes.length * dimensions)
-  lignes.forEach((ligne, i) => {
-    ids[i] = ligne.id
-    matrice.set(new Float32Array(ligne.vecteur.buffer, ligne.vecteur.byteOffset, dimensions), i * dimensions)
-  })
-  memoire = { cle, ids, matrice, dimensions }
+  memoire = { cle, ...rangerEnMemoire(lignes) }
   return memoire
 }
 
 async function chercherParSens(question, machineId, limite) {
   if (!iaInstallee()) return []
-  const { ids, matrice, dimensions } = chargerVecteurs()
+  const { ids, nombres, facteurs, dimensions } = chargerVecteurs()
   if (!ids.length) return []
 
   let autorises = null
@@ -142,8 +136,8 @@ async function chercherParSens(question, machineId, limite) {
     if (autorises && !autorises.has(ids[i])) continue
     let produit = 0
     const debut = i * dimensions
-    for (let d = 0; d < dimensions; d++) produit += requete[d] * matrice[debut + d]
-    resultats.push([ids[i], produit])
+    for (let d = 0; d < dimensions; d++) produit += requete[d] * nombres[debut + d]
+    resultats.push([ids[i], produit * facteurs[i]])
   }
   return resultats
     .sort((a, b) => b[1] - a[1])
