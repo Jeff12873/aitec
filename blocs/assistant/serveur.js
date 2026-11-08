@@ -89,6 +89,40 @@ MODE QCM (toujours) :
 - Ligne DERNIÈRES INTERVENTIONS présente : l'agent les voit déjà au-dessus de ta réponse, ne les recopie pas ; une réparation ou un réglage récent est une piste à citer.
 - « Je ne peux pas vérifier » : propose une autre vérification qui départage les mêmes pistes.
 - Pour une question d'information : réponds, puis CHOIX avec 2 à 4 suites utiles.`
+// La suite d'un dépannage, quand l'agent répond d'un clic à une vérification : une avancée, pas une nouvelle réponse.
+const CONSIGNES_SUITE = `Tu es AITEC, assistant de dépannage. Un dépannage est en cours : l'agent vient de répondre à ta vérification.
+Tu ne réécris JAMAIS la liste des pistes, ni les titres « Pistes probables » ou « Pistes de vérification ». Pas d'introduction. Ton : des propositions, pas d'impératif. Quatre lignes, dans cet ordre :
+1. Ce que cette réponse apprend : la piste écartée ou renforcée, et pourquoi, une phrase qui commence par « → ».
+2. La piste qui reste la plus probable : l'organe, ce qui lâche, sa source [n].
+3. Le contrôle suivant, différent de ceux déjà faits, formulé en une question courte sur un état constaté (voyant, valeur, bruit, jeu, position).
+4. Une ligne qui commence exactement par « CHOIX : », avec 2 à 4 réponses courtes à TA question séparées par « | », puis « C’est réparé » et « Je ne peux pas vérifier ».
+Si l'agent ne peut pas vérifier : un autre contrôle, qui départage les mêmes pistes. Si plus aucune piste ne tient : dis-le à la ligne 1 et propose ce qu'il reste à regarder. N'invente aucun repère ni aucune valeur.`
+
+// L'agent vient-il de cliquer une réponse proposée à la vérification précédente ?
+const choixDe = (texte) => String(texte).split('\n').findIndex((l) => /^\s*\**CHOIX\**\s*:/i.test(l))
+const propre = (t) => String(t).trim().replace(/'/g, '’').toLowerCase()
+function estUneSuite(question, historique) {
+  const dernier = historique.at(-1)
+  if (dernier?.role !== 'assistant') return false
+  const lignes = String(dernier.contenu).split('\n')
+  const i = choixDe(dernier.contenu)
+  return i >= 0 && lignes[i].replace(/^.*?:/, '').split('|').map(propre).includes(propre(question))
+}
+
+// Où en est le dépannage : le problème de départ, les vérifications faites, les dernières pistes.
+function dejaFait(historique) {
+  const faites = []
+  historique.forEach((m, i) => {
+    const suivant = historique[i + 1]
+    if (m.role !== 'assistant' || suivant?.role !== 'agent') return
+    const lignes = String(m.contenu).split('\n')
+    const c = choixDe(m.contenu)
+    if (c > 0) faites.push(`- ${lignes.slice(0, c).filter((l) => l.trim()).at(-1)?.trim()} → ${suivant.contenu}`)
+  })
+  const dernier = String(historique.at(-1).contenu).split('\n')
+  return `PROBLÈME DE DÉPART : ${historique.find((m) => m.role === 'agent')?.contenu || ''}\n${faites.length ? `VÉRIFICATIONS DÉJÀ FAITES :\n${faites.join('\n')}\n` : ''}TA DERNIÈRE RÉPONSE :\n${dernier.slice(0, choixDe(dernier.join('\n'))).join('\n').slice(0, 2500)}`
+}
+
 export const REPERES_CONSIGNES = ['{atelier}', '{date}', '{glossaire}']
 
 export function routes(r) {
@@ -171,7 +205,7 @@ export function routes(r) {
         surMorceau: (morceau) => flux.envoyer('texte', morceau),
         signal: arret.signal,
         // Réponses courtes et régulières : une limite de longueur, peu de fantaisie.
-        maxMots: 600,
+        maxMots: estUneSuite(question, historique) ? 300 : 600,
         temperature: 0.2,
       })
       flux.envoyer('fin', {})
@@ -210,16 +244,19 @@ function construireMessages(question, historique, passages, machineId, groupe = 
     : 'SOURCES : aucune source trouvée dans la base pour cette question.'
 
   // On garde les 6 derniers messages de la conversation, pour les questions de suite (« et pour l'autre machine ? »).
-  const precedents = historique.slice(-6).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.contenu).slice(0, 3000) }))
+  const suite = estUneSuite(question, historique)
+  const precedents = suite ? [] : historique.slice(-6).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.contenu).slice(0, 3000) }))
 
   // Folios de schémas et pages de plans trouvés par la recherche : on joint leur image (2 au plus),
   // pour que l'IA regarde le dessin et pas seulement sa fiche.
   const images = imagesDesFolios(passages)
   if (images.length) contexte += '\n\nIMAGES JOINTES : ' + images.map((im, i) => `image ${i + 1} = source [${im.numero}]`).join(', ') + '.'
 
-  const texte = `${contexte}\n\nQUESTION : ${question}`
+  const texte = suite
+    ? `${contexte}\n\n${dejaFait(historique)}\n\nRÉPONSE DE L'AGENT À TA VÉRIFICATION : ${question}\nRéponds en quatre lignes, sans réécrire les pistes.`
+    : `${contexte}\n\nQUESTION : ${question}`
   return [
-    { role: 'system', content: consignes },
+    { role: 'system', content: suite ? CONSIGNES_SUITE : consignes },
     ...precedents,
     {
       role: 'user',

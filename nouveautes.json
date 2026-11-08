@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.21.2",
+      "date": "2026-11-08",
+      "points": [
+        "Assistant : une réponse cliquée fait avancer le dépannage en quelques lignes, sans réécrire les pistes"
+      ]
+    },
+    {
       "version": "0.21.1",
       "date": "2026-11-08",
       "points": [
