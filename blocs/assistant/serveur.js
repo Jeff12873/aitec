@@ -89,24 +89,21 @@ MODE QCM (toujours) :
 - Ligne DERNIÈRES INTERVENTIONS présente : l'agent les voit déjà au-dessus de ta réponse, ne les recopie pas ; une réparation ou un réglage récent est une piste à citer.
 - « Je ne peux pas vérifier » : propose une autre vérification qui départage les mêmes pistes.
 - Pour une question d'information : réponds, puis CHOIX avec 2 à 4 suites utiles.`
-// La suite d'un dépannage, quand l'agent répond d'un clic à une vérification : une avancée, pas une nouvelle réponse.
+// La suite d'un dépannage, quand l'agent répond à une vérification (d'un clic ou au clavier) : une avancée, pas une nouvelle réponse.
 const CONSIGNES_SUITE = `Tu es AITEC, assistant de dépannage. Un dépannage est en cours : l'agent vient de répondre à ta vérification.
 Tu ne réécris JAMAIS la liste des pistes, ni les titres « Pistes probables » ou « Pistes de vérification ». Pas d'introduction. Ton : des propositions, pas d'impératif. Quatre lignes, dans cet ordre :
 1. Ce que cette réponse apprend : la piste écartée ou renforcée, et pourquoi, une phrase qui commence par « → ».
 2. La piste qui reste la plus probable : l'organe, ce qui lâche, sa source [n].
 3. Le contrôle suivant, différent de ceux déjà faits, formulé en une question courte sur un état constaté (voyant, valeur, bruit, jeu, position).
 4. Une ligne qui commence exactement par « CHOIX : », avec 2 à 4 réponses courtes à TA question séparées par « | », puis « C’est réparé » et « Je ne peux pas vérifier ».
-Si l'agent ne peut pas vérifier : un autre contrôle, qui départage les mêmes pistes. Si plus aucune piste ne tient : dis-le à la ligne 1 et propose ce qu'il reste à regarder. N'invente aucun repère ni aucune valeur.`
+Si l'agent écrit autre chose qu'une réponse proposée (une mesure, un symptôme nouveau) : tiens-en compte à la ligne 1. Si l'agent ne peut pas vérifier : un autre contrôle, qui départage les mêmes pistes. Si plus aucune piste ne tient : dis-le à la ligne 1 et propose ce qu'il reste à regarder. N'invente aucun repère ni aucune valeur.`
 
-// L'agent vient-il de cliquer une réponse proposée à la vérification précédente ?
 const choixDe = (texte) => String(texte).split('\n').findIndex((l) => /^\s*\**CHOIX\**\s*:/i.test(l))
-const propre = (t) => String(t).trim().replace(/'/g, '’').toLowerCase()
+
+// Un dépannage est-il en cours, avec une vérification en attente ? Ce que l'agent envoie alors, cliqué ou tapé, le fait avancer.
 function estUneSuite(question, historique) {
   const dernier = historique.at(-1)
-  if (dernier?.role !== 'assistant') return false
-  const lignes = String(dernier.contenu).split('\n')
-  const i = choixDe(dernier.contenu)
-  return i >= 0 && lignes[i].replace(/^.*?:/, '').split('|').map(propre).includes(propre(question))
+  return dernier?.role === 'assistant' && choixDe(dernier.contenu) >= 0 && historique.some((m) => m.role === 'assistant' && /Pistes probables/i.test(m.contenu))
 }
 
 // Où en est le dépannage : le problème de départ, les vérifications faites, les dernières pistes.

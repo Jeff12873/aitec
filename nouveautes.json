@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.21.4",
+      "date": "2026-11-08",
+      "points": [
+        "Assistant : une réponse tapée au clavier fait avancer le dépannage, comme une réponse cliquée"
+      ]
+    },
+    {
       "version": "0.21.3",
       "date": "2026-11-08",
       "points": [
