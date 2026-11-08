@@ -10,6 +10,7 @@ import { LOGO_MN1, FREQUENCES, carteFiche, imprimerFiches, nomMachine } from './
 import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
 import { reglerParc, reglerGmao } from './mn1-reglages.js'
 import { encartCalendrier, calendrierCompact, hallOfFameLigne } from './mn1-circuit.js'
+import { bandeauGains } from './prevtec-gains.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 import { nuageEquilibre } from './mn1-equilibre.js'
 import { boutonImport } from './mn1-import.js'
@@ -282,6 +283,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     const page = h('div', { class: 'page-ligne' })
     // Chaque niveau du tableau : le retour en haut, le fil, et sur une machine la page ne garde que le graphique.
     const placeResume = h('div', { class: 'resume-machine' })
+    const placeParOu = h('div', { class: 'masque-machine' })
     const surNiveau = ({ machine: m, eth, retour, resume }) => {
       vider(placeResume, m && resume ? [h('b', {}, resume.titre), ' ', resume.suite] : null)
       vider(placeRetour, retour ? barreRetour(retour.texte, retour.action) : barreRetour('Les lignes', '#/mn1'))
@@ -293,9 +295,11 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     vider(page,
       h('div', { class: 'tete-page' }, placeRetour, filEtapes(2, d.parc)),
       h('div', { class: 'scene-parc scene-ligne' }, fond, entete, placeResume,
-        h('div', { class: 'haut-ligne masque-machine' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin))),
+        h('div', { class: 'masque-machine' }, bandeauGains(d.parc, d.plan)),
+        h('div', { class: 'haut-ligne masque-machine' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin)),
+        placeParOu),
       h('div', { class: 'masque-machine' }, hallOfFameLigne(d.parc), tuilesLigne(d.indicateurs, d.parc, affichage.indicateurs)),
-      h('div', { class: 'parc-mn1' }, cartePannesLigne(d, { machine, surNiveau, affichage })))
+      h('div', { class: 'parc-mn1' }, cartePannesLigne(d, { machine, surNiveau, affichage, placeParOu })))
     return vider(zone, page)
   }
   if (estPrevtec) {
@@ -327,7 +331,7 @@ async function mettreSurPapier(fiches, enService) {
 
 // PREVTEC, « Ma ligne » : le Pareto des pannes seul (rien des fiches) ou le Démonstrateur (ETH › machines › une
 // machine), au choix de l'administrateur ; une machine donnée par l'adresse (?machine=) ouvre son Démonstrateur.
-function cartePannesLigne(d, { machine, surNiveau, affichage }) {
+function cartePannesLigne(d, { machine, surNiveau, affichage, placeParOu }) {
   const pct = (x) => `${Math.round(x * 100)} %`
   const lignes = d.pareto.slice(0, 15)
   const tableau = lignes.length ? h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau pareto-mn1' },
@@ -342,7 +346,7 @@ function cartePannesLigne(d, { machine, surNiveau, affichage }) {
   const pareto = affichage.panneau === 'pareto' && !machine
   const titre = h('h2', {}, ic('graphique', 18), pareto ? 'Les pannes qui reviennent' : 'Démonstrateur')
   const corps = pareto ? tableau : nuageEquilibre(d, {
-    machine, affichage, seulMachine: affichage.panneau === 'pareto',
+    machine, affichage, placeParOu, seulMachine: affichage.panneau === 'pareto',
     surNiveau: (n) => { surNiveau(n); vider(titre, ic('graphique', 18), n.machine ? `Démonstrateur · ${n.machine.repere}` : 'Démonstrateur') },
   })
   return h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, titre), corps)

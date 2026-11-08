@@ -1,6 +1,7 @@
 // PREVTEC, étape 4 : « Je décide », pour une case du Démonstrateur (une visite face à un équipement). D'abord la visite
-// telle qu'elle est écrite dans la GMAO, puis les préconisations de l'IA, puis la décision : une fiche N1, la FI revue
-// (à reporter dans la GMAO) ou la fiche de visite à imprimer. Calcul : decisionCroisee (blocs/mn1/demonstrateur.js).
+// telle qu'elle est écrite dans la GMAO, puis les préconisations de l'IA, puis la décision : la retirer ou l'espacer,
+// une fiche N1, la FI revue (à reporter dans la GMAO) ou la fiche de visite à imprimer. Calcul : decisionCroisee
+// (blocs/mn1/demonstrateur.js), retraits et registre : appliquerDecision et blocs/mn1/decisions.js.
 
 import { h, vider, ic, dateFr, essayer, fenetre, notifier } from '/socle/ui.js'
 import { api } from '/socle/api.js'
@@ -9,6 +10,8 @@ import { relireFiche } from './mn1-parc.js'
 import { LOGO_MN1 } from './fiches-mn1.js'
 import { ouvrirFicheVisite } from './fiche-visite.js'
 import { choixFormat, lignesDe, pointsEnHtml } from './texte-fiche.js'
+import { CITATIONS, citation, heuresFr } from './prevtec-gains.js'
+import { modeAdmin } from '/socle/etat.js'
 
 export async function afficherDecider(zone, parcId, machineId, { equipement, pose, titre }) {
   if (!equipement || !pose || !titre) return location.replace(`#/mn1/parc/${encodeURIComponent(parcId)}?machine=${machineId}`)
@@ -57,6 +60,50 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
   }
 
   const zonePreco = h('div', {}, h('p', { class: 'discret curseur' }, d.iaInstallee ? 'L’IA lit la visite et les pannes' : ''))
+  const admin = modeAdmin()
+  const reco = d.recommandation
+  const retour = `#/mn1/parc/${encodeURIComponent(parcId)}?machine=${machineId}`
+  const lienCase = (s) => `#/mn1/decider/${encodeURIComponent(parcId)}/${machineId}/${s.equipement}?pose=${s.pose}&titre=${encodeURIComponent(s.titre)}`
+  const bouton = (cle, texte, icone, action, aide) => h('button', { class: reco?.action === cle ? 'principal' : '', 'data-decision': cle, title: aide, onclick: action }, ic(icone, 14), texte)
+  const apresGain = (message) => { notifier(message); location.hash = d.suivant ? lienCase(d.suivant) : retour }
+  // Simulé d'abord : la fenêtre montre ce qui serait écrit, le gain, et n'écrit qu'à la validation.
+  const appliquer = async (action, titreFenetre, libelle, enPlus = {}) => {
+    const corps = { ...croisee, action, ...enPlus }
+    const r = await essayer(() => api(`${base}/decider/appliquer`, { methode: 'POST', corps }))
+    if (!r) return null
+    if (!r.modifiees) { notifier(`La simulation ne modifierait rien pour ${r.numero} : vérifiez le SQL du site.`, 'erreur'); return null }
+    const ok = await fenetre({
+      titre: `${titreFenetre} : FI ${r.numero}`,
+      contenu: h('div', {},
+        h('p', { style: { marginTop: 0 } }, h('b', {}, v.titre)),
+        r.heures ? h('p', { class: 'gain-fenetre' }, `${heuresFr(r.heures)} par an rendues à l’équipe`) : null,
+        h('p', { class: 'texte-2' }, `Simulation : ${r.modifiees} ligne${r.modifiees > 1 ? 's' : ''} modifiée${r.modifiees > 1 ? 's' : ''} dans la GMAO. L’historique reste.`),
+        action === 'supprimer' ? citation(CITATIONS.supprimer) : null),
+      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: false }, { texte: libelle, classe: 'principal', action: async () => { await api(`${base}/decider/appliquer`, { methode: 'POST', corps: { ...corps, valider: true } }); return true } }],
+    })
+    return ok ? r : null
+  }
+  const supprimer = async () => {
+    const r = await appliquer('supprimer', 'Retirer du plan', 'Désactiver dans la GMAO')
+    if (r) apresGain(`Une visite de moins${r.heures ? ` : ${heuresFr(r.heures)} par an rendues` : ''}`)
+  }
+  const espacer = async () => {
+    const choix = h('select', {}, d.frequences.map((x) => h('option', { value: x }, x)))
+    const frequence = await fenetre({
+      titre: 'Espacer cette visite',
+      contenu: h('div', {}, h('p', { style: { marginTop: 0 } }, `${v.passages} passage${v.passages > 1 ? 's' : ''} sur 12 mois. Nouvelle fréquence :`), choix),
+      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: null }, { texte: 'Simuler', classe: 'principal', action: () => choix.value }],
+    })
+    if (!frequence) return
+    const r = await appliquer('espacer', 'Espacer', 'Écrire dans la GMAO', { frequence })
+    if (r) apresGain(`Visite espacée${r.heures ? ` : ${heuresFr(r.heures)} par an rendues` : ''}`)
+  }
+  const blocProtection = h('label', { class: 'protection-decider' },
+    admin ? h('input', { type: 'checkbox', checked: d.protection.protegee, onchange: async (e) => {
+      await essayer(() => api(`${base}/decider/proteger`, { methode: 'POST', corps: { pose, titre, protegee: e.target.checked } }))
+      afficherDecider(zone, parcId, machineId, croisee)
+    } }) : null,
+    d.protection.protegee ? `Protégée : sécurité ou réglementaire${d.protection.raison ? ` (${d.protection.raison})` : ''}` : admin ? 'Protéger cette visite (sécurité, réglementaire)' : '')
   const montrerPreco = (lignes) => vider(zonePreco, lignes.length ? h('ul', { class: 'conseils-decider' }, lignes.map((x) => h('li', {}, x))) : h('p', { class: 'discret' }, 'Rien de particulier à préconiser.'))
   if (d.iaInstallee) api(`${base}/decider/preconisations`, { methode: 'POST', corps: croisee }).then((r) => montrerPreco(r.lignes)).catch(() => montrerPreco(d.conseils))
   else montrerPreco(d.conseils)
@@ -67,6 +114,7 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
       h('div', { class: 'carte' },
         h('div', { class: 'carte-entete' }, h('h2', {}, v.code ? h('span', { class: 'etiquette code-visite' }, v.code.code) : null, v.titre), h('span', { class: 'discret' }, `${v.passages} passage${v.passages > 1 ? 's' : ''} sur 12 mois · dernier le ${dateFr(v.derniere)}`)),
         v.deplacee ? h('p', { class: 'discret petit-texte' }, 'Déplacée sur cet équipement dans la GMAO ; les rapports déjà faits restent sur la machine entière.') : null,
+        blocProtection,
         v.placee ? h('p', { class: 'discret petit-texte' }, 'Déplacée ici dans PREVTEC seulement : à valider dans le Démonstrateur.') : null,
         d.posee ? (v.dapresTitre ? h('p', { class: 'discret petit-texte' }, 'Posée sur la machine entière dans la GMAO ; rattachée à cet équipement d’après son titre.') : null) : h('p', { class: 'etiquette orange' }, 'Cette visite n’est pas posée sur cet équipement.'),
         h('h3', { class: 'titre-decider' }, v.fi ? `Contenu de la FI ${v.fi}` : 'Contenu de la FI'),
@@ -75,9 +123,16 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
         v.observations.length ? h('ul', { class: 'observations-decider' }, v.observations.map((o) => h('li', {}, h('span', { class: 'discret' }, `${dateFr(o.date)} : `), o.texte))) : h('p', { class: 'discret' }, 'Aucune observation écrite sur ces passages.')),
       h('div', { class: 'carte' }, h('div', { class: 'carte-entete' }, h('h2', {}, ic('etincelle', 18), 'Préconisations')), zonePreco),
       h('div', { class: 'carte carte-decisions' }, h('div', { class: 'carte-entete' }, h('h2', {}, 'Je décide')),
+        c.diagnostic === 'sur' ? citation(CITATIONS.surMaintenance) : null,
+        reco ? h('p', { class: 'reco-decider' }, h('b', {}, 'Recommandé : '), reco.raison) : d.protection.protegee ? null : h('p', { class: 'discret' }, v.espacee ? `Visite déjà espacée le ${dateFr(v.espacee)}.` : 'Rien à changer d’après les chiffres : c’est une bonne nouvelle.'),
         h('div', { class: 'actions' },
-          c.panne ? h('button', { title: `L’IA rédige une fiche de niveau 1 pour : ${c.panne.symptome}`, onclick: ficheN1 }, ic('etincelle', 14), 'Créer une fiche N1') : null,
-          d.iaInstallee ? h('button', { title: 'L’IA revoit le contenu de cette FI, à côté de la version actuelle', onclick: modifierFi }, ic('etincelle', 14), 'Modifier la FI actuelle') : null,
+          [
+            admin && !d.protection.protegee && !v.espacee ? bouton('supprimer', 'Supprimer cette visite', 'x', supprimer, 'Retire la visite du plan : sa FI est désactivée dans la GMAO, l’historique reste') : null,
+            admin && !d.protection.protegee && d.frequences.length ? bouton('espacer', 'Espacer', 'horloge', espacer, 'Choisir une fréquence plus longue, écrite dans la GMAO') : null,
+            d.iaInstallee ? bouton('modifier', 'Modifier la FI actuelle', 'etincelle', modifierFi, 'L’IA revoit le contenu de cette FI, à côté de la version actuelle') : null,
+            c.panne ? bouton('n1', 'Créer une fiche N1', 'etincelle', ficheN1, `L’IA rédige une fiche de niveau 1 pour : ${c.panne.symptome}`) : null,
+          ].filter(Boolean).sort((a, b) => (b.dataset.decision === reco?.action) - (a.dataset.decision === reco?.action)),
           h('button', { title: 'L’historique des pannes de ce qu’elle couvre, à imprimer pour le mainteneur', onclick: () => ouvrirFicheVisite(base, { ...v, equipement: c.id, dapresTitre: c.id !== v.pose }) }, ic('document', 14), 'Fiche de visite à imprimer')),
+        d.suivant ? h('a', { class: 'bouton cas-suivant', href: lienCase(d.suivant) }, 'Cas suivant →') : null,
         zoneSuite)))
 }

@@ -131,9 +131,7 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       ondragleave: (e) => e.currentTarget.classList.remove('survolee'),
       ondrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove('survolee'); if (enCours === g && !posee(g, c)) placer(g, c) },
     } : {})
-    // Ce qui pose problème d'abord : mauvais point contrôlé, sur maintenance, machine entière, puis ce qui va bien.
-    const rangLigne = (g) => ({ mauvais: 0, sur: 1, ok: 3 }[col.find((c) => posee(g, c))?.diagnostic] ?? 2)
-    const corps = [...d.lignes].sort((a, b) => rangLigne(a) - rangLigne(b)).map((g) => h('tr', {},
+    const corps = d.lignes.map((g) => h('tr', {},
       h('th', { class: 'titre-visite', title: `${g.titre}${g.dapresTitre ? '\nPosée sur la machine entière : rattachée à cet organe d’après son titre' : ''}` },
         g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
       h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),

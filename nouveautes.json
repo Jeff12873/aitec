@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "0.28.0",
+      "date": "2026-11-08",
+      "points": [
+        "Retirer du préventif est un gain : Je décide recommande Supprimer ou Espacer d'après les faits, avec les heures rendues et une simulation avant toute écriture",
+        "Les visites de sécurité et réglementaires sont protégées : elles ne sont jamais proposées au retrait",
+        "Bandeau des bonnes nouvelles : pannes en baisse, visites retirées, heures rendues, gain encore possible",
+        "Registre des décisions de la ligne, avec leur bilan : pannes avant et après, sur des mois terminés",
+        "Cas suivant dans Je décide, Par où commencer sous le verdict, citations et phrases du responsable"
+      ]
+    },
+    {
       "version": "0.27.0",
       "date": "2026-11-08",
       "points": [

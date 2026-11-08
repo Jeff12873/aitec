@@ -14,6 +14,7 @@ import { FORMAT_POINT, symptomesPour, commenceParAction, nettoyerPoint, garderSy
 import * as mysql from 'ktec/mysql.js'
 import { machineEtPannes, noeudDe } from './demonstrateur.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
+import { noterDecision } from './decisions.js'
 
 const toutes = () => reglageJson('prev_visites_locales', []) || []
 export const visitesLocales = (machine) => toutes().filter((l) => l.machine === Number(machine))
@@ -77,7 +78,8 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
   if (f.validee) throw new ErreurHttp(409, 'Cette fiche est déjà validée dans la GMAO.')
   const r = reglagesDuParc(parcId)
   if (!r.sqlVisite) throw new ErreurHttp(409, 'Le SQL de création d’une visite n’est pas réglé (réglages de la GMAO › SQL du site).')
-  const { v, repere, equipements } = await machineEtPannes(parcId, machineId)
+  const { v, repere, equipements, machine } = await machineEtPannes(parcId, machineId)
+  const repereMachine = machine.repere
   const code = repere.get(Number(equipement))
   const noeud = noeudDe(v, code)
   if (noeud === null) throw new ErreurHttp(404, 'Cet équipement est introuvable dans l’arborescence de la GMAO.')
@@ -90,7 +92,10 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
   const lot = instructions(r.sqlVisite, { ...valeursSql(r, { numero, titre, obser, parc: parcId, periot, valPeriot }), equipement: noeud, equipement_code: code })
   const reponse = await mysql.ecrireDansLaBase(lot, { valider: Boolean(valider) })
   const modifiees = reponse.resultats.filter((x) => 'modifiees' in x).reduce((s, x) => s + x.modifiees, 0)
-  if (valider && modifiees) changer(id, (x) => { x.fiches[Number(equipement)].validee = { numero, le: new Date().toISOString() } })
+  if (valider && modifiees) {
+    changer(id, (x) => { x.fiches[Number(equipement)].validee = { numero, le: new Date().toISOString() } })
+    noterDecision({ parc: parcId, machine: Number(machineId), repere: repereMachine, equipement: Number(equipement), equipementRepere: code, pose: Number(equipement), titre, fi: numero, action: 'creer', detail: f.frequence })
+  }
   return { valide: reponse.valide, modifiees, numero, titre, repere: code }
 }
 

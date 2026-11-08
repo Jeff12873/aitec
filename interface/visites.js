@@ -63,11 +63,12 @@ export const visites = {
     titre: '2. Ma ligne',
     etapes: [
       { avant: async () => { nomLigne = $('.vignette-mn1 h2')?.textContent || ''; $('.vignette-mn1')?.click(); await pause(400); ligne = decodeURIComponent(/parc\/([^?]+)/.exec(location.hash)?.[1] || '') }, attendre: '.bandeau-verdict', cible: '.bandeau-verdict', titre: 'Le verdict, expliqué', texte: 'Pourquoi ce plan est à surveiller ou à réévaluer, en clair, sur les 12 derniers mois terminés face aux 12 d’avant.' },
+      { cible: ou('.bandeau-gains', '.bandeau-verdict'), titre: 'Les bonnes nouvelles d’abord', texte: 'Les pannes qui baissent, les visites retirées, les heures rendues à l’équipe, et le gain encore possible. Uniquement de vrais chiffres. Les décisions et leur bilan s’ouvrent d’ici.' },
+      { cible: ou('.par-ou-commencer'), titre: 'Par où commencer', texte: 'Juste sous le verdict : les ETH où il y a le plus à gagner, en une phrase chacune.' },
       { avant: async () => { $('.calendrier-compact')?.click(); await pause(500) }, attendre: '.fenetre .semaine-cal', cible: () => $('.fenetre') , titre: 'Les équipes', texte: 'Le calendrier de l’année : chaque semaine porte ses équipes, A en bleu, B en vert, C en violet. Il pèse sur les indicateurs du niveau 1. En mode administrateur, un clic ou un glissé change les semaines.' },
       { avant: async () => { [...document.querySelectorAll('.fenetre button')].find((b) => b.textContent === 'Fermer')?.click(); await pause(300) }, attendre: '.zone-hof-ligne', cible: ou('.hall-of-fame', '.zone-hof-ligne'), titre: 'Les contributeurs du mois', texte: 'Ceux qui remontent et exécutent le niveau 1 sur cette ligne, et un bouton pour aller à sa maintenance de niveau 1.' },
       { cible: ou('.tuiles-ligne'), titre: 'Les indicateurs', texte: 'Pannes, temps de dépannage, part du préventif, dépanneurs par panne, concentration. Le « ? » dit comment chacun est calculé.' },
       { attendre: '.tableau-cases-zone', cible: '.tableau-cases-zone', titre: 'Le tableau des ETH', texte: 'Les pannes en hauteur, les visites en largeur. Beaucoup de pannes et peu de visites : pas assez de préventif. Beaucoup des deux : le préventif regarde sans doute au mauvais endroit. La légende est dessous.' },
-      { cible: ou('.par-ou-commencer'), titre: 'Par où commencer', texte: 'Les ETH les plus problématiques d’abord, en une phrase chacune.' },
     ],
   },
   'prevtec-zoom': {
@@ -99,9 +100,12 @@ export const visites = {
     etapes: [
       { avant: () => { $('.ligne-exemple')?.remove(); ($('td.posee.col-clic:not(.attente):not(.titre):not(.fiche-locale)') || $('td.posee.vague') || $('td.posee.col-clic'))?.click() }, attendre: '.detail-decider', cible: '.detail-decider > .carte:nth-child(1)', titre: 'La visite telle qu’elle est écrite', texte: 'Un clic sur un rond ouvre cette page, pour cette visite et cet équipement : le contenu de sa FI dans la GMAO et les observations des derniers passages.' },
       { cible: '.detail-decider > .carte:nth-child(2)', titre: 'Les préconisations', texte: 'Ce que l’IA en pense, en quelques lignes, à partir de la FI, des observations et des pannes de l’équipement.' },
-      { cible: ou('.carte-decisions .actions button:nth-child(1)', '.carte-decisions'), zoom: 1.2, titre: 'Créer une fiche N1', texte: 'L’IA rédige un contrôle pour l’opérateur, vous le relisez. Un message prévient si la charge de l’ETH serait dépassée.' },
-      { cible: ou('.carte-decisions .actions button:nth-child(2)', '.carte-decisions'), zoom: 1.2, titre: 'Modifier la FI actuelle', texte: 'L’IA propose une FI revue à côté de l’actuelle, en phrases de contrôle avec les symptômes classiques. On la reporte dans la GMAO.' },
-      { cible: ou('.carte-decisions .actions button:nth-child(3)', '.carte-decisions'), zoom: 1.2, titre: 'La fiche de visite', texte: 'Pour le mainteneur : l’historique des pannes de ce que la visite couvre et les points à cocher, à imprimer.' },
+      { cible: ou('.reco-decider', '.carte-decisions'), titre: 'Une recommandation', texte: 'Le bouton mis en avant dépend des faits. Les contrôles de sécurité et réglementaires sont protégés : ne rien y trouver est justement le résultat espéré.' },
+      { cible: ou('[data-decision="supprimer"]', '.carte-decisions'), zoom: 1.2, titre: 'Retirer du préventif', texte: 'Le premier réflexe. Quand une visite ne trouve rien sur un équipement sans panne, PREVTEC recommande de la retirer ou de l’espacer, et chiffre les heures rendues. La simulation d’abord, l’écriture ensuite. Le bilan dira si elle manque.' },
+      { cible: ou('[data-decision="n1"]', '.carte-decisions'), zoom: 1.2, titre: 'Créer une fiche N1', texte: 'L’IA rédige un contrôle pour l’opérateur, vous le relisez. Un message prévient si la charge de l’ETH serait dépassée.' },
+      { cible: ou('[data-decision="modifier"]', '.carte-decisions'), zoom: 1.2, titre: 'Modifier la FI actuelle', texte: 'L’IA propose une FI revue à côté de l’actuelle, en phrases de contrôle avec les symptômes classiques. On la reporte dans la GMAO.' },
+      { cible: ou('.carte-decisions .actions button:last-child', '.carte-decisions'), zoom: 1.2, titre: 'La fiche de visite', texte: 'Pour le mainteneur : l’historique des pannes de ce que la visite couvre et les points à cocher, à imprimer.' },
+      { cible: ou('.cas-suivant', '.carte-decisions'), zoom: 1.2, titre: 'Cas suivant', texte: 'On enchaîne sur la visite suivante de cette machine, celles où il y a le plus à gagner d’abord.' },
     ],
   },
   'prevtec-niveau-1': {

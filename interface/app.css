@@ -1055,3 +1055,19 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .ligne-attente { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--bord); }
 .ligne-attente span { flex: 1; min-width: 0; }
 .repli-n1 { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 0; border: 0; background: none; color: var(--texte); }
+
+/* PREVTEC : les bonnes nouvelles d'abord */
+.bandeau-gains { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 8px 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, #5fa77c 45%, transparent); border-radius: 10px; background: color-mix(in srgb, #5fa77c 12%, transparent); }
+.bandeau-gains > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.bandeau-gains b { color: #8fd0a8; }
+.bandeau-gains > button { margin-left: auto; }
+.bandeau-gains .citation-prevtec { flex-basis: 100%; }
+.citation-prevtec { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--accent); color: var(--texte-2); font-style: italic; font-size: 13px; }
+.citation-prevtec cite { display: block; margin-top: 2px; font-size: 11.5px; font-style: normal; color: var(--texte-3); }
+.reco-decider { margin: 4px 0 10px; }
+.protection-decider { display: inline-flex; align-items: center; gap: 8px; margin: 2px 0 8px; font-size: 13px; color: var(--texte-2); }
+.cas-suivant { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; }
+.gain-fenetre { font-weight: 700; color: #8fd0a8; }
+.bilan-bon { color: #8fd0a8; }
+.bilan-a-revoir { color: #e7b562; }
+.decision-annulee td { opacity: .5; }

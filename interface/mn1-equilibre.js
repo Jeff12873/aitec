@@ -38,7 +38,7 @@ function zone(e, s) {
 // machine : le Démonstrateur à ouvrir d'emblée ; surNiveau({ machine, eth, retour }) : appelé à chaque niveau (retour :
 // { texte, action }, ou null en haut) ; seulMachine : le retour du Démonstrateur revient à la ligne (panneau Pareto) ;
 // affichage : ce que l'administrateur a choisi pour les carrés.
-export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMachine = false, affichage = { carres: ['pannes', 'visites', 'aRegarder'], nomCarres: 'repere', nomsEth: {} } } = {}) {
+export function nuageEquilibre(d, { machine = null, placeParOu = null, surNiveau = () => {}, seulMachine = false, affichage = { carres: ['pannes', 'visites', 'aRegarder'], nomCarres: 'repere', nomsEth: {} } } = {}) {
   parcCourant = d.parc.id
   const zoneNuage = h('div', { class: 'equilibre-mn1' }, h('p', { class: 'discret' }, 'Lecture des interventions…'))
   let donnees = null
@@ -127,6 +127,8 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
       else { boutonClasser.disabled = false; vider(boutonClasser, ic('etincelle', 13), 'Réessayer le classement') }
     }
 
+    // « Par où commencer » est la conclusion du tableau : elle s'affiche sous le verdict de la ligne.
+    if (placeParOu) vider(placeParOu, ethChoisi === null ? parOuCommencer(liste, totaux, (id) => inception(zoneNuage, null, () => { ethChoisi = id; return dessiner() })) : null)
     vider(zoneNuage,
       h('div', { class: 'tete-equilibre' },
         ethChoisi !== null ? h('button', { class: 'barre-retour', title: 'Revenir au tableau des ETH', onclick: () => inception(zoneNuage, null, () => { ethChoisi = null; return dessiner() }, false) }, ic('retour', 16), 'Toutes les ETH') : null,
@@ -137,7 +139,6 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
       h('div', { class: 'legende-fixe' },
         [['rouge', 'Beaucoup de pannes, peu de visites : pas assez de préventif'], ['violet', 'Beaucoup des deux : mal ciblé'], ['orange', 'Peu de pannes, beaucoup de visites : trop de préventif ?'], ['vert', 'Beaucoup de visites et pannes en nette baisse : le préventif marche'], ['gris', 'Peu des deux : rien à signaler']].map(([z, texte]) => h('span', {}, h('i', { class: `case-legende ${z}` }), `${texte} (${compte(z)})`))),
       h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. « Beaucoup » : ${seuils.c} pannes ou ${seuils.p} visites au moins, le tiers le plus haut de ce qui est affiché.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour ouvrir son Démonstrateur.'}`),
-      ethChoisi === null ? parOuCommencer(liste, totaux, (id) => inception(zoneNuage, null, () => { ethChoisi = id; return dessiner() })) : null,
       ethChoisi !== null && (aRegarder.length || surEntretien.length) ? h('div', { class: 'a-regarder' },
         aRegarder.length ? h('div', {}, h('b', {}, 'À regarder d’abord'), aRegarder.slice(0, 8).map(puce)) : null,
         surEntretien.length ? h('div', {}, h('b', {}, 'Préventif à alléger ?'), surEntretien.slice(0, 8).map(puce)) : null) : null,
@@ -223,7 +224,7 @@ function parOuCommencer(liste, totaux, zoomer) {
   const moyenne = totaux.correctifs ? totaux.preventifs / totaux.correctifs : null
   const tri = [...liste].sort((a, b) => b.rouges - a.rouges || (b.correctifs - b.correctifsAvant) - (a.correctifs - a.correctifsAvant))
   return h('div', { class: 'par-ou-commencer' },
-    h('b', {}, 'Par où commencer'),
+    h('b', {}, 'Par où commencer : les plus gros gains possibles'),
     h('ol', {}, tri.map((e) => h('li', {},
       h('button', { class: 'lien-synthese', onclick: () => zoomer(e.id) }, h('span', { class: 'mono' }, e.repere)),
       ` : ${e.rouges ? `${e.rouges} machine${e.rouges > 1 ? 's' : ''} à regarder` : 'rien d’alarmant'} · ${evol(e)}${ratio(e) !== null && moyenne !== null ? ` · ${virgule(ratio(e))} visite par panne (ligne : ${virgule(moyenne)})` : ''}`))))

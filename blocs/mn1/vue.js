@@ -17,6 +17,7 @@ import { animer } from '../../interface/animer.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
 import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
 import { afficherDecider } from '../../interface/prevtec-decider.js'
+import { bandeauGainsSite } from '../../interface/prevtec-gains.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 let tri = 'nom'
@@ -56,7 +57,7 @@ export default {
     // PREVTEC, étape 1 : seulement le fil des étapes et les vignettes des lignes.
     if (estPrevtec && !onglet) {
       const vignettes = h('div')
-      vider(zone, filEtapes(1), vignettes)
+      vider(zone, filEtapes(1), bandeauGainsSite(), vignettes)
       return afficherVignettes(vignettes, null)
     }
     return afficherCircuit(zone, onglet)

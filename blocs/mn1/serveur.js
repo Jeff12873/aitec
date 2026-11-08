@@ -15,7 +15,8 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1 } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1, appliquerDecision, reactiverDecision } from './demonstrateur.js'
+import { gainsDuSite, gainsDuParc, enregistrerProtection, lirePhrases, enregistrerPhrases } from './decisions.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
 import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
@@ -552,11 +553,18 @@ export function routes(r) {
   r.get('/api/mn1/parcs/:id/machines/:machine/decider', (ctx) => decisionCroisee(ctx.params.id, ctx.params.machine, ctx.query))
   r.post('/api/mn1/parcs/:id/machines/:machine/decider/preconisations', async (ctx) => preconisations(ctx.params.id, ctx.params.machine, await ctx.json()))
   r.post('/api/mn1/parcs/:id/machines/:machine/decider/fi', async (ctx) => proposerFi(ctx.params.id, ctx.params.machine, await ctx.json()))
+  // Retirer du préventif, le registre des décisions et les gains.
+  admin.post('/api/mn1/parcs/:id/machines/:machine/decider/appliquer', async (ctx) => appliquerDecision(ctx.params.id, ctx.params.machine, await ctx.json()))
+  admin.post('/api/mn1/parcs/:id/machines/:machine/decider/proteger', async (ctx) => { const { pose, titre, protegee } = await ctx.json(); enregistrerProtection(Number(ctx.params.machine), Number(pose), titre, protegee); return { ok: true } })
+  admin.post('/api/mn1/decisions/:decision/reactiver', async (ctx) => reactiverDecision(ctx.params.decision, await ctx.json()))
+  r.get('/api/mn1/gains', () => gainsDuSite())
+  r.get('/api/mn1/parcs/:id/gains', (ctx) => gainsDuParc(ctx.params.id))
   r.get('/api/mn1/parcs/:id/machines/:machine/visite', (ctx) => ficheDeVisite(ctx.params.id, ctx.params.machine, ctx.query))
   r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
 
   // L'affichage de « Ma ligne » et les étiquettes du préventif, communs au site.
-  r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes(), symptomes: symptomesTexte() }))
+  r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes(), symptomes: symptomesTexte(), phrases: lirePhrases() }))
+  admin.post('/api/mn1/phrases', async (ctx) => enregistrerPhrases((await ctx.json()).texte))
   admin.post('/api/mn1/affichage', async (ctx) => enregistrerAffichage(await ctx.json()))
   admin.post('/api/mn1/symptomes', async (ctx) => ({ texte: enregistrerSymptomes((await ctx.json()).texte) }))
   admin.post('/api/mn1/etiquettes', async (ctx) => enregistrerEtiquettes((await ctx.json()).etiquettes))

@@ -37,6 +37,7 @@ export async function reglerAffichage(parc, apres) {
     h('td', {}, e.base ? null : h('button', { class: 'discret icone-seule petit', title: 'Retirer cette étiquette', onclick: () => { etiquettes.splice(etiquettes.indexOf(e), 1); dessiner() } }, ic('x', 13))))))
   dessiner()
   const symptomes = h('textarea', { rows: 12, spellcheck: false }, r.symptomes)
+  const phrases = h('textarea', { rows: 4 }, r.phrases || '')
   const section = (titre, aide, ...contenu) => h('section', { class: 'section-parametres' }, h('h3', {}, titre), aide ? h('p', { class: 'discret petit-texte' }, aide) : null, ...contenu)
   const ok = await fenetre({
     titre: 'Paramètres de « Ma ligne »',
@@ -50,6 +51,7 @@ export async function reglerAffichage(parc, apres) {
       section('Étiquettes du préventif', 'Dans quels écrans chacune compte. Une nouvelle étiquette s’attribue à la main, dans « Préventif & entretiens », sous le tableau.',
         h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau grille-etiquettes' }, h('thead', {}, h('tr', {}, h('th', {}, 'Étiquette'), h('th', {}, 'Intérêt'), ECRANS.map(([, t]) => h('th', { class: 'centre' }, t)), h('th'))), corps)),
         h('button', { class: 'petit discret', onclick: () => { etiquettes.push({ id: '', nom: '', interet: '', role: 'visite', base: false, ecrans: {} }); dessiner() } }, ic('plus', 13), 'Une étiquette')),
+      section('Vos phrases', 'Affichées une à la fois en tête de « Ma ligne ». Une par ligne.', phrases),
       section('Symptômes classiques par élément', 'L’IA les cite dans les points de contrôle. Une ligne par élément : « Élément / autre nom : symptôme ; symptôme ».', symptomes)),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
@@ -57,6 +59,7 @@ export async function reglerAffichage(parc, apres) {
         await api('/api/mn1/affichage', { methode: 'POST', corps: { indicateurs: indicateurs.valeur(), panneau: panneau.valeur(), carres: carres.valeur(), nomCarres: nomCarres.valeur(), nomsEth: { ...a.nomsEth, ...Object.fromEntries([...nomsEth].map(([id, champ]) => [id, champ.value])) } } })
         await api('/api/mn1/etiquettes', { methode: 'POST', corps: { etiquettes } })
         await api('/api/mn1/symptomes', { methode: 'POST', corps: { texte: symptomes.value } })
+        await api('/api/mn1/phrases', { methode: 'POST', corps: { texte: phrases.value } })
         return true
       } },
     ],
