@@ -129,6 +129,7 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
 
     vider(zoneNuage,
       h('div', { class: 'tete-equilibre' },
+        ethChoisi !== null ? h('button', { class: 'barre-retour', title: 'Revenir au tableau des ETH', onclick: () => inception(zoneNuage, null, () => { ethChoisi = null; return dessiner() }, false) }, ic('retour', 16), 'Toutes les ETH') : null,
         h('div', { class: 'segments petits' }, MODES.map(([cle, texte, aide]) => h('button', { class: mode === cle ? 'choisi' : '', title: aide, onclick: () => { mode = cle; dessiner() } }, texte))),
         ethChoisi !== null ? h('div', { class: 'retour-tableau' }, h('b', {}, eth?.libelle || 'Hors ETH'), h('span', { class: 'discret' }, ' : ses machines')) : null),
       liste.length

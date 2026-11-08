@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.16.1",
+      "date": "2026-11-08",
+      "points": [
+        "Tableau des machines d'une ETH : une flèche « Toutes les ETH » dans le tableau pour remonter d'un niveau"
+      ]
+    },
+    {
       "version": "0.16.0",
       "date": "2026-11-08",
       "points": [
