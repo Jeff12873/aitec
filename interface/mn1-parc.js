@@ -278,8 +278,8 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
       vider(placeRetour, retour ? barreRetour(retour.texte, retour.action) : barreRetour('Les lignes', '#/mn1'))
       page.querySelector('.fil-etapes')?.replaceWith(filEtapes(m ? 3 : 2, d.parc, m))
       page.classList.toggle('vue-machine', Boolean(m))
-      titreMachine.textContent = m ? m.repere : d.parc.nom
-      if (sousTitre) sousTitre.textContent = m ? `${m.designation || ''} · ${d.parc.nom}${eth?.code ? ` · ${eth.code}` : ''}` : sousTitreLigne
+      vider(titreMachine, m ? [m.repere, h('span', { class: 'nom-machine' }, [m.designation, d.parc.nom, eth?.code].filter(Boolean).join(' · '))] : d.parc.nom)
+      if (sousTitre) sousTitre.textContent = m ? '' : sousTitreLigne
     }
     vider(page,
       h('div', { class: 'tete-page' }, placeRetour, filEtapes(2, d.parc)),

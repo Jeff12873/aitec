@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.18.0",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur (administrateur) : glisser une visite de la machine entière sur un organe déplace sa FI dans la GMAO, après simulation",
+        "Le nom de la machine s'affiche en grand à côté de son numéro",
+        "Les textes des fiches de visite et de « Je décide » ne sont plus jamais coupés"
+      ]
+    },
+    {
       "version": "0.17.0",
       "date": "2026-11-08",
       "points": [

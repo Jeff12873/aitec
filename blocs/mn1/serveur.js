@@ -15,7 +15,7 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
@@ -557,6 +557,12 @@ export function routes(r) {
   r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes() }))
   admin.post('/api/mn1/affichage', async (ctx) => enregistrerAffichage(await ctx.json()))
   admin.post('/api/mn1/etiquettes', async (ctx) => enregistrerEtiquettes((await ctx.json()).etiquettes))
+
+  // Déplacer une visite de la machine entière sur un organe, dans la GMAO (simulée d'abord).
+  admin.post('/api/mn1/parcs/:id/machines/:machine/deplacer', async (ctx) => {
+    ctx.exigerAdmin()
+    return deplacerVisite(ctx.params.id, ctx.params.machine, await ctx.json())
+  })
 
   // Comment reconnaître les préventifs du plan : la convention des codes (site) et la lettre de chaque ligne.
   r.get('/api/mn1/convention', () => apercuConvention())

@@ -12,7 +12,10 @@
 // Les visites : celles du plan (code reconnu, visites.js), regroupées par titre. Je décide : pour le rouge et
 // l'orange, une fiche N1 ou une FI revue, proposées par l'IA.
 
-import { db } from '../../lib/base.js'
+import { db, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
+import { exigerEcriture } from 'ktec/partage.js'
+import * as mysql from 'ktec/mysql.js'
+import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
@@ -25,6 +28,8 @@ const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().
 const plusFrequent = (valeurs) => [...valeurs.reduce((c, v) => c.set(v, (c.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
 const titreDe = (x) => x.code?.titre || texteSeul(x.description).split(' - ')[0].slice(0, 100)
 const cleDe = (texte) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 80)
+
+const cleDeplacement = (machine, pose, titre) => `${machine}|${pose}|${titre}`
 
 // La machine (niveau 3) et ses équipements, ses pannes des 12 derniers mois.
 async function machineEtPannes(parcId, machineId) {
@@ -43,7 +48,7 @@ async function machineEtPannes(parcId, machineId) {
       const recents = g.cas.filter((c) => c.date >= depuis)
       if (!recents.length) continue
       const precedent = g.cas.filter((c) => c.date >= avant && c.date < depuis).length
-      const symptome = plusFrequent(g.cas.map((c) => c.symptome)).slice(0, 160)
+      const symptome = plusFrequent(g.cas.map((c) => c.symptome))
       pannes.push({ cle: `${e}:${cleDe(symptome)}`, equipement: e, surQuoi: repere.get(e) || '', symptome, repere: machine.repere, designation: machine.designation, nombre: recents.length, precedent, evolution: evolution(recents.length, precedent), derniere: g.cas[0].date, derniereAction: g.cas[0].action, cas: g.cas.map((c) => c.id) })
     }
   }
@@ -81,14 +86,17 @@ export async function demonstrateur(parcId, machineId, deja = null) {
   const { v, machine, equipements, repere, pannes, parEquipement: comptes, globales } = deja || await machineEtPannes(parcId, machineId)
   const visites = v.pourEcran('demonstrateur').filter((x) => x.recente && equipements.has(x.machine_id)) // par défaut, l'observation seule
   const designation = new Map(db().prepare(`SELECT id, designation FROM machines WHERE id IN (${[...equipements].join(',')})`).all().map((m) => [m.id, m.designation]))
+  const deplacements = reglageJson('prev_deplacements', {}) || {}
   // Une visite posée sur la machine entière dont le titre nomme un organe compte sur cet organe.
   const organes = [...equipements].filter((e) => e !== machine.id).map((e) => ({ id: e, repere: repere.get(e) || '', designation: designation.get(e) || '' }))
   // Les lignes : les visites du plan, regroupées par code, titre et équipement où elles sont posées.
   const groupes = new Map()
   for (const x of visites) {
     const cle = `${x.code?.code || ''}|${titreDe(x)}|${x.machine_id}`
-    const organe = x.machine_id === machine.id ? organeDuTitre(titreDe(x), organes) : null
-    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), pose: x.machine_id, equipement: organe ?? x.machine_id, machineEntiere: x.machine_id === machine.id && !organe, dapresTitre: Boolean(organe), passages: 0, derniere: '', ecrits: 0, rien: 0 }
+    // Déplacée dans la GMAO depuis ce tableau : retenue ici, car les rapports déjà faits restent sur la machine entière.
+    const deplacee = deplacements[cleDeplacement(machine.id, x.machine_id, titreDe(x))]
+    const organe = x.machine_id === machine.id ? deplacee ?? organeDuTitre(titreDe(x), organes) : null
+    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), pose: x.machine_id, equipement: organe ?? x.machine_id, machineEntiere: x.machine_id === machine.id && !organe, dapresTitre: Boolean(organe) && !deplacee, deplacee: Boolean(deplacee), passages: 0, derniere: '', ecrits: 0, rien: 0 }
     g.passages++
     const resultat = resultatDuPassage(x.description)
     if (resultat) g.ecrits++
@@ -140,10 +148,8 @@ export async function demonstrateur(parcId, machineId, deja = null) {
 const NB_POINTS = 8
 const NB_DERNIERES = 12
 const NB_REMARQUES = 6
-const extrait = (t, n) => {
-  const x = String(t || '').replace(/^[\s\-–—]+/, '')
-  return x.length > n ? `${x.slice(0, n - 1).trimEnd()}…` : x
-}
+// Le texte d'un rapport, jamais coupé : une fiche se lit en entier.
+const propre = (t) => String(t || '').replace(/^[\s\-–—]+/, '')
 
 // L'équipement et tout ce qui est rangé dessous dans l'arborescence.
 function sousEquipements(v, repere, id) {
@@ -185,14 +191,52 @@ export async function ficheDeVisite(parcId, machineId, { equipement, titre, orga
       depuisVisite: correctifs.filter((l) => l.date > derniere).length,
     },
     ou: [...parOrgane].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([e, n]) => ({ ...nomOrgane(e), pannes: n })),
-    points: pannes.filter((p) => couvert.has(p.equipement)).slice(0, NB_POINTS).map((p) => ({ ...nomOrgane(p.equipement), symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: extrait(p.derniereAction, 160) })),
+    points: pannes.filter((p) => couvert.has(p.equipement)).slice(0, NB_POINTS).map((p) => ({ ...nomOrgane(p.equipement), symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: propre(p.derniereAction) })),
     dernieres: recents.slice(0, NB_DERNIERES).map((l) => {
       const d = decouperRapport(l.description)
-      return { date: l.date, repere: repere.get(l.machine_id) || '', symptome: extrait(d?.symptome || texteSeul(l.description), 110), reparation: extrait(d?.action, 130), duree: Number(l.duree_h) > 0 ? Number(l.duree_h) : null, apresVisite: l.date > derniere }
+      return { date: l.date, repere: repere.get(l.machine_id) || '', symptome: propre(d?.symptome || texteSeul(l.description)), reparation: propre(d?.action), duree: Number(l.duree_h) > 0 ? Number(l.duree_h) : null, apresVisite: l.date > derniere }
     }),
     remarques: [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && couvert.has(l.machine_id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, NB_REMARQUES)
-      .map((l) => ({ date: l.date, repere: repere.get(l.machine_id) || '', texte: extrait(texteSeul(l.description), 160), origine: remontees.has(l) ? 'Conducteur' : 'Entretien' })),
+      .map((l) => ({ date: l.date, repere: repere.get(l.machine_id) || '', texte: propre(texteSeul(l.description)), origine: remontees.has(l) ? 'Conducteur' : 'Entretien' })),
   }
+}
+
+// ---------------------------------------------------------------- déplacer une visite dans la GMAO
+
+// L'ID du nœud de l'arborescence qui porte ce repère, sous les racines de maintenance de la ligne.
+function noeudDe(v, repere) {
+  let trouve = null
+  const chercher = (n) => { if (n.code === repere) trouve = trouve ?? n.id; else n.enfants.forEach(chercher) }
+  v.p.racines.filter((r) => v.parc.maintenance.includes(r.id)).forEach((r) => chercher(r.noeud))
+  return trouve
+}
+
+// Une visite posée sur la machine entière, déplacée sur un organe : { pose, titre, vers, valider }. Simulée d'abord
+// (transaction annulée) ; une fois validée, retenue dans le fichier pour que le Démonstrateur la montre sur l'organe.
+export async function deplacerVisite(parcId, machineId, { pose, titre, vers, valider = false }) {
+  const { v, machine, equipements, repere } = await machineEtPannes(parcId, machineId)
+  const cible = Number(vers)
+  if (Number(pose) !== machine.id) throw new ErreurHttp(400, 'Seule une visite posée sur la machine entière se déplace.')
+  if (cible === machine.id || !equipements.has(cible)) throw new ErreurHttp(400, 'Choisissez un organe de cette machine.')
+  const passages = v.toutes.filter((x) => x.machine_id === machine.id && titreDe(x) === titre).sort((a, b) => b.date.localeCompare(a.date))
+  const fi = passages.map((x) => morceauxPassage(x.description).fi).find(Boolean)?.split(/\s/)[0]
+  if (!fi) throw new ErreurHttp(404, 'Le numéro de FI de cette visite est introuvable dans ses rapports.')
+  const r = reglagesDuParc(parcId)
+  if (!r.sqlEquipement) throw new ErreurHttp(409, 'Le SQL de déplacement d’une FI n’est pas réglé (Maintenance de niveau 1 › Circuit › réglages de la GMAO › SQL du site).')
+  const [ancienCode, nouveauCode] = [repere.get(machine.id), repere.get(cible)]
+  const [ancien, nouveau] = [noeudDe(v, ancienCode), noeudDe(v, nouveauCode)]
+  if (ancien === null || nouveau === null) throw new ErreurHttp(404, 'Cet équipement est introuvable dans l’arborescence de la GMAO.')
+  const lot = instructions(r.sqlEquipement, { ...valeursSql(r, { numero: fi }), numero: fi, ancien, nouveau, ancien_code: ancienCode, nouveau_code: nouveauCode })
+  const reponse = await mysql.ecrireDansLaBase(lot, { valider: Boolean(valider) })
+  const modifiees = reponse.resultats.filter((x) => 'modifiees' in x).reduce((s, x) => s + x.modifiees, 0)
+  if (valider && modifiees) {
+    exigerEcriture()
+    const d = reglageJson('prev_deplacements', {}) || {}
+    d[cleDeplacement(machine.id, machine.id, titre)] = cible
+    modifierReglage('prev_deplacements', d)
+    noterModification()
+  }
+  return { valide: reponse.valide, modifiees, numero: fi, de: ancienCode, vers: nouveauCode }
 }
 
 // ---------------------------------------------------------------- je décide : une visite × un équipement
@@ -214,11 +258,11 @@ export async function decisionCroisee(parcId, machineId, { equipement, pose, tit
   const passages = v.toutes.filter((x) => x.machine_id === g.pose && titreDe(x) === g.titre).sort((a, b) => b.date.localeCompare(a.date))
   const morceaux = passages.map((x) => ({ date: x.date, ...morceauxPassage(x.description) }))
   const avecFi = morceaux.find((m) => m.contenu) || morceaux.find((m) => m.fi)
-  const visite = { ...g, fi: avecFi?.fi || '', contenu: extrait(avecFi?.contenu, 4000), observations: morceaux.filter((m) => m.observation).slice(0, 5).map((m) => ({ date: m.date, texte: extrait(m.observation, 300) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
+  const visite = { ...g, fi: avecFi?.fi || '', contenu: propre(avecFi?.contenu), observations: morceaux.filter((m) => m.observation).slice(0, 5).map((m) => ({ date: m.date, texte: propre(m.observation) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
   const depuis = ilYa(365)
-  const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: extrait(texteSeul(l.description), 180) }))
+  const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: propre(texteSeul(l.description)) }))
   const posee = g.equipement === id || (g.machineEntiere && id === machine.id)
-  const liste = siennes.map((p) => ({ symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: extrait(p.derniereAction, 160) }))
+  const liste = siennes.map((p) => ({ symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: propre(p.derniereAction) }))
   return { parc: d.parc, machine, equipement: c, visite, posee, pannes: liste, remarques, conseils: conseilsDe(c, [visite], liste, remarques), iaInstallee: d.iaInstallee }
 }
 

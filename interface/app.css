@@ -974,3 +974,13 @@ td.col-clic:hover { filter: brightness(1.5); outline: 1px solid var(--accent); }
 .matrice-demo tbody th { vertical-align: middle; }
 .titre-decider { margin: 12px 0 4px; font-size: 13px; color: var(--texte-2); }
 .detail-decider .fi-actuelle { max-height: 340px; }
+
+.nom-machine { margin-left: 16px; font-size: 22px; font-weight: 600; color: var(--texte-2); }
+.vue-machine .scene-ligne h1 { display: flex; flex-wrap: wrap; align-items: baseline; }
+
+/* Démonstrateur (admin) : déplacer une visite de la machine entière sur un organe */
+.croisee.deplacable { cursor: grab; }
+.croisee.deplacable:active { cursor: grabbing; }
+tr.en-deplacement td.croisee { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -2px; }
+tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--accent) 35%, transparent); outline-style: solid; }
+.detail-decider .fi-actuelle { max-height: none; }

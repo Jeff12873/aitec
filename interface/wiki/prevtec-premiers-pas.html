@@ -69,6 +69,7 @@
 <li><b>Sous chaque colonne</b>, un diagnostic : <b>pas de préventif</b> (des pannes, aucune visite) ; <b>mauvais point contrôlé ou énoncé trop vague</b> (la panne monte malgré une visite sur l'équipement, ou la seule visite est sur la machine entière) ; <b>préventif ok</b> ; <b>sur maintenance</b> (beaucoup de passages sans panne).</li>
 <li>La colonne <b>t</b> : la part des passages sans rien trouver (RAS, OK, conforme…), lue dans l'observation écrite sur le rapport. Les passages sans observation, ou avec seulement « fait », ne comptent pas ; le survol de la case dit sur combien de passages elle repose. Un tiret : aucune observation écrite.</li>
 <li>Une visite posée sur la machine entière dont le titre nomme un organe compte sur cet organe (○ au lieu de ●).</li>
+<li class="admin">En mode administrateur, une visite posée sur la machine entière se glisse sur l'organe voulu : K.NOVA simule, montre ce qui changerait, puis « Appliquer dans la GMAO » déplace la FI. Il faut le SQL « Déplacement d'une FI » (réglages de la GMAO › SQL du site). Seuls les prochains passages sont concernés dans la GMAO ; le Démonstrateur montre tout de suite la visite sur l'organe.</li>
 <li>Seules les cases à l'intérieur du tableau sont cliquables : chacune ouvre <b>Je décide</b> pour cette visite et cet équipement.</li>
 </ul>
 

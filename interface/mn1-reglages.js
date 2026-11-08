@@ -88,6 +88,7 @@ export async function reglerGmao() {
     zone('sqlModification', 'Modification (remplacement de la fiche, réactivation)', 'UPDATE de la FI :numero (titre, description, équipement, périodicité, ACTIF à 1).', 6),
     zone('sqlSuspension', 'Suspension', 'UPDATE de la FI :numero (ACTIF à 0).', 3),
     zone('sqlSuppression', 'Suppression', 'UPDATE de la FI :numero, comme une suppression faite dans la GMAO (bouton « Supprimer la FI » d’une fiche ; la fiche reste dans AITEC).', 3),
+    zone('sqlEquipement', 'Déplacement d’une FI sur un autre équipement', 'UPDATE de la FI :numero, seulement sur sa ligne d’équipement :ancien, remplacé par :nouveau (ID des nœuds de l’arborescence ; leurs codes : :ancien_code, :nouveau_code). Sert à glisser une visite dans le Démonstrateur.', 4),
     h('h3', {}, 'Listes de choix (colonnes valeur et libelle)'),
     PARAMETRES.map(([cle, libelle]) => h('label', { class: 'champ' }, h('span', {}, libelle), listesSql[cle])))
 

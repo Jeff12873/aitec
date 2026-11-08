@@ -49,10 +49,11 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
   else montrerPreco(d.conseils)
 
   vider(zone, barreRetour(`Démonstrateur · ${d.machine.repere}`, `#/mn1/parc/${encodeURIComponent(parcId)}?machine=${machineId}`), filEtapes(4, d.parc, d.machine),
-    h('div', { class: 'tete-machine' }, h('h1', {}, h('span', { class: 'mono' }, c.repere)), h('p', { class: 'sous-titre' }, `${c.designation || ''} · ${d.machine.repere} · ${d.parc.nom}`)),
+    h('div', { class: 'tete-machine' }, h('h1', {}, h('span', { class: 'mono' }, c.repere), h('span', { class: 'nom-machine' }, [c.designation, d.machine.repere, d.parc.nom].filter(Boolean).join(' · ')))),
     h('div', { class: 'detail-decider' },
       h('div', { class: 'carte' },
         h('div', { class: 'carte-entete' }, h('h2', {}, v.code ? h('span', { class: 'etiquette code-visite' }, v.code.code) : null, v.titre), h('span', { class: 'discret' }, `${v.passages} passage${v.passages > 1 ? 's' : ''} sur 12 mois · dernier le ${dateFr(v.derniere)}`)),
+        v.deplacee ? h('p', { class: 'discret petit-texte' }, 'Déplacée sur cet équipement dans la GMAO ; les rapports déjà faits restent sur la machine entière.') : null,
         d.posee ? (v.dapresTitre ? h('p', { class: 'discret petit-texte' }, 'Posée sur la machine entière dans la GMAO ; rattachée à cet équipement d’après son titre.') : null) : h('p', { class: 'etiquette orange' }, 'Cette visite n’est pas posée sur cet équipement.'),
         h('h3', { class: 'titre-decider' }, v.fi ? `Contenu de la FI ${v.fi}` : 'Contenu de la FI'),
         v.contenu ? h('p', { class: 'fi-actuelle' }, v.contenu) : h('p', { class: 'discret' }, v.fi ? 'Cette FI n’a pas de texte dans les rapports de la GMAO.' : 'Pas de FI dans les rapports de la GMAO.'),
