@@ -1,4 +1,4 @@
-// Le texte d'une fiche : brut, ou mis en forme (une liste numérotée, le début de chaque point en gras jusqu'à « : »).
+// Le texte d'une fiche : brut, ou mis en forme (une liste numérotée de contrôles).
 // On écrit toujours un point par ligne ; la mise en forme se calcule, le texte reste échappé.
 
 import { h, vider } from '/socle/ui.js'
@@ -6,10 +6,7 @@ import { h, vider } from '/socle/ui.js'
 export const echapper = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 export const lignesDe = (texte) => String(texte).split('\n').map((x) => x.trim()).filter(Boolean)
 
-export function pointEnHtml(ligne) {
-  const m = /^(.{3,90}?) : (.+)$/.exec(ligne)
-  return m ? `<b>${echapper(m[1])}</b> : ${echapper(m[2])}` : echapper(ligne)
-}
+export const pointEnHtml = (ligne) => echapper(ligne)
 export const pointsEnHtml = (lignes) => `<ol>${lignes.map((l) => `<li>${pointEnHtml(l)}</li>`).join('')}</ol>`
 
 // Le choix du format et son aperçu, sous un champ de texte. Rend { element, format() }.

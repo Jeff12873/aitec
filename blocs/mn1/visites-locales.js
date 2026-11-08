@@ -10,6 +10,7 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { familleDe } from '../../lib/types.js'
 import { texteSeul } from './visites.js'
 import { lireJson } from './correlation.js'
+import { FORMAT_POINT, symptomesPour, commenceParAction, nettoyerPoint, garderSymptomes } from './symptomes.js'
 import * as mysql from 'ktec/mysql.js'
 import { machineEtPannes, noeudDe } from './demonstrateur.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
@@ -53,6 +54,7 @@ export function retirerVisiteLocale(id) {
 
 // { equipement, titre, points, frequence, pourquoi } ; le titre de la fiche devient celui de la visite s'il n'y en a pas.
 export function enregistrerFiche(id, { equipement, titre = '', points = [], frequence = '', pourquoi = '', format = 'html' }) {
+  garderSymptomes()
   const propres = (Array.isArray(points) ? points : []).map((p) => String(p).trim()).filter(Boolean)
   if (!propres.length) throw new ErreurHttp(400, 'Écrivez au moins un point à contrôler.')
   return changer(id, (l) => {
@@ -92,10 +94,11 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
   return { valide: reponse.valide, modifiees, numero, titre, repere: code }
 }
 
-const CONSIGNES = `Tu rédiges une nouvelle visite de maintenance préventive, faite par un technicien, pour voir venir les pannes décrites.
+const CONSIGNES = () => `Tu rédiges une nouvelle visite de maintenance préventive, faite par un technicien, pour voir venir les pannes décrites.
 Réponds seulement avec un objet JSON, sans texte autour :
-{"points":["Organe : ce qu'on regarde, l'état attendu"],"frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","pourquoi":"les pannes visées, une phrase"}
-De 3 à 8 points, chacun une simple phrase entre guillemets, jamais un objet. Seulement ce que disent les rapports : n'invente aucune valeur ni aucun repère.`
+{"points":["une phrase par contrôle"],"frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","pourquoi":"les pannes visées, une phrase"}
+De 3 à 8 points, chacun une simple phrase entre guillemets, jamais un objet. ${FORMAT_POINT}
+Les contrôles viennent des rapports ; n'invente aucune valeur ni aucun repère.`
 
 // Un point rendu par l'IA : une phrase, ou parfois un objet { organe, contrôle… } dont on recolle les morceaux.
 const enTexte = (p) => {
@@ -113,16 +116,17 @@ export async function proposerFiche(parcId, machineId, equipement) {
   const depuis = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10)
   const pannes = v.lignes.filter((l) => l.machine_id === id && l.date >= depuis && familleDe(l.type) === 'Correctif').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
   const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.machine_id === id && l.date >= depuis).slice(0, 6)
+  const organeSien = db().prepare('SELECT designation FROM machines WHERE id = ?').get(id)?.designation || repere.get(id)
   // L'IA locale varie d'une fois à l'autre : on lui redemande si sa réponse est illisible ou trop courte.
   let lu = null
   let points = []
-  for (let essai = 0; essai < 3 && points.length < 3; essai++) {
-    lu = lireJson(await discuter([{ role: 'system', content: CONSIGNES }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nÉquipement : ${repere.get(id)}\nRapports de panne (12 mois) :\n${pannes.map((l) => `- ${l.date} : ${texteSeul(l.description).slice(0, 300)}`).join('\n') || '- aucun'}\nDéjà remarqué sur place :\n${remarques.map((l) => `- ${texteSeul(l.description).slice(0, 200)}`).join('\n') || '- rien'}` }], { temperature: 0.3, maxMots: 1200 }))
-    if (Array.isArray(lu?.points)) points = lu.points.map(enTexte).filter(Boolean)
+  const bonnes = (l) => l.length >= 3 && l.filter(commenceParAction).length >= l.length * 0.7
+  for (let essai = 0; essai < 3 && !bonnes(points); essai++) {
+    lu = lireJson(await discuter([{ role: 'system', content: CONSIGNES() }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nÉquipement : ${repere.get(id)}\nRapports de panne (12 mois) :\n${pannes.map((l) => `- ${l.date} : ${texteSeul(l.description).slice(0, 300)}`).join('\n') || '- aucun'}\nDéjà remarqué sur place :\n${remarques.map((l) => `- ${texteSeul(l.description).slice(0, 200)}`).join('\n') || '- rien'}\nSymptômes classiques par élément :\n${symptomesPour(`${organeSien} ${pannes.map((l) => texteSeul(l.description)).join(' ')}`) || '- aucun'}` }], { temperature: 0.3, maxMots: 1200 }))
+    if (Array.isArray(lu?.points)) points = lu.points.map(enTexte).map(nettoyerPoint).filter(Boolean)
   }
   if (!points.length) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
   // Le titre vient de l'arborescence, pas de l'IA : VISITE, le nom de l'équipement, le repère de la machine.
-  const organe = db().prepare('SELECT designation FROM machines WHERE id = ?').get(id)?.designation
-  const nom = String(organe || repere.get(id)).split('/').pop().trim()
+  const nom = String(organeSien).split('/').pop().trim()
   return { titre: titreStandard(`VISITE ${nom}`, machine.repere), points, frequence: String(lu.frequence || ''), pourquoi: String(lu.pourquoi || '') }
 }

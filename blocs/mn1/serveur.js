@@ -17,6 +17,7 @@ import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
 import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
+import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
 import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
@@ -555,8 +556,9 @@ export function routes(r) {
   r.post('/api/mn1/parcs/:id/machines/:machine/fiche', async (ctx) => proposerFicheMachine(ctx.params.id, ctx.params.machine, String((await ctx.json()).panne || '')))
 
   // L'affichage de « Ma ligne » et les étiquettes du préventif, communs au site.
-  r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes() }))
+  r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes(), symptomes: symptomesTexte() }))
   admin.post('/api/mn1/affichage', async (ctx) => enregistrerAffichage(await ctx.json()))
+  admin.post('/api/mn1/symptomes', async (ctx) => ({ texte: enregistrerSymptomes((await ctx.json()).texte) }))
   admin.post('/api/mn1/etiquettes', async (ctx) => enregistrerEtiquettes((await ctx.json()).etiquettes))
 
   // Les visites préparées dans PREVTEC, sans rien écrire dans la GMAO.

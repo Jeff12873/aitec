@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.23.0",
+      "date": "2026-11-08",
+      "points": [
+        "Points de contrôle : une phrase numérotée qui commence par l'action, avec les symptômes classiques de l'élément",
+        "Symptômes classiques par élément, gardés dans le fichier de connaissances et modifiables dans les paramètres de « Ma ligne »"
+      ]
+    },
+    {
       "version": "0.22.2",
       "date": "2026-11-08",
       "points": [

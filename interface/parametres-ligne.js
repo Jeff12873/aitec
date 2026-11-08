@@ -36,6 +36,7 @@ export async function reglerAffichage(parc, apres) {
     ECRANS.map(([cle]) => h('td', { class: 'centre' }, h('input', { type: 'checkbox', checked: Boolean(e.ecrans[cle]), disabled: e.role === 'panne', title: e.role === 'panne' ? 'Une panne compte partout' : '', onchange: (x) => (e.ecrans[cle] = x.target.checked) }))),
     h('td', {}, e.base ? null : h('button', { class: 'discret icone-seule petit', title: 'Retirer cette étiquette', onclick: () => { etiquettes.splice(etiquettes.indexOf(e), 1); dessiner() } }, ic('x', 13))))))
   dessiner()
+  const symptomes = h('textarea', { rows: 12, spellcheck: false }, r.symptomes)
   const section = (titre, aide, ...contenu) => h('section', { class: 'section-parametres' }, h('h3', {}, titre), aide ? h('p', { class: 'discret petit-texte' }, aide) : null, ...contenu)
   const ok = await fenetre({
     titre: 'Paramètres de « Ma ligne »',
@@ -48,12 +49,14 @@ export async function reglerAffichage(parc, apres) {
         eths.length ? h('details', {}, h('summary', {}, 'Renommer une ETH de cette ligne'), h('div', { class: 'noms-eth' }, eths.map((e) => h('label', { class: 'champ' }, h('span', {}, e.code), nomsEth.get(e.id))))) : null),
       section('Étiquettes du préventif', 'Dans quels écrans chacune compte. Une nouvelle étiquette s’attribue à la main, dans « Préventif & entretiens », sous le tableau.',
         h('div', { class: 'tableau-conteneur' }, h('table', { class: 'tableau grille-etiquettes' }, h('thead', {}, h('tr', {}, h('th', {}, 'Étiquette'), h('th', {}, 'Intérêt'), ECRANS.map(([, t]) => h('th', { class: 'centre' }, t)), h('th'))), corps)),
-        h('button', { class: 'petit discret', onclick: () => { etiquettes.push({ id: '', nom: '', interet: '', role: 'visite', base: false, ecrans: {} }); dessiner() } }, ic('plus', 13), 'Une étiquette'))),
+        h('button', { class: 'petit discret', onclick: () => { etiquettes.push({ id: '', nom: '', interet: '', role: 'visite', base: false, ecrans: {} }); dessiner() } }, ic('plus', 13), 'Une étiquette')),
+      section('Symptômes classiques par élément', 'L’IA les cite dans les points de contrôle. Une ligne par élément : « Élément / autre nom : symptôme ; symptôme ».', symptomes)),
     boutons: [
       { texte: 'Annuler', classe: 'discret', valeur: null },
       { texte: 'Enregistrer', classe: 'principal', action: async () => {
         await api('/api/mn1/affichage', { methode: 'POST', corps: { indicateurs: indicateurs.valeur(), panneau: panneau.valeur(), carres: carres.valeur(), nomCarres: nomCarres.valeur(), nomsEth: { ...a.nomsEth, ...Object.fromEntries([...nomsEth].map(([id, champ]) => [id, champ.value])) } } })
         await api('/api/mn1/etiquettes', { methode: 'POST', corps: { etiquettes } })
+        await api('/api/mn1/symptomes', { methode: 'POST', corps: { texte: symptomes.value } })
         return true
       } },
     ],

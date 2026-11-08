@@ -17,6 +17,7 @@ import { exigerEcriture } from 'ktec/partage.js'
 import * as mysql from 'ktec/mysql.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
 import { visitesLocales, visiteLocale } from './visites-locales.js'
+import { FORMAT_POINT, symptomesPour } from './symptomes.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
@@ -303,7 +304,9 @@ Contenu actuel de la FI : ${r.visite.contenu.slice(0, 1500) || 'inconnu'}
 Observations écrites : ${r.visite.observations.map((o) => o.texte).join(' ; ') || 'aucune'}
 Pannes qui reviennent sur l'équipement (12 mois) :
 ${r.pannes.map((p) => `- ${p.symptome} : ${p.nombre} cas, dernière réparation : ${p.reparation}`).join('\n') || '- aucune'}
-Déjà remarqué sur place : ${r.remarques.map((x) => x.texte).join(' ; ') || 'rien'}`
+Déjà remarqué sur place : ${r.remarques.map((x) => x.texte).join(' ; ') || 'rien'}
+Symptômes classiques par élément :
+${symptomesPour(`${r.equipement.designation} ${r.visite.contenu} ${r.pannes.map((p) => `${p.symptome} ${p.reparation}`).join(' ')}`) || '- aucun'}`
 
 // Les préconisations de l'IA pour cette case ; sans IA, les conseils tirés des chiffres.
 export async function preconisations(parcId, machineId, croisee) {
@@ -314,7 +317,8 @@ export async function preconisations(parcId, machineId, croisee) {
   return { lignes: lignes.length ? lignes : r.conseils, ia: Boolean(lignes.length) }
 }
 
-const CONSIGNES_FI = `Tu améliores le contenu d'une fiche d'intervention (FI) préventive de maintenance. Garde ce qui est utile, rends chaque point précis (l'organe, ce qu'on regarde, l'état attendu), et ajoute le contrôle qui verrait venir les pannes données. N'invente aucune valeur ni aucun repère. Réponds seulement avec le nouveau texte de la FI, un point par ligne.`
+const CONSIGNES_FI = `Tu améliores le contenu d'une fiche d'intervention (FI) préventive de maintenance. Garde ce qui est utile, rends chaque point précis, et ajoute le contrôle qui verrait venir les pannes données. N'invente aucune valeur ni aucun repère. Réponds seulement avec le nouveau texte de la FI, un point par ligne.
+${FORMAT_POINT}`
 
 // Le contenu de la FI actuelle, et une proposition de l'IA à reporter dans la GMAO.
 export async function proposerFi(parcId, machineId, croisee) {
