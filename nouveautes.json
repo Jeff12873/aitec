@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.16.2",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur plus grand : cases carrées agrandies, le titre des visites reste visible quand on fait défiler les colonnes"
+      ]
+    },
+    {
       "version": "0.16.1",
       "date": "2026-11-08",
       "points": [

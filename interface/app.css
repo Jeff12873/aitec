@@ -882,24 +882,28 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .puce-case b, .puce-case { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Le Démonstrateur compact : noms en biais, cases carrées */
-.matrice-demo { min-width: 0; width: max-content; border-spacing: 2px; }
-.matrice-demo th, .matrice-demo td { padding: 2px 6px; }
-.matrice-demo .carre { width: 34px; min-width: 34px; max-width: 34px; height: 34px; padding: 0; text-align: center; line-height: 1; }
-.coin-demo { min-width: 300px; vertical-align: bottom; }
-.titre-visite { max-width: 300px; }
-.biais { height: 118px; width: 34px; min-width: 34px; max-width: 34px; padding: 0 !important; position: relative; background: none !important; vertical-align: bottom; }
-.biais > div { position: absolute; left: 16px; bottom: 6px; transform-origin: 0 100%; transform: rotate(-45deg); white-space: nowrap; font-size: 11.5px; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.matrice-demo { min-width: 0; width: max-content; border-spacing: 3px; font-size: 14px; }
+.demo-conteneur { padding: 0 110px 6px 0; }
+.matrice-demo th, .matrice-demo td { padding: 4px 8px; }
+.matrice-demo .carre { width: 58px; min-width: 58px; max-width: 58px; height: 58px; padding: 0; text-align: center; line-height: 1; }
+.coin-demo { min-width: 400px; vertical-align: bottom; }
+/* Le titre des visites reste visible quand on fait défiler les colonnes. */
+.matrice-demo tbody th, .matrice-demo .coin-demo, .ligne-pannes-demo th, .ligne-diagnostics th { position: sticky; left: 0; z-index: 2; background: var(--carte); }
+.titre-visite { max-width: 400px; }
+.biais { height: 165px; width: 58px; min-width: 58px; max-width: 58px; padding: 0 !important; position: relative; background: none !important; vertical-align: bottom; }
+.biais > div { position: absolute; left: 28px; bottom: 8px; transform-origin: 0 100%; transform: rotate(-45deg); white-space: nowrap; font-size: 14px; font-weight: 500; max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
 .biais.rouge > div { color: #e8928c; }
 .biais.violet > div { color: #c4b8ea; }
 .biais.vert > div { color: #8fd0a8; }
 .biais.orange > div { color: #e0bb7a; }
 .col-clic { cursor: pointer; }
 td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1px solid var(--accent); }
-.matrice-demo .nb-pannes b { display: inline; font-size: 13px; }
-.matrice-demo .nb-pannes small { font-size: 10px; margin-left: 1px; }
+.matrice-demo .nb-pannes b { display: inline; font-size: 19px; }
+.matrice-demo .nb-pannes small { font-size: 14px; margin-left: 2px; }
 .matrice-demo .nb-pannes small.rouge { color: var(--rouge); }
 .matrice-demo .nb-pannes small.vert { color: var(--vert); }
-.matrice-demo .diag-demo { font-size: 15px; font-weight: 800; }
+.matrice-demo .diag-demo { font-size: 24px; font-weight: 800; }
+.matrice-demo .croisee.posee { font-size: 22px; }
 .croisee.posee.titre { color: var(--accent); }
 .cle-demo { display: inline-flex; align-items: center; gap: 6px; }
 .carre-legende { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0 !important; border-radius: 5px; font-size: 12px; font-weight: 800; }
@@ -957,3 +961,7 @@ td.col-clic:hover, th.col-clic:hover > div { filter: brightness(1.5); outline: 1
 .puce-machine.seule { padding-right: 10px; }
 .arbre-machines input[type='checkbox'], .cases-parametres input, .grille-etiquettes input[type='checkbox'] { width: auto; flex: none; margin: 0; }
 .arbre-machines .noeud-machine.feuille { justify-content: flex-start; gap: 6px; }
+/* Le Démonstrateur défile dans sa carte, pas toute la page. */
+.page-ligne { min-width: 0; max-width: 100%; }
+.page-ligne .parc-mn1 { grid-template-columns: minmax(0, 1fr); }
+.page-ligne .parc-mn1 > .carte, .equilibre-mn1, .demonstrateur { min-width: 0; max-width: 100%; }
