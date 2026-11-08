@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.22.1",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : glisser une visite la déplace aussitôt, sans recharger la page"
+      ]
+    },
+    {
       "version": "0.22.0",
       "date": "2026-11-08",
       "points": [

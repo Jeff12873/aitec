@@ -66,7 +66,10 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
       ? { texte: d.parc.nom, action: () => (location.hash = `#/mn1/parc/${encodeURIComponent(d.parc.id)}`) }
       : { texte: `Machines de ${eth?.code || 'Hors ETH'}`, action: () => inception(zoneNuage, null, () => { machineChoisie = null; adresse(null); return dessiner() }, false) }
     vider(zoneNuage, h('p', { class: 'discret curseur' }, 'Lecture des pannes et des visites de la machine'))
-    const r = await essayer(() => demonstrateurMachine(d.parc.id, machineChoisie))
+    const choisie = machineChoisie
+    const r = await essayer(() => demonstrateurMachine(d.parc.id, choisie, {
+      surChange: (x) => surNiveau({ machine: x.machine, eth, retour, resume: resumeMachine(donnees.equipements, choisie, { machine: x.machine, colonnes: x.colonnes, lignes: x.lignes }) }),
+    }))
     if (!r) return
     vider(zoneNuage, r.element)
     adresse(r.machine.id)
