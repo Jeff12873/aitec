@@ -16,6 +16,7 @@ import { db, reglageJson, modifierReglage, noterModification } from '../../lib/b
 import { exigerEcriture } from 'ktec/partage.js'
 import * as mysql from 'ktec/mysql.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
+import { visitesLocales, visiteLocale } from './visites-locales.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
@@ -32,7 +33,7 @@ const cleDe = (texte) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerC
 const cleDeplacement = (machine, pose, titre) => `${machine}|${pose}|${titre}`
 
 // La machine (niveau 3) et ses équipements, ses pannes des 12 derniers mois.
-async function machineEtPannes(parcId, machineId) {
+export async function machineEtPannes(parcId, machineId) {
   const v = await visitesDuParc(parcId)
   const cliquee = Number(machineId)
   const id = v.places.get(cliquee)?.machine ?? cliquee
@@ -138,6 +139,7 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     machine,
     colonnes,
     lignes: lignes.sort((a, b) => ordreLignes(a) - ordreLignes(b) || b.passages - a.passages),
+    locales: visitesLocales(machine.id),
     conventionReglee: v.reglee,
     iaInstallee: iaInstallee(),
   }
@@ -162,12 +164,14 @@ function sousEquipements(v, repere, id) {
 
 // Ce sur quoi le mainteneur s'appuie pour une visite trop générale : les pannes de ce qu'elle couvre (l'équipement où
 // elle est posée et ce qu'il porte), sans IA. Rien que des faits de la GMAO, sans le nom des dépanneurs.
-export async function ficheDeVisite(parcId, machineId, { equipement, titre, organe }) {
+export async function ficheDeVisite(parcId, machineId, { equipement, titre, organe, locale }) {
   const { v, machine, repere, pannes } = await machineEtPannes(parcId, machineId)
   const id = Number(equipement)
   if (!repere.has(id)) throw new ErreurHttp(404, 'Équipement introuvable sur cette machine')
-  const passages = v.toutes.filter((x) => x.recente && x.machine_id === id && titreDe(x) === titre)
-  if (!passages.length) throw new ErreurHttp(404, 'Visite introuvable sur cette machine')
+  // Une visite préparée dans PREVTEC : pas encore de passage, ses points à contrôler en plus.
+  const preparee = locale ? visiteLocale(String(locale)) : null
+  const passages = preparee ? [] : v.toutes.filter((x) => x.recente && x.machine_id === id && titreDe(x) === titre)
+  if (!passages.length && !preparee?.fiches[id]) throw new ErreurHttp(404, 'Visite introuvable sur cette machine')
   const cible = repere.has(Number(organe)) ? Number(organe) : id
   const couvert = sousEquipements(v, repere, cible)
   const noms = new Map(db().prepare(`SELECT id, designation FROM machines WHERE id IN (${[...couvert].join(',')})`).all().map((m) => [m.id, m.designation]))
@@ -184,17 +188,17 @@ export async function ficheDeVisite(parcId, machineId, { equipement, titre, orga
   return {
     parc: v.parc.nom,
     machine: { repere: machine.repere, designation: machine.designation },
-    visite: { code: passages[0].code?.code || '', titre, ...nomOrgane(cible), machineEntiere: cible === machine.id, passages: passages.length, derniere },
+    visite: { code: passages[0]?.code?.code || '', titre: preparee?.titre || titre, points: preparee?.fiches[id].points || null, frequence: preparee?.fiches[id].frequence || '', ...nomOrgane(cible), machineEntiere: cible === machine.id, passages: passages.length, derniere },
     bilan: {
       pannes: recents.length, precedent, evolution: evolution(recents.length, precedent),
       heures: avecDuree.length ? Math.round(avecDuree.reduce((s, l) => s + Number(l.duree_h), 0)) : null,
-      depuisVisite: correctifs.filter((l) => l.date > derniere).length,
+      depuisVisite: derniere ? correctifs.filter((l) => l.date > derniere).length : null,
     },
     ou: [...parOrgane].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([e, n]) => ({ ...nomOrgane(e), pannes: n })),
     points: pannes.filter((p) => couvert.has(p.equipement)).slice(0, NB_POINTS).map((p) => ({ ...nomOrgane(p.equipement), symptome: p.symptome, nombre: p.nombre, precedent: p.precedent, evolution: p.evolution, derniere: p.derniere, reparation: propre(p.derniereAction) })),
     dernieres: recents.slice(0, NB_DERNIERES).map((l) => {
       const d = decouperRapport(l.description)
-      return { date: l.date, repere: repere.get(l.machine_id) || '', symptome: propre(d?.symptome || texteSeul(l.description)), reparation: propre(d?.action), duree: Number(l.duree_h) > 0 ? Number(l.duree_h) : null, apresVisite: l.date > derniere }
+      return { date: l.date, repere: repere.get(l.machine_id) || '', symptome: propre(d?.symptome || texteSeul(l.description)), reparation: propre(d?.action), duree: Number(l.duree_h) > 0 ? Number(l.duree_h) : null, apresVisite: Boolean(derniere) && l.date > derniere }
     }),
     remarques: [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && couvert.has(l.machine_id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, NB_REMARQUES)
       .map((l) => ({ date: l.date, repere: repere.get(l.machine_id) || '', texte: propre(texteSeul(l.description)), origine: remontees.has(l) ? 'Conducteur' : 'Entretien' })),
@@ -282,7 +286,7 @@ Déjà remarqué sur place : ${r.remarques.map((x) => x.texte).join(' ; ') || 'r
 export async function preconisations(parcId, machineId, croisee) {
   const r = await decisionCroisee(parcId, machineId, croisee)
   if (!iaInstallee()) return { lignes: r.conseils, ia: false }
-  const texte = await discuter([{ role: 'system', content: CONSIGNES_PRECONISATIONS }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 120 })
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_PRECONISATIONS }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 250 })
   const lignes = texte.split('\n').map((l) => l.replace(/^[\s\-•*\d.)]+/, '').trim()).filter(Boolean).slice(0, 3)
   return { lignes: lignes.length ? lignes : r.conseils, ia: Boolean(lignes.length) }
 }
@@ -293,7 +297,7 @@ const CONSIGNES_FI = `Tu améliores le contenu d'une fiche d'intervention (FI) p
 export async function proposerFi(parcId, machineId, croisee) {
   if (!iaInstallee()) throw new ErreurHttp(409, 'L’IA n’est pas installée sur ce poste.')
   const r = await decisionCroisee(parcId, machineId, croisee)
-  const texte = await discuter([{ role: 'system', content: CONSIGNES_FI }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 400 })
+  const texte = await discuter([{ role: 'system', content: CONSIGNES_FI }, { role: 'user', content: resumeCroisee(r) }], { temperature: 0.3, maxMots: 1500 })
   return { actuelle: r.visite.contenu, proposee: texte.trim() }
 }
 

@@ -15,10 +15,12 @@ function pageDeLaFiche(f) {
   const v = f.visite
   const b = f.bilan
   const lieu = v.machineEntiere ? `${v.repere} ${v.designation} (machine entière)` : `${v.repere} ${v.designation}, sur ${f.machine.repere}`
+  const pointsPrepares = v.points ? `<h2>Les points à contrôler</h2>${v.frequence ? `<p class="aide">Fréquence proposée : ${esc(v.frequence)}.</p>` : ''}
+    <table><thead><tr><th>Contrôle</th><th class="c">RAS</th><th class="c">À suivre</th><th class="c">À reprendre</th></tr></thead><tbody>${v.points.map((p) => `<tr><td>${esc(p)}</td><td class="c"><i></i></td><td class="c"><i></i></td><td class="c"><i></i></td></tr>`).join('')}</tbody></table>` : ''
   const synthese = [
     `<b>${pluriel(b.pannes, 'panne')}</b> sur les 12 derniers mois (${b.precedent} les 12 mois d'avant)`,
     b.heures !== null ? `<b>${b.heures} h</b> de dépannage sur ces 12 mois` : '',
-    `<b>${pluriel(b.depuisVisite, 'panne')}</b> depuis la dernière visite, le ${dateFr(v.derniere)}`,
+    b.depuisVisite === null ? '' : `<b>${pluriel(b.depuisVisite, 'panne')}</b> depuis la dernière visite, le ${dateFr(v.derniere)}`,
   ].filter(Boolean).map((x) => `<li>${x}</li>`).join('')
   const ou = f.ou.length ? `<p class="ou"><b>Où :</b> ${f.ou.map((o) => `${esc(o.repere)}${o.designation ? ` ${esc(o.designation)}` : ''} (${o.pannes})`).join(' · ')}</p>` : ''
   const case_ = '<td class="c"><i></i></td>'
@@ -64,7 +66,7 @@ function pageDeLaFiche(f) {
     <p class="lieu">${esc(f.parc)} · ${esc(lieu)}</p>
     <ul>${synthese}</ul>${ou}
   </div><div class="remplir">Visite du :<br>Par :</div></div>
-  ${points}${dernieres}${remarques}
+  ${pointsPrepares}${points}${dernieres}${remarques}
   <h2>Compte rendu de la visite</h2><div class="compte-rendu"></div>
   <p class="pied">Fiche tirée de la GMAO le ${dateFr(new Date().toISOString().slice(0, 10))}</p>
 </div></body></html>`
@@ -72,7 +74,7 @@ function pageDeLaFiche(f) {
 
 // L'aperçu par-dessus la page, comme les fiches de niveau 1 ; « Imprimer » imprime la feuille seule.
 export async function ouvrirFicheVisite(base, g) {
-  const f = await essayer(() => api(`${base}/visite?equipement=${g.pose}&titre=${encodeURIComponent(g.titre)}${g.dapresTitre ? `&organe=${g.equipement}` : ''}`))
+  const f = await essayer(() => api(`${base}/visite?equipement=${g.pose}&titre=${encodeURIComponent(g.titre)}${g.dapresTitre ? `&organe=${g.equipement}` : ''}${g.locale ? `&locale=${g.locale}` : ''}`))
   if (!f) return
   const cadre = h('iframe', { class: 'cadre-fiche', title: 'Fiche de visite', srcdoc: pageDeLaFiche(f) })
   const fermer = () => { voile.remove(); document.removeEventListener('keydown', surEchap) }

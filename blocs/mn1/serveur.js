@@ -17,6 +17,7 @@ import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
 import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
+import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale } from './visites-locales.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
@@ -557,6 +558,13 @@ export function routes(r) {
   r.get('/api/mn1/affichage', () => ({ affichage: affichage(), etiquettes: etiquettes() }))
   admin.post('/api/mn1/affichage', async (ctx) => enregistrerAffichage(await ctx.json()))
   admin.post('/api/mn1/etiquettes', async (ctx) => enregistrerEtiquettes((await ctx.json()).etiquettes))
+
+  // Les visites préparées dans PREVTEC, sans rien écrire dans la GMAO.
+  r.post('/api/mn1/parcs/:id/machines/:machine/locales/proposer', async (ctx) => proposerFicheLocale(ctx.params.id, ctx.params.machine, (await ctx.json()).equipement))
+  admin.post('/api/mn1/parcs/:id/machines/:machine/locales', (ctx) => creerVisiteLocale(ctx.params.machine))
+  admin.post('/api/mn1/locales/:visite/retirer', (ctx) => retirerVisiteLocale(ctx.params.visite))
+  admin.post('/api/mn1/locales/:visite/fiche', async (ctx) => enregistrerFiche(ctx.params.visite, await ctx.json()))
+  admin.post('/api/mn1/locales/:visite/fiche/retirer', async (ctx) => retirerFiche(ctx.params.visite, (await ctx.json()).equipement))
 
   // Déplacer une visite de la machine entière sur un organe, dans la GMAO (simulée d'abord).
   admin.post('/api/mn1/parcs/:id/machines/:machine/deplacer', async (ctx) => {

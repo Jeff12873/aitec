@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.19.0",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : « Nouvelle visite », préparée dans PREVTEC seulement, avec une fiche rédigée par l'IA d'après les pannes de l'équipement, dans la case choisie",
+        "Clic droit sur une case du Démonstrateur : ses actions"
+      ]
+    },
+    {
       "version": "0.18.0",
       "date": "2026-11-08",
       "points": [

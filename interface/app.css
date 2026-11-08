@@ -984,3 +984,14 @@ td.col-clic:hover { filter: brightness(1.5); outline: 1px solid var(--accent); }
 tr.en-deplacement td.croisee { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -2px; }
 tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--accent) 35%, transparent); outline-style: solid; }
 .detail-decider .fi-actuelle { max-height: none; }
+
+/* Démonstrateur : menu du clic droit, visites préparées dans PREVTEC */
+.menu-contextuel { position: fixed; z-index: 9000; display: grid; min-width: 190px; padding: 5px; border-radius: 10px; border: 1px solid var(--bord); background: var(--carte-3); box-shadow: 0 10px 28px rgba(0, 0, 0, .5); }
+.menu-contextuel button { border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 6px; color: var(--texte); }
+.menu-contextuel button:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.code-visite.locale { color: #fbbf24; border-color: color-mix(in srgb, #fbbf24 50%, transparent); }
+.ligne-locale .titre-visite { color: var(--texte); font-style: italic; }
+.ligne-locale .croisee { background: color-mix(in srgb, #fbbf24 6%, transparent); }
+.croisee.fiche-locale, .carre-legende.fiche-locale { background: color-mix(in srgb, #fbbf24 26%, transparent); color: #fbbf24; }
+.matrice-demo .croisee.fiche-locale svg { vertical-align: middle; }
+.ligne-ajout .titre-visite { padding: 8px; }
