@@ -92,8 +92,19 @@ export async function demonstrateurMachine(parcId, machineId) {
       g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
     h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
     h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
-    col.map((c) => h('td', { class: `carre croisee col-clic ${posee(g, c) ? `posee${g.dapresTitre ? ' titre' : ''}` : ''}${deplacable(g) && posee(g, c) ? ' deplacable' : ''}`, ...(posee(g, c) ? sourceGlisser(g) : cibleGlisser(g, c)), title: `${infos(c, posee(g, c) ? (g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`) : `« ${g.titre} » : pas posée sur cet équipement`)}\nCliquer : je décide${deplacable(g) && posee(g, c) ? '\nGlisser sur un organe : déplacer cette visite dans la GMAO' : ''}`, onclick: () => decider(g, c.id), oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, c.id)], ...(deplacable(g) && (!posee(g, c) || g.dapresTitre) ? [[posee(g, c) ? 'Valider : poser la visite sur cet équipement (GMAO)' : 'Poser la visite ici (GMAO)', () => deplacer(g, c)]] : [])]) }, posee(g, c) ? '●' : '')),
-    h('td', { class: `carre croisee col-clic ${g.machineEntiere ? 'posee vague' : ''}${deplacable(g) && g.machineEntiere ? ' deplacable' : ''}`, ...(g.machineEntiere ? sourceGlisser(g) : {}), title: `« ${g.titre} » face à la machine entière\nCliquer : je décide${deplacable(g) && g.machineEntiere ? '\nGlisser sur un organe : déplacer cette visite dans la GMAO' : ''}`, onclick: () => decider(g, m.id), oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, m.id)]]) }, g.machineEntiere ? '●' : '')))
+    col.map((c) => (posee(g, c)
+      ? h('td', {
+        class: `carre croisee col-clic posee${g.dapresTitre ? ' titre' : ''}${deplacable(g) ? ' deplacable' : ''}`,
+        ...sourceGlisser(g),
+        title: `${infos(c, g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`)}\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un organe : déplacer cette visite dans la GMAO' : ''}`,
+        onclick: () => decider(g, c.id),
+        oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, c.id)], ...(deplacable(g) && g.dapresTitre ? [['Valider : poser la visite sur cet équipement (GMAO)', () => deplacer(g, c)]] : [])]),
+      }, '●')
+      // Une case vide ne propose rien : elle sert seulement à recevoir une visite glissée.
+      : h('td', { class: 'carre croisee', ...cibleGlisser(g, c) }))),
+    g.machineEntiere
+      ? h('td', { class: `carre croisee col-clic posee vague${deplacable(g) ? ' deplacable' : ''}`, ...sourceGlisser(g), title: `« ${g.titre} » face à la machine entière\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un organe : déplacer cette visite dans la GMAO' : ''}`, onclick: () => decider(g, m.id), oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, m.id)]]) }, '●')
+      : h('td', { class: 'carre croisee' })))
 
   // ---- les visites préparées dans PREVTEC : une ligne vide, puis une fiche de l'IA dans la case de l'équipement
   const admin = modeAdmin()
@@ -157,7 +168,7 @@ export async function demonstrateurMachine(parcId, machineId) {
   const ligneDiag = h('tr', { class: 'ligne-diagnostics' }, h('th', {}, 'diagnostic'), h('td'), h('td'),
     col.map((c) => h('td', { class: `carre diag-demo ${COULEURS_DIAGNOSTIC[c.diagnostic]}`, title: infos(c) }, SIGNES[c.diagnostic])), h('td', { class: 'carre' }))
   const element = h('div', { class: 'demonstrateur' },
-    h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} · 12 mois. Cliquez une case pour décider de cette visite sur cet équipement.`),
+    h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} · 12 mois. Cliquez un ● ou un ○ pour décider de cette visite sur cet équipement.`),
     col.length || d.lignes.length ? h('div', { class: 'tableau-conteneur demo-conteneur' }, h('table', { class: 'matrice-demo' }, h('thead', {}, tete, lignePannes), h('tbody', {}, corps, lignesLocales, ligneAjout), h('tfoot', {}, ligneDiag)))
       : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
     h('div', { class: 'legende-demo' },
