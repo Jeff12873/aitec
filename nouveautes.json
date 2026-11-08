@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.22.2",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : un déplacement provisoire a son icône, et ne compte dans le diagnostic qu'une fois validé",
+        "Correction : les points proposés par l'IA pouvaient s'afficher en « [object Object] »"
+      ]
+    },
+    {
       "version": "0.22.1",
       "date": "2026-11-08",
       "points": [

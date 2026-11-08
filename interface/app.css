@@ -1024,3 +1024,8 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .menu-contextuel { gap: 6px; padding: 8px; min-width: 280px; }
 .menu-contextuel button { display: flex; justify-content: flex-start; width: 100%; padding: 11px 14px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte-2); font-size: 15px; font-weight: 500; }
 .menu-contextuel button:hover { border-color: var(--accent); }
+
+/* Déplacement provisoire : ni actif, ni évalué par l'IA */
+.croisee.posee.provisoire, .carre-legende.provisoire { background: color-mix(in srgb, #fbbf24 12%, transparent); }
+.croisee.provisoire::after, .carre-legende.provisoire::after { content: ''; display: inline-block; width: 22px; height: 22px; border: 2px dashed #fbbf24; border-radius: 50%; vertical-align: middle; }
+.carre-legende.provisoire::after { width: 11px; height: 11px; border-width: 1.5px; }

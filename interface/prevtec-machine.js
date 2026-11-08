@@ -123,12 +123,12 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
       col.map((c) => (posee(g, c)
         ? h('td', {
-          class: `carre croisee col-clic posee${g.dapresTitre || g.placee ? ' titre' : ''}${deplacable(g) ? ' deplacable' : ''}`,
+          class: `carre croisee col-clic posee${g.placee ? ' provisoire' : g.dapresTitre ? ' titre' : ''}${deplacable(g) ? ' deplacable' : ''}`,
           ...sourceGlisser(g),
-          title: `${infos(c, g.placee ? `○ « ${g.titre} » : déplacée ici dans PREVTEC, à valider au clic droit` : g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`)}\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un équipement : la déplacer dans PREVTEC' : ''}`,
+          title: `${infos(c, g.placee ? `Provisoire : « ${g.titre} » déplacée ici dans PREVTEC. Pas active, pas évaluée par l’IA ; à valider au clic droit` : g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`)}\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un équipement : la déplacer dans PREVTEC' : ''}`,
           onclick: () => decider(g, c.id),
           oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, c.id)], ...(aValider(g) ? [['Valider le déplacement (GMAO)', () => deplacer(g, c)]] : []), ...(g.placee && deplacable(g) ? [['Annuler le déplacement', () => placer(g, null)]] : [])]),
-        }, '●')
+        }, g.placee ? '' : '●')
         // Une case vide ne propose rien : elle sert seulement à recevoir une visite glissée.
         : h('td', { class: 'carre croisee', ...cibleGlisser(g, c) }))),
       g.machineEntiere
@@ -215,7 +215,8 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       h('div', { class: 'legende-demo' },
         ['pas', 'mauvais', 'ok', 'sur'].map((k) => h('span', { class: 'cle-demo' }, h('span', { class: `carre-legende diag-demo ${COULEURS_DIAGNOSTIC[k]}` }, SIGNES[k]), LIBELLES[k])),
         h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende fiche-locale' }, ic('document', 13)), 'fiche préparée dans PREVTEC, pas encore dans la GMAO'),
-        h('span', { class: 'discret' }, 'Clic droit sur une case : ses actions · ● visite posée sur l’équipement · ○ d’après son titre, ou déplacée dans PREVTEC, à valider · t : part des passages sans rien trouver, parmi ceux avec une observation écrite')))
+        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende provisoire' }), 'déplacement provisoire : pas actif, pas évalué par l’IA'),
+        h('span', { class: 'discret' }, 'Clic droit sur une case : ses actions · ● visite posée sur l’équipement · ○ d’après son titre · t : part des passages sans rien trouver, parmi ceux avec une observation écrite')))
     element.querySelectorAll('td.posee.titre').forEach((td) => (td.textContent = '○'))
     return element
   }

@@ -111,7 +111,8 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     groupes.set(cle, g)
   }
   const lignes = [...groupes.values()].map((g) => ({ ...g, t: g.ecrits ? g.rien / g.ecrits : null }))
-  const surMachine = lignes.filter((g) => g.machineEntiere)
+  // Un déplacement encore provisoire n'est pas actif : il compte à sa place d'origine, tant qu'il n'est pas validé.
+  const surMachine = lignes.filter((g) => g.machineEntiere || (g.placee && g.pose === machine.id))
   // Les colonnes : les équipements qui ont des pannes ou des visites, le plus en panne à gauche ; la machine entière
   // (visites posées sur elle) en dernier.
   const parEquipement = new Map([...comptes].filter(([, c]) => c.pannes || c.precedent).map(([id, c]) => [id, { pannes: c.pannes, precedent: c.precedent, liste: [] }]))
@@ -123,7 +124,7 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     return p ? { cle: p.cle, symptome: p.symptome, nombre: p.nombre } : null
   }
   const colonnes = [...parEquipement].filter(([id]) => id !== machine.id || parEquipement.get(id).pannes).map(([id, c]) => {
-    const dessus = lignes.filter((g) => g.equipement === id && !g.machineEntiere)
+    const dessus = lignes.filter((g) => (g.placee ? g.pose === id && g.pose !== machine.id : g.equipement === id && !g.machineEntiere))
     const passages = dessus.reduce((s, g) => s + g.passages, 0)
     const ev = evolution(c.pannes, c.precedent)
     const monte = ev === 'monte' || (ev === 'nouvelle' && c.pannes >= 3)

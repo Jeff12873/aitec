@@ -36,6 +36,7 @@ function changer(id, action) {
 export function titreStandard(titre, repere = '') {
   let t = String(titre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/^[\s\d.-]+/, '').replace(/\bMAINTENANCE PREVENTIVE\b\s*(DE|DU|DES)?\s*/, '').replace(/\s+/g, ' ').trim()
   if (t && !/^(VISITE|CONTROLE)\b/.test(t)) t = `VISITE ${t}`
+  t = t.replace(/\s+([\d.]+)$/, (m, n) => (repere.toUpperCase().startsWith(n) ? '' : m)) // « … 670 » suivi du repère 670.2
   return repere && t && !t.includes(repere.toUpperCase()) ? `${t} ${repere.toUpperCase()}` : t
 }
 
@@ -93,8 +94,15 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
 
 const CONSIGNES = `Tu rédiges une nouvelle visite de maintenance préventive, faite par un technicien, pour voir venir les pannes décrites.
 Réponds seulement avec un objet JSON, sans texte autour :
-{"points":["un contrôle par entrée : l'organe, ce qu'on regarde, l'état attendu"],"frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","pourquoi":"les pannes visées, une phrase"}
-De 3 à 8 points. Seulement ce que disent les rapports : n'invente aucune valeur ni aucun repère.`
+{"points":["Organe : ce qu'on regarde, l'état attendu"],"frequence":"Mensuelle | Trimestrielle | Semestrielle | Annuelle","pourquoi":"les pannes visées, une phrase"}
+De 3 à 8 points, chacun une simple phrase entre guillemets, jamais un objet. Seulement ce que disent les rapports : n'invente aucune valeur ni aucun repère.`
+
+// Un point rendu par l'IA : une phrase, ou parfois un objet { organe, contrôle… } dont on recolle les morceaux.
+const enTexte = (p) => {
+  if (typeof p !== 'object' || p === null) return String(p ?? '').trim()
+  const [premier, ...reste] = Object.values(p).map((x) => String(x ?? '').trim()).filter(Boolean)
+  return reste.length ? `${premier} : ${reste.join(', ')}` : premier || ''
+}
 
 // Le brouillon de l'IA pour cet équipement, d'après ses pannes des 12 derniers mois et ce qui a été remarqué sur place.
 export async function proposerFiche(parcId, machineId, equipement) {
@@ -105,11 +113,16 @@ export async function proposerFiche(parcId, machineId, equipement) {
   const depuis = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10)
   const pannes = v.lignes.filter((l) => l.machine_id === id && l.date >= depuis && familleDe(l.type) === 'Correctif').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
   const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.machine_id === id && l.date >= depuis).slice(0, 6)
-  const texte = await discuter([{ role: 'system', content: CONSIGNES }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nÉquipement : ${repere.get(id)}\nRapports de panne (12 mois) :\n${pannes.map((l) => `- ${l.date} : ${texteSeul(l.description).slice(0, 300)}`).join('\n') || '- aucun'}\nDéjà remarqué sur place :\n${remarques.map((l) => `- ${texteSeul(l.description).slice(0, 200)}`).join('\n') || '- rien'}` }], { temperature: 0.3, maxMots: 1200 })
-  const lu = lireJson(texte)
-  if (!Array.isArray(lu?.points) || !lu.points.length) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
+  // L'IA locale varie d'une fois à l'autre : on lui redemande si sa réponse est illisible ou trop courte.
+  let lu = null
+  let points = []
+  for (let essai = 0; essai < 3 && points.length < 3; essai++) {
+    lu = lireJson(await discuter([{ role: 'system', content: CONSIGNES }, { role: 'user', content: `Machine : ${machine.repere} ${machine.designation}\nÉquipement : ${repere.get(id)}\nRapports de panne (12 mois) :\n${pannes.map((l) => `- ${l.date} : ${texteSeul(l.description).slice(0, 300)}`).join('\n') || '- aucun'}\nDéjà remarqué sur place :\n${remarques.map((l) => `- ${texteSeul(l.description).slice(0, 200)}`).join('\n') || '- rien'}` }], { temperature: 0.3, maxMots: 1200 }))
+    if (Array.isArray(lu?.points)) points = lu.points.map(enTexte).filter(Boolean)
+  }
+  if (!points.length) throw new ErreurHttp(502, 'Réponse de l’IA illisible : réessayez.')
   // Le titre vient de l'arborescence, pas de l'IA : VISITE, le nom de l'équipement, le repère de la machine.
   const organe = db().prepare('SELECT designation FROM machines WHERE id = ?').get(id)?.designation
   const nom = String(organe || repere.get(id)).split('/').pop().trim()
-  return { titre: titreStandard(`VISITE ${nom}`, machine.repere), points: lu.points.map(String), frequence: String(lu.frequence || ''), pourquoi: String(lu.pourquoi || '') }
+  return { titre: titreStandard(`VISITE ${nom}`, machine.repere), points, frequence: String(lu.frequence || ''), pourquoi: String(lu.pourquoi || '') }
 }
