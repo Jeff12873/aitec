@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.23.1",
+      "date": "2026-11-08",
+      "points": [
+        "Ma ligne : un bouton dans les contributeurs du mois pour aller à la maintenance de niveau 1 de la ligne"
+      ]
+    },
+    {
       "version": "0.23.0",
       "date": "2026-11-08",
       "points": [

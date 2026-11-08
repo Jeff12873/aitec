@@ -77,7 +77,10 @@ export function hallOfFameLigne(parc) {
   api(`/api/mn1/indicateurs?parc=${encodeURIComponent(parc.id)}`).then((i) => {
     if (!i?.reglee) return vider(zone)
     const seul = (c, quoi) => c ? h('div', { class: 'alerte-mn1' }, ic('personne', 15), `Les ${quoi} reposent sur une seule personne : ${c.nom} en a fait ${Math.round(c.part * 100)} % (${c.total} ${quoi} sur 8 semaines).`) : null
-    vider(zone, hallOfFame(i, parc.nom) || h('p', { class: 'discret hof-vide' }, ic('etincelle', 14), `Pas encore de demande ni d’exécution ce mois-ci sur ${parc.nom}.`), seul(i.concentration, 'DI'), seul(i.concentrationRi, 'RI'))
+    const lienN1 = h('a', { class: 'bouton petit lien-niveau1', href: `#/niveau1/${encodeURIComponent(parc.id)}`, title: `Les fiches, demandes, FI et rapports de niveau 1 de ${parc.nom}` }, h('img', { src: LOGO_MN1, alt: '' }), 'Maintenance de niveau 1')
+    const hof = hallOfFame(i, parc.nom)
+    hof?.querySelector('.titre-hof').append(lienN1)
+    vider(zone, hof || h('p', { class: 'discret hof-vide' }, ic('etincelle', 14), `Pas encore de demande ni d’exécution ce mois-ci sur ${parc.nom}.`, lienN1), seul(i.concentration, 'DI'), seul(i.concentrationRi, 'RI'))
   }).catch(() => vider(zone))
   return zone
 }

@@ -1029,3 +1029,8 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .croisee.posee.provisoire, .carre-legende.provisoire { background: color-mix(in srgb, #fbbf24 12%, transparent); }
 .croisee.provisoire::after, .carre-legende.provisoire::after { content: ''; display: inline-block; width: 22px; height: 22px; border: 2px dashed #fbbf24; border-radius: 50%; vertical-align: middle; }
 .carre-legende.provisoire::after { width: 11px; height: 11px; border-width: 1.5px; }
+
+/* Les contributeurs du mois : aller au niveau 1 de la ligne */
+.lien-niveau1 { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; font-weight: 600; }
+.lien-niveau1 img { width: 20px; height: 20px; }
+.hof-vide .lien-niveau1 { margin-left: 12px; }
