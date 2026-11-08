@@ -84,12 +84,15 @@ export async function equilibreDuParc(parcId) {
   }
   const reperes = db().prepare('SELECT id, repere, designation FROM machines').all()
   const machine = new Map(reperes.map((x) => [x.id, x]))
+  // Les pannes des 12 mois d'avant, pour dire si le préventif porte ses fruits.
+  const avant = new Map()
+  for (const l of db().prepare('SELECT machine_id, type FROM interventions WHERE date >= ? AND date < ?').all(ilYa(2 * JOURS), ilYa(JOURS))) if (familleDe(l.type) === 'Correctif') avant.set(l.machine_id, (avant.get(l.machine_id) || 0) + 1)
   // Chaque équipement avec sa machine (niveau 3) et son ETH (niveau 2), pour le tableau à deux niveaux.
   const places = placesDuParc(p, parc)
   const equipements = [...parMachine].map(([id, m]) => {
     const pl = places.get(id)
     const porteuse = pl?.machine ?? id
-    return { id, repere: machine.get(id)?.repere || '', designation: machine.get(id)?.designation || '', analyse: machineAnalysable(p, id) || null, machine: { id: porteuse, repere: machine.get(porteuse)?.repere || '', designation: machine.get(porteuse)?.designation || '' }, eth: pl?.eth || null, ...m }
+    return { id, repere: machine.get(id)?.repere || '', designation: machine.get(id)?.designation || '', analyse: machineAnalysable(p, id) || null, machine: { id: porteuse, repere: machine.get(porteuse)?.repere || '', designation: machine.get(porteuse)?.designation || '' }, eth: pl?.eth || null, correctifsAvant: avant.get(id) || 0, ...m }
   })
   const listeGammes = [...gammes.values()].sort((a, b) => b.nombre - a.nombre)
   return {

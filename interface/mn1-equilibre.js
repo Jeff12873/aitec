@@ -1,8 +1,12 @@
 // Le tableau correctif × préventif d'une ligne (à côté du Pareto), en grosses cases : les pannes en hauteur, les
 // visites d'observation en largeur, sur 12 mois. D'abord les ETH de la ligne ; un clic zoome sur les machines d'une ETH.
-//   rouge  : beaucoup de pannes, peu de préventif (sous-entretien) ;
-//   orange : beaucoup de préventif, peu de pannes (sur-entretien possible) ;
-//   vert   : équilibré.
+// Quatre cadrans, « beaucoup » voulant dire le tiers le plus haut des éléments affichés (la médiane alertait sur la
+// moitié d'entre eux : une alerte partout n'alerte plus) :
+//   beaucoup de pannes, peu de visites      : pas assez de préventif (rouge) ;
+//   beaucoup de pannes, beaucoup de visites : mal ciblé, on ne regarde pas au bon endroit (violet) ;
+//   peu de pannes, beaucoup de visites      : trop de préventif ? (orange), ou le préventif marche si les pannes ont
+//                                             nettement baissé depuis les 12 mois d'avant (vert) ;
+//   peu de pannes, peu de visites           : rien à signaler.
 // Bascule Niveau 1 / Techniciens / Tout. Le préventif systématique (changer une pièce à date fixe) est écarté :
 // l'IA classe chaque gamme, l'administrateur corrige (blocs/mn1/equilibre.js).
 
@@ -16,14 +20,19 @@ const ECART = 2 // même règle que le serveur (equilibre.js, zone)
 const MODES = [['tout', 'Tout', 'Le préventif de niveau 1 et celui des techniciens'], ['n1', 'Niveau 1', 'Les RI de niveau 1 (conducteurs, fiches MN1)'], ['techniciens', 'Techniciens', 'Le préventif des techniciens, hors niveau 1']]
 const preventifsDe = (e, mode) => (mode === 'n1' ? e.n1 : mode === 'techniciens' ? e.techniciens : e.n1 + e.techniciens)
 
-function zone({ correctifs, preventifs }, totaux, nombre) {
-  if (!correctifs && !preventifs) return null
-  const partC = totaux.correctifs ? correctifs / totaux.correctifs : 0
-  const partP = totaux.preventifs ? preventifs / totaux.preventifs : 0
-  const moyenne = 1 / Math.max(1, nombre)
-  if (correctifs >= 2 && partC >= moyenne && partC >= ECART * partP) return 'rouge'
-  if (preventifs >= 2 && partP >= moyenne && partP >= ECART * partC) return 'orange'
-  return 'vert'
+const tiersHaut = (valeurs) => {
+  const tri = [...valeurs].sort((a, b) => a - b)
+  return tri.length ? tri[Math.floor(tri.length * 2 / 3)] : 0
+}
+// Les seuils de « beaucoup », sur les éléments affichés (2 au moins : une panne isolée n'est pas « beaucoup »).
+const seuilsDe = (liste) => ({ c: Math.max(2, tiersHaut(liste.map((e) => e.correctifs))), p: Math.max(2, tiersHaut(liste.map((e) => e.preventifs))) })
+const baisseNette = (e) => e.correctifsAvant - e.correctifs >= 2 && e.correctifs <= e.correctifsAvant * 0.75
+function zone(e, s) {
+  const pannes = e.correctifs >= s.c
+  const visites = e.preventifs >= s.p
+  if (pannes) return visites ? 'violet' : 'rouge'
+  if (visites) return baisseNette(e) ? 'vert' : 'orange'
+  return 'gris'
 }
 
 // d : le détail du parc (pour son id). Renvoie l'élément ; les données se chargent à l'affichage.
@@ -68,8 +77,9 @@ export function nuageEquilibre(d, { machine = null, surMachine = () => {} } = {}
       const groupes = new Map()
       for (const e of equipements) {
         const k = cle(e)
-        const g = groupes.get(k) || { ...decrire(e), correctifs: 0, preventifs: 0, equipements: 0 }
+        const g = groupes.get(k) || { ...decrire(e), correctifs: 0, preventifs: 0, correctifsAvant: 0, equipements: 0 }
         g.correctifs += e.correctifs
+        g.correctifsAvant += e.correctifsAvant
         g.preventifs += e.preventifs
         g.equipements++
         groupes.set(k, g)
@@ -81,20 +91,21 @@ export function nuageEquilibre(d, { machine = null, surMachine = () => {} } = {}
       ? regrouper(tous, (e) => e.eth?.id || '', (e) => ({ type: 'eth', id: e.eth?.id || '', repere: e.eth?.code || 'Hors ETH', designation: e.eth?.libelle || 'Équipements rangés hors des ETH' }))
       : regrouper(tous.filter((e) => (e.eth?.id || '') === ethChoisi), (e) => e.machine.id, (e) => ({ type: 'machine', id: e.machine.id, repere: e.machine.repere || e.repere, designation: e.machine.designation || e.designation, analyse: e.machine.id }))
     const totaux = { correctifs: liste.reduce((t, e) => t + e.correctifs, 0), preventifs: liste.reduce((t, e) => t + e.preventifs, 0) }
-    for (const e of liste) e.zone = zone(e, totaux, liste.length)
+    const seuils = seuilsDe(liste)
+    for (const e of liste) e.zone = zone(e, seuils)
     // Une ETH alerte par ce qu'elle contient : ses machines rouges (ou orange), comptées comme au zoom.
     if (ethChoisi === null) {
       for (const e of liste) {
         const machines = regrouper(tous.filter((x) => (x.eth?.id || '') === e.id), (x) => x.machine.id, () => ({}))
-        const t2 = { correctifs: machines.reduce((s, m) => s + m.correctifs, 0), preventifs: machines.reduce((s, m) => s + m.preventifs, 0) }
-        e.rouges = machines.filter((m) => zone(m, t2, machines.length) === 'rouge').length
-        e.oranges = machines.filter((m) => zone(m, t2, machines.length) === 'orange').length
+        const s2 = seuilsDe(machines)
+        const zones = machines.map((m) => zone(m, s2))
+        e.rouges = zones.filter((z) => z === 'rouge' || z === 'violet').length
+        e.oranges = zones.filter((z) => z === 'orange').length
         e.machines = machines.length
       }
     }
-    // Au niveau des ETH, la légende compte les machines (ce qui alerte), pas les ETH (presque toujours équilibrées).
-    const compte = (z) => (ethChoisi === null ? liste.reduce((s, e) => s + (z === 'rouge' ? e.rouges : z === 'orange' ? e.oranges : e.machines - e.rouges - e.oranges), 0) : liste.filter((e) => e.zone === z).length)
-    const aRegarder = liste.filter((e) => e.zone === 'rouge').sort((a, b) => b.correctifs - a.correctifs)
+    const compte = (z) => liste.filter((e) => e.zone === z).length
+    const aRegarder = liste.filter((e) => e.zone === 'rouge' || e.zone === 'violet').sort((a, b) => b.correctifs - a.correctifs)
     const surEntretien = liste.filter((e) => e.zone === 'orange').sort((a, b) => b.preventifs - a.preventifs)
     const g = donnees.gammes
 
@@ -112,16 +123,14 @@ export function nuageEquilibre(d, { machine = null, surMachine = () => {} } = {}
       h('div', { class: 'tete-equilibre' },
         h('div', { class: 'segments petits' }, MODES.map(([cle, texte, aide]) => h('button', { class: mode === cle ? 'choisi' : '', title: aide, onclick: () => { mode = cle; dessiner() } }, texte))),
         h('div', { class: 'legende-equilibre' },
-          ethChoisi === null ? h('span', { class: 'discret' }, 'machines : ') : null,
-          h('span', { class: 'pastille-zone rouge' }), `${compte('rouge')} sous-entretenu${compte('rouge') > 1 ? 's' : ''}`,
-          h('span', { class: 'pastille-zone orange' }), `${compte('orange')} sur-entretenu${compte('orange') > 1 ? 's' : ''} ?`,
-          h('span', { class: 'pastille-zone vert' }), `${compte('vert')} équilibré${compte('vert') > 1 ? 's' : ''}`)),
+          [['rouge', 'pas assez de préventif'], ['violet', 'mal ciblé'], ['orange', 'trop de préventif ?'], ['vert', 'le préventif marche'], ['gris', 'rien à signaler']].flatMap(([z, texte]) => (compte(z) ? [h('span', { class: `pastille-zone ${z}` }), `${compte(z)} ${texte}`] : [])))),
       ethChoisi !== null ? h('div', { class: 'retour-tableau' }, h('button', { class: 'petit discret', onclick: () => { ethChoisi = null; dessiner() } }, ic('retour', 14), 'Toutes les ETH'), h('b', {}, eth?.libelle || 'Hors ETH'), h('span', { class: 'discret' }, ' : ses machines')) : null,
       liste.length
-        ? tableauCases(liste, totaux, { niveau: ethChoisi === null ? 'eth' : 'machine', zoomer: (id) => { ethChoisi = id; dessiner() }, ouvrir: (id) => { machineChoisie = id; dessiner() } })
+        ? tableauCases(liste, { niveau: ethChoisi === null ? 'eth' : 'machine', zoomer: (id) => { ethChoisi = id; dessiner() }, ouvrir: (id) => { machineChoisie = id; dessiner() } })
         : h('p', { class: 'discret' }, 'Ni correctif ni préventif sur les machines de maintenance de cette ligne ces 12 derniers mois.'),
-      h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. Rouge : beaucoup de pannes pour peu de visites ; orange : beaucoup de visites pour peu de pannes ; vert : équilibré.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour ouvrir son Démonstrateur.'}`),
-      aRegarder.length || surEntretien.length ? h('div', { class: 'a-regarder' },
+      h('p', { class: 'discret petit-texte' }, `${ethChoisi === null ? `${liste.length} ETH` : `${liste.length} machine${liste.length > 1 ? 's' : ''}`}, ${totaux.correctifs} pannes et ${totaux.preventifs} visites d’observation sur 12 mois. « Beaucoup » : ${seuils.c} pannes ou ${seuils.p} visites au moins, le tiers le plus haut de ce qui est affiché.${ethChoisi === null ? ' Cliquez une ETH pour voir ses machines.' : ' Cliquez une machine pour ouvrir son Démonstrateur.'}`),
+      ethChoisi === null ? parOuCommencer(liste, totaux, (id) => { ethChoisi = id; dessiner() }) : null,
+      ethChoisi !== null && (aRegarder.length || surEntretien.length) ? h('div', { class: 'a-regarder' },
         aRegarder.length ? h('div', {}, h('b', {}, 'À regarder d’abord'), aRegarder.slice(0, 8).map(puce)) : null,
         surEntretien.length ? h('div', {}, h('b', {}, 'Préventif à alléger ?'), surEntretien.slice(0, 8).map(puce)) : null) : null,
       h('div', { class: 'gammes-equilibre' },
@@ -186,20 +195,39 @@ function tranchesAdaptees(valeurs) {
   return bornes.map((de, i) => ({ de, a: (bornes[i + 1] ?? Infinity) - 1, libelle: bornes[i + 1] === undefined ? (de ? `${de}+` : '0') : de === bornes[i + 1] - 1 ? String(de) : `${de}–${bornes[i + 1] - 1}` }))
 }
 
-function tableauCases(liste, totaux, { niveau, zoomer, ouvrir }) {
-  // Peu d'éléments (les ETH) : des tranches adaptées ; beaucoup (les machines) : les tranches fixes.
-  const lignesC = tranchesAdaptees(liste.map((e) => e.correctifs)).reverse() // beaucoup de pannes en haut
-  const colonnesP = tranchesAdaptees(liste.map((e) => e.preventifs))
-  const pente = totaux.correctifs ? totaux.preventifs / totaux.correctifs : 1
-  const milieu = (t) => (t.a === Infinity ? t.de * 1.5 : (t.de + t.a) / 2)
-  const fond = (tc, tp) => {
-    const c = milieu(tc)
-    const p = milieu(tp)
-    if (!c && !p) return ''
-    if (p * ECART <= c * pente) return 'rouge'
-    if (p >= ECART * c * pente) return 'orange'
-    return 'vert'
+// Le seuil de « beaucoup » devient une borne de tranche : chaque case est tout entière d'un côté du cadran.
+function avecSeuil(lesTranches, seuil) {
+  const bornes = [...new Set([...lesTranches.map((x) => x.de), seuil])].sort((a, b) => a - b)
+  return bornes.map((de, i) => {
+    const a = (bornes[i + 1] ?? Infinity) - 1
+    return { de, a, libelle: a === Infinity ? `${de}+` : de === a ? String(de) : `${de}–${a}` }
+  })
+}
+
+// Par où commencer, au niveau des ETH : la plus problématique d'abord, en une phrase chacune.
+function parOuCommencer(liste, totaux, zoomer) {
+  const ratio = (e) => (e.correctifs ? e.preventifs / e.correctifs : null)
+  const virgule = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR')
+  const evol = (e) => {
+    if (!e.correctifsAvant) return 'pas de comparaison possible'
+    const v = Math.round(((e.correctifs - e.correctifsAvant) / e.correctifsAvant) * 100)
+    return `pannes ${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)} % sur 12 mois`
   }
+  const moyenne = totaux.correctifs ? totaux.preventifs / totaux.correctifs : null
+  const tri = [...liste].sort((a, b) => b.rouges - a.rouges || (b.correctifs - b.correctifsAvant) - (a.correctifs - a.correctifsAvant))
+  return h('div', { class: 'par-ou-commencer' },
+    h('b', {}, 'Par où commencer'),
+    h('ol', {}, tri.map((e) => h('li', {},
+      h('button', { class: 'lien-synthese', onclick: () => zoomer(e.id) }, h('span', { class: 'mono' }, e.repere)),
+      ` : ${e.rouges ? `${e.rouges} machine${e.rouges > 1 ? 's' : ''} à regarder` : 'rien d’alarmant'} · ${evol(e)}${ratio(e) !== null && moyenne !== null ? ` · ${virgule(ratio(e))} visite par panne (ligne : ${virgule(moyenne)})` : ''}`))))
+}
+
+function tableauCases(liste, { niveau, zoomer, ouvrir }) {
+  // Peu d'éléments (les ETH) : des tranches adaptées ; beaucoup (les machines) : les tranches fixes.
+  const s = seuilsDe(liste)
+  const lignesC = avecSeuil(tranchesAdaptees(liste.map((e) => e.correctifs)), s.c).reverse() // beaucoup de pannes en haut
+  const colonnesP = avecSeuil(tranchesAdaptees(liste.map((e) => e.preventifs)), s.p)
+  const fond = (tc, tp) => (tc.de >= s.c ? (tp.de >= s.p ? 'violet' : 'rouge') : tp.de >= s.p ? 'orange' : 'gris')
   const cases = []
   lignesC.forEach((tc, r) => {
     cases.push(h('div', { class: 'etiquette-ligne-cases' }, tc.libelle))
@@ -211,7 +239,8 @@ function tableauCases(liste, totaux, { niveau, zoomer, ouvrir }) {
           e.rouges ? h('span', { class: 'a-regarder-eth' }, `${e.rouges} à regarder`) : e.oranges ? h('span', { class: 'a-alleger-eth' }, `${e.oranges} à alléger ?`) : h('span', { class: 'ok-eth' }, 'rien d’alarmant'))
         : h('button', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — ouvrir son Démonstrateur`, onclick: () => ouvrir(e.id) }, e.repere)
       const montrees = dedans.sort((a, b) => b.correctifs - a.correctifs).slice(0, 4)
-      cases.push(h('div', { class: `case-tableau ${fond(tc, tp)}${dedans.length ? ' occupee' : ''}`, title: dedans.length > 4 ? dedans.map((e) => `${e.repere} (${e.correctifs} / ${e.preventifs})`).join('\n') : '' },
+      const couleur = dedans.length && dedans.every((e) => e.zone === dedans[0].zone) ? dedans[0].zone : fond(tc, tp)
+      cases.push(h('div', { class: `case-tableau ${couleur}${dedans.length ? ' occupee' : ''}${tc.de === s.c ? ' frontiere-c' : ''}${tp.de === s.p ? ' frontiere-p' : ''}`, title: dedans.length > 4 ? dedans.map((e) => `${e.repere} (${e.correctifs} / ${e.preventifs})`).join('\n') : '' },
         montrees.map(puceCase),
         dedans.length > 4 ? h('span', { class: 'reste-case' }, `+${dedans.length - 4}`) : null))
     })

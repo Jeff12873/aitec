@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.14.0",
+      "date": "2026-11-08",
+      "points": [
+        "Le tableau des ETH et des machines passe à 4 cadrans : pas assez de préventif, mal ciblé (beaucoup de pannes et beaucoup de visites), trop de préventif ?, rien à signaler ; et « le préventif marche » quand les pannes ont nettement baissé",
+        "« Par où commencer », sous le tableau des ETH : la plus problématique d'abord, avec ses machines à regarder, l'évolution de ses pannes et ses visites par panne face à la ligne"
+      ]
+    },
+    {
       "version": "0.13.0",
       "date": "2026-11-08",
       "points": [

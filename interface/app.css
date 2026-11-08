@@ -828,3 +828,18 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .legende-demo .diag-demo { padding: 3px 8px; border-radius: 6px; }
 .decision.violet { border-left-color: #9c8fc4; }
 .etiquette.violet { color: #c4b8ec; }
+
+/* Les 4 cadrans du tableau de la ligne */
+.case-tableau.gris { background: color-mix(in srgb, var(--texte-3) 6%, transparent); }
+.case-tableau.violet { background: color-mix(in srgb, #9c8fc4 14%, transparent); }
+.case-tableau.occupee.violet { background: color-mix(in srgb, #9c8fc4 30%, transparent); border-color: color-mix(in srgb, #9c8fc4 50%, transparent); }
+.case-tableau.occupee.gris { background: color-mix(in srgb, var(--texte-3) 14%, transparent); border-color: var(--bord); }
+.case-tableau.frontiere-c { margin-bottom: 7px; }
+.case-tableau.frontiere-p { margin-left: 7px; }
+.puce-case.violet { box-shadow: inset 3px 0 #9c8fc4; }
+.pastille-zone.violet { background: #9c8fc4; }
+.pastille-zone.gris { background: var(--texte-3); }
+.puce-equipement.violet { border-color: #9c8fc4; }
+.par-ou-commencer { margin: 10px 0; font-size: 13.5px; }
+.par-ou-commencer ol { margin: 6px 0 0; padding-left: 20px; }
+.par-ou-commencer li { margin: 3px 0; color: var(--texte-2); }
