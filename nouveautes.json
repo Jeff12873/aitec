@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.21.1",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : au clic droit sur un ○, « Valider : poser la visite sur cet équipement » l'écrit dans la GMAO, après simulation"
+      ]
+    },
+    {
       "version": "0.21.0",
       "date": "2026-11-08",
       "points": [
