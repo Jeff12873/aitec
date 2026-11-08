@@ -4,6 +4,7 @@
 // l'administration ; l'analyse d'une machine et les pannes connues s'ouvrent depuis le parcours.
 
 import { rafraichirParcs } from './parcs.js'
+import { installerConcombre } from './concombre-prevtec.js'
 import mn1, { niveau1 } from '../blocs/mn1/vue.js'
 import administration from '../blocs/administration/vue.js'
 import analyse from '../blocs/analyse/vue.js'
@@ -16,5 +17,5 @@ export { plan as accueil }
 
 // Pas de pastilles des parcs dans PREVTEC : on choisit son parc en cliquant sa vignette (étape 1 du parcours).
 
-export const auDemarrage = () => rafraichirParcs()
+export const auDemarrage = () => { installerConcombre(); return rafraichirParcs() }
 export const styles = 'interface/app.css'

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.25.0",
+      "date": "2026-11-08",
+      "points": [
+        "PREVTEC et AITEC : une présentation guidée des cas d'usage, dans l'ordre, au premier lancement, et un bouton pour la relancer"
+      ]
+    },
+    {
       "version": "0.24.0",
       "date": "2026-11-08",
       "points": [

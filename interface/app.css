@@ -1048,3 +1048,8 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .croisee.fiche-n1.brouillon img { opacity: .4; filter: grayscale(.7); }
 .code-visite.brouillon { opacity: .6; }
 tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* PREVTEC : le plan de culture */
+.mode-concombre .croisee.posee, .mode-concombre .croisee.fiche-locale { color: transparent; background: url(concombre-petit.webp) center / 62% no-repeat, color-mix(in srgb, #5fa77c 26%, transparent); }
+.mode-concombre .croisee.posee::after, .mode-concombre .croisee.fiche-locale svg { visibility: hidden; }
+.mode-concombre .puce-case b, .mode-concombre .matrice-demo .diag-demo { color: #8fd0a8; }
