@@ -843,3 +843,6 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .par-ou-commencer { margin: 10px 0; font-size: 13.5px; }
 .par-ou-commencer ol { margin: 6px 0 0; padding-left: 20px; }
 .par-ou-commencer li { margin: 3px 0; color: var(--texte-2); }
+
+/* Démonstrateur : le bouton de la fiche de visite */
+.bouton-fiche-visite { margin-right: 4px; vertical-align: middle; }

@@ -9,6 +9,7 @@ import { api } from '/socle/api.js'
 import { evolutionPanne } from './prevtec.js'
 import { relireFiche } from './mn1-parc.js'
 import { LOGO_MN1 } from './fiches-mn1.js'
+import { ouvrirFicheVisite } from './fiche-visite.js'
 
 const COULEURS = { pas: 'rouge', mauvais: 'violet', ok: 'vert', sur: 'orange', rien: '' }
 
@@ -26,7 +27,7 @@ export async function demonstrateurMachine(parcId, machineId) {
   const lignePannes = h('tr', { class: 'ligne-pannes-demo' }, h('th', {}, 'pannes (12 mois)'), h('td'), h('td'),
     col.map((c) => h('td', { class: `nb-pannes ${COULEURS[c.diagnostic]}` }, h('b', {}, String(c.pannes)), c.pannes ? evolutionPanne({ nombre: c.pannes, precedent: c.precedent, evolution: c.evolution }) : null)), h('td'))
   const corps = d.lignes.map((g) => h('tr', {},
-    h('th', { class: 'titre-visite', title: g.titre }, g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
+    h('th', { class: 'titre-visite', title: g.titre }, h('button', { class: 'discret icone-seule petit bouton-fiche-visite', title: 'Fiche de visite : l’historique des pannes de ce qu’elle couvre, à imprimer pour le mainteneur', onclick: () => ouvrirFicheVisite(base, g) }, ic('document', 13)), g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
     h('td', { class: 'col-t discret' }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
     h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
     col.map((c) => h('td', { class: `croisee ${g.equipement === c.id && !g.machineEntiere ? 'posee' : ''}` }, g.equipement === c.id && !g.machineEntiere ? '●' : '')),
@@ -39,7 +40,7 @@ export async function demonstrateurMachine(parcId, machineId) {
       : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
     h('div', { class: 'legende-demo' },
       ['pas', 'mauvais', 'ok', 'sur'].map((k) => h('span', { class: `diag-demo ${COULEURS[k]}` }, { pas: 'pas de préventif', mauvais: 'mauvais point contrôlé ou énoncé trop vague', ok: 'préventif ok', sur: 'sur maintenance' }[k])),
-      h('span', { class: 'discret' }, '● visite posée sur l’équipement · t : part des passages sans rien trouver (résultats d’inspection à venir)')))
+      h('span', { class: 'discret' }, '● visite posée sur l’équipement · icône document : la fiche de visite, avec l’historique des pannes · t : part des passages sans rien trouver (résultats d’inspection à venir)')))
 
   // ---- je décide
   const ficheN1 = async (c) => {

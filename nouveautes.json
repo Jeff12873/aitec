@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.15.0",
+      "date": "2026-11-08",
+      "points": [
+        "Fiche de visite : dans le Démonstrateur, l'icône document devant une visite ouvre une fiche à imprimer pour le mainteneur, avec les pannes de ce qu'elle couvre, les points à regarder à cocher, les dernières pannes et la place pour le compte rendu"
+      ]
+    },
+    {
       "version": "0.14.0",
       "date": "2026-11-08",
       "points": [

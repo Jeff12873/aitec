@@ -51,7 +51,7 @@ function ressemblance(a, b) {
 }
 
 // « 741.1 - Tapis décentré — Repris centrage » → { symptome: 'Tapis décentré', action: 'Repris centrage' }
-function decouperRapport(description) {
+export function decouperRapport(description) {
   const texte = sansBalises(description).replace(/\s*\n\s*/g, ' ').replace(/^\s*[\d.]+\s*-\s*/, '').trim()
   let [symptome, ...reste] = texte.split(' — ')
   if (!reste.length) {
