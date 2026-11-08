@@ -1014,3 +1014,9 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .apercu-texte-fiche li::marker { color: var(--accent); font-weight: 700; }
 .apercu-texte-fiche b { color: var(--texte); }
 .texte-brut-fiche { white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; }
+
+/* Le Démonstrateur : pourquoi regarder cette machine */
+.resume-machine { position: relative; z-index: 1; margin: 6px 0 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--bord); background: color-mix(in srgb, var(--carte) 72%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); font-size: 14px; line-height: 1.55; color: var(--texte-2); }
+.resume-machine b { color: var(--texte); }
+.resume-machine:empty { display: none; }
+.vue-machine .scene-ligne .fond-tendance-parc { height: 190px; }

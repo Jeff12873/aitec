@@ -165,5 +165,5 @@ export async function demonstrateurMachine(parcId, machineId) {
       h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende fiche-locale' }, ic('document', 13)), 'fiche préparée dans PREVTEC, pas encore dans la GMAO'),
       h('span', { class: 'discret' }, 'Clic droit sur une case : ses actions · ● visite posée sur l’équipement · ○ d’après son titre · t : part des passages sans rien trouver, parmi ceux avec une observation écrite')))
   element.querySelectorAll('td.posee.titre').forEach((td) => (td.textContent = '○'))
-  return { element, machine: m }
+  return { element, machine: m, colonnes: col, lignes: d.lignes }
 }

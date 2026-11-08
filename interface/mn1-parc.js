@@ -281,7 +281,9 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     const sousTitreLigne = sousTitre?.textContent || ''
     const page = h('div', { class: 'page-ligne' })
     // Chaque niveau du tableau : le retour en haut, le fil, et sur une machine la page ne garde que le graphique.
-    const surNiveau = ({ machine: m, eth, retour }) => {
+    const placeResume = h('div', { class: 'resume-machine' })
+    const surNiveau = ({ machine: m, eth, retour, resume }) => {
+      vider(placeResume, m && resume ? [h('b', {}, resume.titre), ' ', resume.suite] : null)
       vider(placeRetour, retour ? barreRetour(retour.texte, retour.action) : barreRetour('Les lignes', '#/mn1'))
       page.querySelector('.fil-etapes')?.replaceWith(filEtapes(m ? 3 : 2, d.parc, m))
       page.classList.toggle('vue-machine', Boolean(m))
@@ -290,7 +292,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     }
     vider(page,
       h('div', { class: 'tete-page' }, placeRetour, filEtapes(2, d.parc)),
-      h('div', { class: 'scene-parc scene-ligne' }, fond, entete,
+      h('div', { class: 'scene-parc scene-ligne' }, fond, entete, placeResume,
         h('div', { class: 'haut-ligne masque-machine' }, bandeauVerdict(d.plan), calendrierCompact(d.parc, admin))),
       h('div', { class: 'masque-machine' }, hallOfFameLigne(d.parc), tuilesLigne(d.indicateurs, d.parc, affichage.indicateurs)),
       h('div', { class: 'parc-mn1' }, cartePannesLigne(d, { machine, surNiveau, affichage })))

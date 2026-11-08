@@ -70,7 +70,7 @@ export function nuageEquilibre(d, { machine = null, surNiveau = () => {}, seulMa
     if (!r) return
     vider(zoneNuage, r.element)
     adresse(r.machine.id)
-    surNiveau({ machine: r.machine, eth, retour })
+    surNiveau({ machine: r.machine, eth, retour, resume: resumeMachine(donnees.equipements, machineChoisie, r) })
     window.scrollTo({ top: 0 })
   }
 
@@ -229,6 +229,54 @@ function parOuCommencer(liste, totaux, zoomer) {
       h('button', { class: 'lien-synthese', onclick: () => zoomer(e.id) }, h('span', { class: 'mono' }, e.repere)),
       ` : ${e.rouges ? `${e.rouges} machine${e.rouges > 1 ? 's' : ''} à regarder` : 'rien d’alarmant'} · ${evol(e)}${ratio(e) !== null && moyenne !== null ? ` · ${virgule(ratio(e))} visite par panne (ligne : ${virgule(moyenne)})` : ''}`))))
 }
+
+// Pourquoi regarder cette machine, en quelques phrases tirées des chiffres : son rang dans son ETH (« la pire » seulement
+// si elle l'est), le rang de son ETH dans la ligne, le sens de ses pannes, où elles se concentrent et ce que dit le préventif.
+function resumeMachine(equipements, machineId, { machine, colonnes, lignes }) {
+  const liste = equipements.map((e) => ({ ...e, preventifs: e.n1 + e.techniciens }))
+  const somme = (l, cle) => l.reduce((s, e) => s + e[cle], 0)
+  const siens = liste.filter((e) => e.machine.id === machineId)
+  if (!siens.length) return null
+  const ethDe = (e) => e.eth?.id || ''
+  const eth = siens[0].eth
+  const memeEth = liste.filter((e) => ethDe(e) === ethDe(siens[0]))
+  const total = (l, cle) => [...l.reduce((m, e) => m.set(cle(e), (m.get(cle(e)) || 0) + e.correctifs), new Map()).values()]
+  const rang = (valeur, valeurs) => valeurs.filter((v) => v > valeur).length + 1
+  const pannes = somme(siens, 'correctifs')
+  const avant = somme(siens, 'correctifsAvant')
+  const pannesEth = somme(memeEth, 'correctifs')
+  const pannesLigne = somme(liste, 'correctifs')
+  const nomEth = eth?.code || 'Hors ETH'
+  const rangMachine = rang(pannes, total(memeEth, (e) => e.machine.id))
+  const rangEth = rang(pannesEth, total(liste, ethDe))
+  const nieme = (n) => (n === 1 ? '1re' : `${n}e`)
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0)
+  const qui = rangMachine === 1 ? `la machine la plus en panne de ${nomEth}` : `la ${nieme(rangMachine)} machine la plus en panne de ${nomEth}`
+  const quelEth = rangEth === 1 ? `${nomEth} est l’ETH la plus en panne de la ligne` : `${nomEth} est la ${nieme(rangEth)} ETH la plus en panne de la ligne`
+  const titre = `${machine.repere} est ${qui} (${pannes} pannes sur ${pannesEth} en 12 mois, ${pct(pannes, pannesEth)} %). ${quelEth} (${pannesEth} sur ${pannesLigne}).`
+  const suite = []
+  const ecart = avant ? Math.round(((pannes - avant) / avant) * 100) : null
+  suite.push(ecart === null ? 'Pas de panne sur les 12 mois d’avant.' : Math.abs(ecart) < 5 ? `Ses pannes sont stables (${avant} sur les 12 mois d’avant).` : `Ses pannes ${ecart > 0 ? 'montent' : 'baissent'} de ${Math.abs(ecart)} % (${avant} sur les 12 mois d’avant).`)
+  const heures = Math.round(somme(siens, 'heures'))
+  if (heures) suite.push(`Elles ont coûté ${heures} h de dépannage.`)
+  const haut = colonnes.filter((c) => c.pannes).slice(0, 3)
+  if (haut.length && pannes) suite.push(`Elles se concentrent sur ${haut.map((c) => `${c.repere} (${c.pannes})`).join(', ')}, soit ${pct(somme(haut, 'pannes'), pannes)} %.`)
+  const machines = regrouperParMachine(memeEth)
+  const z = zone({ correctifs: pannes, correctifsAvant: avant, preventifs: somme(siens, 'preventifs') }, seuilsDe(machines))
+  const LECTURE = { violet: 'Beaucoup de pannes malgré beaucoup de visites : le préventif regarde sans doute au mauvais endroit.', rouge: 'Beaucoup de pannes pour peu de visites : pas assez de préventif.', orange: 'Peu de pannes pour beaucoup de visites : trop de préventif ?', vert: 'Beaucoup de visites et des pannes en nette baisse : le préventif marche.' }
+  if (LECTURE[z]) suite.push(LECTURE[z])
+  const mal = colonnes.filter((c) => c.diagnostic === 'mauvais' || c.diagnostic === 'pas').length
+  if (mal) suite.push(`${mal} équipement${mal > 1 ? 's' : ''} sur ${colonnes.length} ${mal > 1 ? 'ont' : 'a'} un préventif absent ou mal ciblé.`)
+  const entieres = lignes.filter((g) => g.machineEntiere).length
+  if (entieres) suite.push(`${entieres} visite${entieres > 1 ? 's' : ''} sur ${lignes.length} ${entieres > 1 ? 'restent posées' : 'reste posée'} sur la machine entière.`)
+  return { titre, suite: suite.join(' ') }
+}
+const regrouperParMachine = (equipements) => [...equipements.reduce((m, e) => {
+  const g = m.get(e.machine.id) || { correctifs: 0, preventifs: 0 }
+  g.correctifs += e.correctifs
+  g.preventifs += e.preventifs
+  return m.set(e.machine.id, g)
+}, new Map()).values()]
 
 const virgule1 = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR')
 // Le nom d'un carré : renommé par l'administrateur, sinon le repère ou la désignation (le dernier morceau du chemin).

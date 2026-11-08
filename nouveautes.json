@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.21.3",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : un paragraphe dit le rang de la machine dans son ETH et de l'ETH dans la ligne, et pourquoi la regarder"
+      ]
+    },
+    {
       "version": "0.21.2",
       "date": "2026-11-08",
       "points": [
