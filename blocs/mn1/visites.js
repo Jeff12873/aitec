@@ -147,6 +147,20 @@ export async function visitesDuParc(parcId) {
   return { p, parc, places, visites, observation: visites.filter((x) => x.nature !== 'systematique'), remontees, ponctuels, reglee: conventionReglee(c), convention: c, lignes }
 }
 
+// Ce que dit le rapport d'un passage : l'observation du mainteneur suit le titre (« P2M-Titre - RAS ------- texte de
+// la FI »). « rien » : rien trouvé (RAS, OK, conforme…) ; « note » : il a noté autre chose ; null : rien d'écrit, ou
+// seulement « fait », ce qui ne dit pas ce qu'il a vu.
+export function resultatDuPassage(description) {
+  const m = /^[a-z][0-9a-z][a-z]\s*-\s*(.*)$/.exec(texteSeul(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
+  const debut = m ? m[1].indexOf(' - ') : -1
+  if (debut < 0) return null
+  const observation = m[1].slice(debut + 3).split(/-{4,}/)[0].replace(/[\s.-]+$/, '').trim()
+  if (!observation) return null
+  const ras = /(^|[^a-z0-9])r\.?a\.?s\b|rien a signaler/.test(observation)
+  if ((ras && observation.length <= 40) || /^(r\.?a\.?s\b|rien a signaler|ok\b|conforme$|bon( etat)?$|(controle |niveau |controle niveau )ok$)/.test(observation)) return 'rien'
+  return /^fait\b/.test(observation) ? null : 'note'
+}
+
 // Une visite regarde-t-elle une panne posée sur l'équipement « machineId » ?
 export function regarde(visite, machineId, places) {
   if (visite.machine_id === machineId) return true

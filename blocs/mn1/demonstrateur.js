@@ -1,8 +1,8 @@
 // Le Démonstrateur d'une machine (PREVTEC, étapes 3 et 4), fidèle au classeur de son auteur : en colonnes les
 // équipements de la machine (sous-ensembles, organes), le plus en panne à gauche ; en lignes les visites du plan ;
 // à la croisée, l'endroit où chaque visite est posée (arborescence) ; sous chaque colonne, l'un des 4 diagnostics.
-// Le taux t = A / (A + B + C) du classeur d'origine demande le résultat des inspections, que la GMAO n'a pas :
-// la colonne t reste vide tant qu'il n'y en a pas.
+// Le taux t du classeur d'origine, la part des passages sans rien trouver, se lit dans l'observation écrite sur le
+// rapport (visites.js) ; les passages sans observation n'en disent rien et ne comptent pas.
 //
 // La machine : le nœud de niveau 3 de l'arborescence (un clic sur un sous-ensemble remonte à sa machine), avec tous
 // ses sous-ensembles. Ses 5 premières pannes (12 mois), chacune avec une pastille, sans IA :
@@ -18,7 +18,7 @@ import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
 import { evolution } from './parcs.js'
 import { familleDe } from '../../lib/types.js'
-import { visitesDuParc, regarde, texteSeul } from './visites.js'
+import { visitesDuParc, regarde, texteSeul, resultatDuPassage } from './visites.js'
 import { redigerFiche, lireJson } from './correlation.js'
 
 const ilYa = (jours) => new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10)
@@ -84,12 +84,15 @@ export async function demonstrateur(parcId, machineId) {
   const groupes = new Map()
   for (const x of visites) {
     const cle = `${x.code?.code || ''}|${titreDe(x)}|${x.machine_id}`
-    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), equipement: x.machine_id, machineEntiere: x.machine_id === machine.id, passages: 0, derniere: '', t: null }
+    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), equipement: x.machine_id, machineEntiere: x.machine_id === machine.id, passages: 0, derniere: '', ecrits: 0, rien: 0 }
     g.passages++
+    const resultat = resultatDuPassage(x.description)
+    if (resultat) g.ecrits++
+    if (resultat === 'rien') g.rien++
     if (x.date > g.derniere) g.derniere = x.date
     groupes.set(cle, g)
   }
-  const lignes = [...groupes.values()]
+  const lignes = [...groupes.values()].map((g) => ({ ...g, t: g.ecrits ? g.rien / g.ecrits : null }))
   const surMachine = lignes.filter((g) => g.machineEntiere)
   // Les colonnes : les équipements qui ont des pannes ou des visites, le plus en panne à gauche ; la machine entière
   // (visites posées sur elle) en dernier.

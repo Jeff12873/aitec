@@ -21,14 +21,14 @@ export async function demonstrateurMachine(parcId, machineId) {
   const col = d.colonnes
 
   // ---- la matrice : visites × équipements
-  const tete = h('tr', {}, h('th', { class: 'coin-demo' }, 'Visites ↓ · équipements →'), h('th', { class: 'col-t', title: 'Taux t = A / (A + B + C) : la part des passages sans rien trouver. Il faut le résultat des inspections, que la GMAO n’a pas encore.' }, 't'), h('th', { class: 'col-passages' }, 'passages'),
+  const tete = h('tr', {}, h('th', { class: 'coin-demo' }, 'Visites ↓ · équipements →'), h('th', { class: 'col-t', title: 'Taux t : la part des passages sans rien trouver (RAS, OK, conforme…), parmi ceux où le mainteneur a écrit une observation.' }, 't'), h('th', { class: 'col-passages' }, 'passages'),
     col.map((c) => h('th', { class: `col-equipement ${COULEURS[c.diagnostic]}`, title: `${c.designation || c.repere}\n${c.pannesListe.map((p) => `${p.nombre} × ${p.symptome}`).join('\n')}` }, h('span', { class: 'mono' }, c.repere), h('small', {}, c.designation || ''))),
     h('th', { class: 'col-equipement machine-entiere', title: 'Les visites posées sur la machine entière, pas sur un organe' }, h('span', { class: 'mono' }, m.repere), h('small', {}, 'machine entière')))
   const lignePannes = h('tr', { class: 'ligne-pannes-demo' }, h('th', {}, 'pannes (12 mois)'), h('td'), h('td'),
     col.map((c) => h('td', { class: `nb-pannes ${COULEURS[c.diagnostic]}` }, h('b', {}, String(c.pannes)), c.pannes ? evolutionPanne({ nombre: c.pannes, precedent: c.precedent, evolution: c.evolution }) : null)), h('td'))
   const corps = d.lignes.map((g) => h('tr', {},
     h('th', { class: 'titre-visite', title: g.titre }, h('button', { class: 'discret icone-seule petit bouton-fiche-visite', title: 'Fiche de visite : l’historique des pannes de ce qu’elle couvre, à imprimer pour le mainteneur', onclick: () => ouvrirFicheVisite(base, g) }, ic('document', 13)), g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
-    h('td', { class: 'col-t discret' }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
+    h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
     h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
     col.map((c) => h('td', { class: `croisee ${g.equipement === c.id && !g.machineEntiere ? 'posee' : ''}` }, g.equipement === c.id && !g.machineEntiere ? '●' : '')),
     h('td', { class: `croisee ${g.machineEntiere ? 'posee vague' : ''}` }, g.machineEntiere ? '●' : '')))
@@ -40,7 +40,7 @@ export async function demonstrateurMachine(parcId, machineId) {
       : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
     h('div', { class: 'legende-demo' },
       ['pas', 'mauvais', 'ok', 'sur'].map((k) => h('span', { class: `diag-demo ${COULEURS[k]}` }, { pas: 'pas de préventif', mauvais: 'mauvais point contrôlé ou énoncé trop vague', ok: 'préventif ok', sur: 'sur maintenance' }[k])),
-      h('span', { class: 'discret' }, '● visite posée sur l’équipement · icône document : la fiche de visite, avec l’historique des pannes · t : part des passages sans rien trouver (résultats d’inspection à venir)')))
+      h('span', { class: 'discret' }, '● visite posée sur l’équipement · icône document : la fiche de visite, avec l’historique des pannes · t : part des passages sans rien trouver, parmi ceux avec une observation écrite')))
 
   // ---- je décide
   const ficheN1 = async (c) => {

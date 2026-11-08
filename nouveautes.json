@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.15.1",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : la colonne t se remplit avec la part des passages sans rien trouver, lue dans l'observation écrite sur le rapport de visite (RAS, OK, conforme…)"
+      ]
+    },
+    {
       "version": "0.15.0",
       "date": "2026-11-08",
       "points": [
