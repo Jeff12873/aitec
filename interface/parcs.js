@@ -10,8 +10,10 @@ let liste = []
 const element = h('div', { class: 'selecteur-parc', role: 'tablist', 'aria-label': 'Ligne' })
 
 export const parcChoisi = () => choisi
+// PREVTEC, le niveau 1 d'une ligne : sa ligne, sans sélecteur.
+export const choisirParc = (id) => { choisi = id }
 export const nomParcChoisi = () => liste.find((p) => p.id === choisi)?.nom || ''
-export const avecParc = (adresse) => (choisi ? `${adresse}${adresse.includes('?') ? '&' : '?'}ligne=${encodeURIComponent(choisi)}` : adresse)
+export const avecParc = (adresse) => (choisi ? `${adresse}${adresse.includes('?') ? '&' : '?'}parc=${encodeURIComponent(choisi)}` : adresse)
 
 export async function rafraichirParcs() {
   try {

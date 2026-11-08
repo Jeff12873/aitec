@@ -12,14 +12,13 @@ import { afficherParc } from '../../interface/mn1-parc.js'
 import { boutonImport } from '../../interface/mn1-import.js'
 import { reglerGmao, reglerEntete } from '../../interface/mn1-reglages.js'
 import { jauge, courbe, ecartTendance } from '../../interface/mn1-graphiques.js'
-import { avecParc, parcChoisi } from '../../interface/parcs.js'
+import { avecParc, parcChoisi, choisirParc } from '../../interface/parcs.js'
 import { animer } from '../../interface/animer.js'
 import { indicateursBandeau, pastillesSuivi, afficherFiIssues, afficherRi } from '../../interface/mn1-circuit.js'
-import { estPrevtec, filEtapes, barreRetour, pastilleVerdict } from '../../interface/prevtec.js'
+import { estPrevtec, filEtapes, pastilleVerdict } from '../../interface/prevtec.js'
 import { afficherDecider } from '../../interface/prevtec-decider.js'
 
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-const RACINE_N1 = estPrevtec ? '#/niveau1' : '#/mn1'
 let tri = 'nom'
 let triChoisi = false // PREVTEC trie par verdict tant qu'on n'a pas choisi
 let derniereLecture = 0 // les FI de la GMAO sont relues à chaque ouverture de l'écran (pas à chaque rafraîchissement)
@@ -51,7 +50,7 @@ export default {
     if (onglet === 'decider' && parc && machine) return afficherDecider(zone, decodeURIComponent(parc), machine, { equipement, pose: query?.pose, titre: query?.titre })
     // Anciennes adresses : le niveau 1 a son menu dans PREVTEC.
     if (estPrevtec && onglet === 'n1') return location.replace(`#/niveau1/${parc || ''}`)
-    if (estPrevtec && ['circuit', 'demandes', 'ri'].includes(onglet)) return location.replace(`#/niveau1/${onglet}`)
+    if (estPrevtec && ['circuit', 'demandes', 'ri'].includes(onglet)) return location.replace('#/niveau1')
     if (onglet === 'parc' && parc) return afficherParc(zone, decodeURIComponent(parc), { machine: query?.machine })
     if (onglet === 'machine' && parc && machine) return location.replace(`#/mn1/parc/${parc}?machine=${machine}`) // ancienne adresse
     // PREVTEC, étape 1 : seulement le fil des étapes et les vignettes des lignes.
@@ -64,7 +63,7 @@ export default {
   },
 }
 
-// Le menu « Maintenance de niveau 1 » de PREVTEC : le choix de la ligne, les fiches d'une ligne, le circuit de l'usine.
+// Le menu « Maintenance de niveau 1 » de PREVTEC : le choix de la ligne, puis son niveau 1 (fiches, demandes, FI, RI).
 export const niveau1 = {
   chemin: 'niveau1',
   titre: 'Maintenance de niveau 1',
@@ -73,16 +72,30 @@ export const niveau1 = {
   aide: 'maintenance-niveau-1',
 
   async afficher(zone, { id }) {
-    const quoi = String(id || '').split('/')[0]
+    const [parc, onglet = ''] = String(id || '').split('/')
     definirParametres(await api('/api/mn1/parametres').catch(() => null))
-    if (!quoi) {
+    if (!parc || ['circuit', 'demandes', 'ri'].includes(parc)) { // (anciennes adresses : le circuit de l'usine)
+      choisirParc('')
       const vignettes = h('div')
-      vider(zone, h('div', { class: 'tete-niveau1' }, h('img', { class: 'logo-page-mn1', src: LOGO_MN1, alt: '' }), h('h1', {}, 'Maintenance de niveau 1'), h('a', { class: 'bouton petit discret', href: '#/niveau1/circuit', title: 'Les demandes, FI et rapports de niveau 1 de toute l’usine' }, ic('graphique', 14), 'Circuit N1 de l’usine')), vignettes)
+      vider(zone, h('div', { class: 'tete-niveau1' }, h('img', { class: 'logo-page-mn1', src: LOGO_MN1, alt: '' }), h('h1', {}, 'Maintenance de niveau 1')), vignettes)
       return afficherVignettes(vignettes, null, { n1: true })
     }
-    if (['circuit', 'demandes', 'ri'].includes(quoi)) return afficherCircuit(zone, quoi)
-    return afficherParc(zone, decodeURIComponent(quoi), { vue: 'n1' })
+    choisirParc(decodeURIComponent(parc))
+    return afficherParc(zone, decodeURIComponent(parc), { vue: 'n1', onglet, circuit: circuitDeLaLigne })
   },
+}
+// Hors du niveau 1 d'une ligne, plus de ligne choisie.
+if (estPrevtec) window.addEventListener('hashchange', () => { if (!/^#\/niveau1\/[^/]/.test(location.hash)) choisirParc('') })
+
+// Un onglet du circuit de niveau 1 d'une ligne : ses indicateurs, puis ses demandes, ses FI ou ses RI.
+async function circuitDeLaLigne(zone, onglet) {
+  const indicateurs = h('div', { class: 'zone-indicateurs-mn1' })
+  const contenu = h('div')
+  vider(zone, indicateurs, contenu)
+  indicateursBandeau(indicateurs, h('div')) // les contributeurs sont déjà dans « Ma ligne »
+  if (onglet === 'demandes') return afficherDemandes(contenu)
+  if (onglet === 'ri') return afficherRi(contenu)
+  return afficherFiIssues(contenu)
 }
 
 // Le circuit de niveau 1 : DI → FI → RI, ses indicateurs et le bandeau.
@@ -96,16 +109,15 @@ async function afficherCircuit(zone, onglet) {
     bandeau.zoneHof = zoneHof
     vider(
       zone,
-      estPrevtec ? barreRetour('Maintenance de niveau 1', '#/niveau1') : null,
       bandeau,
       zoneHof,
       h('div', { class: 'barre-onglets-mn1' },
         h('div'),
         h('div', { class: 'segments' },
           // Le circuit, dans l'ordre : la demande, la fiche d'intervention, le rapport d'intervention.
-          h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = `${RACINE_N1}/demandes`) }, ic('graphique', 16), 'Demandes d’intervention N1'),
-          h('button', { class: !['demandes', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = estPrevtec ? `${RACINE_N1}/circuit` : '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
-          h('button', { class: onglet === 'ri' ? 'choisi' : '', onclick: () => (location.hash = `${RACINE_N1}/ri`) }, ic('coche', 16), 'Rapports d’intervention N1')),
+          h('button', { class: onglet === 'demandes' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/demandes') }, ic('graphique', 16), 'Demandes d’intervention N1'),
+          h('button', { class: !['demandes', 'ri'].includes(onglet) ? 'choisi' : '', onclick: () => (location.hash = '#/mn1') }, ic('usine', 16), 'Fiches d’intervention N1'),
+          h('button', { class: onglet === 'ri' ? 'choisi' : '', onclick: () => (location.hash = '#/mn1/ri') }, ic('coche', 16), 'Rapports d’intervention N1')),
         h('div', { class: 'actions-onglets-mn1' },
           admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null)),
       contenu,
@@ -123,8 +135,6 @@ async function afficherCircuit(zone, onglet) {
     const zoneFocus = h('div')
     vider(contenu, zoneFi, zoneFocus)
     afficherFiIssues(zoneFi)
-    // PREVTEC : les vignettes des lignes sont à l'étape 1, pas dans le circuit.
-    if (estPrevtec) return dessinerBandeau(bandeau, await api('/api/mn1/vignettes').catch(() => null))
     await afficherVignettes(zoneFocus, bandeau)
 }
 

@@ -8,7 +8,7 @@ import { peutModifier, etat } from '/socle/etat.js'
 import { texteIA } from '/socle/texte-ia.js'
 import { LOGO_MN1, FREQUENCES, carteFiche, imprimerFiches, nomMachine } from './fiches-mn1.js'
 import { dialogueFi, dialogueSuspension, utilites } from './mn1-fi.js'
-import { reglerParc } from './mn1-reglages.js'
+import { reglerParc, reglerGmao } from './mn1-reglages.js'
 import { encartCalendrier, calendrierCompact, hallOfFameLigne } from './mn1-circuit.js'
 import { jauge, courbe, ecartTendance, tendance } from './mn1-graphiques.js'
 import { nuageEquilibre } from './mn1-equilibre.js'
@@ -27,7 +27,7 @@ const lienAnalyse = (d, id, contenu) => (d.analysables?.[id] ? h('a', { href: li
 
 // vue (PREVTEC) : « ligne » (étape 2 : verdict, équipes, contributeurs, indicateurs, pannes, sans rien du niveau 1)
 // ou « n1 » (menu Maintenance de niveau 1 : charge, couverture par les fiches, fiches, demandes de niveau 1).
-export async function afficherParc(zone, id, { integre = false, vue = 'ligne', machine = null } = {}) {
+export async function afficherParc(zone, id, { integre = false, vue = 'ligne', machine = null, onglet = '', circuit = null } = {}) {
   vider(zone, h('p', { class: 'discret curseur' }, 'Lecture de la ligne et des FI de la GMAO'))
   const d = await api(`/api/mn1/parcs/${encodeURIComponent(id)}`)
   const admin = peutModifier()
@@ -163,7 +163,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
       admin && (!f.fi_gmao || f.etatFi === 'supprimee') ? h('button', { class: 'discret petit icone-seule', title: 'Archiver la fiche (elle quitte la ligne, son historique reste)', onclick: () => archiver(f) }, ic('boite', 14)) : null,
       admin && f.fi_gmao && f.etatFi !== 'supprimee' ? h('button', { class: 'discret petit icone-seule supprimer-fi', title: `Supprimer la FI ${f.fi_gmao} dans la GMAO (la fiche reste ici, sans FI)`, onclick: () => supprimerFiGmao(f) }, ic('poubelle', 14)) : null))
   const recherche = h('input', { type: 'search', placeholder: 'Filtrer : étiquette, machine, zone, geste…' })
-  const tri = h('select', { class: 'fin' }, [['', 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
+  const tri = h('select', { class: 'fin' }, [['', estPrevtec ? 'Ordre de la ligne' : 'Par ETH'], ['utilite', 'Les moins utiles d’abord'], ['sans', 'Sans FI d’abord'], ['alertes', 'Alertes d’abord']].map(([v, t]) => h('option', { value: v }, t)))
   const liste = h('div', { class: 'fiches-mn1' })
   // Les filtres rapides, avec le nombre de fiches de chacun ; un seul à la fois.
   const ilYaJours = (date, jours) => date && Date.now() - new Date(date).getTime() < jours * 86_400_000
@@ -203,7 +203,14 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     if (tri.value === 'alertes') visibles.sort((x, y) => alertes(y) - alertes(x))
     // Le pourquoi en plus, propre au parc : combien de pannes du Pareto la fiche vise (analyse de corrélation).
     const pourquoi = (f) => (a ? [['Les pannes visées', (u.get(f.id) || 0) ? `Elle vise ${u.get(f.id)} panne${u.get(f.id) > 1 ? 's' : ''} du Pareto de la ligne, d’après l’analyse de corrélation du ${dateFr(a.date)}.` : 'L’analyse de corrélation ne la relie à aucune panne du Pareto de la ligne.']] : [])
-    vider(liste, visibles.length ? visibles.map((f) => reperee(carteFiche(f, { enPlus: enPlus(f), pourquoi: pourquoi(f) }), f.id)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans cette ligne : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
+    const carteDe = (f) => reperee(carteFiche(f, { enPlus: enPlus(f), pourquoi: pourquoi(f) }), f.id)
+    // PREVTEC : un encart par ETH.
+    const parEth = new Map()
+    for (const f of visibles) parEth.set(f.eth || 'Sans ETH', [...(parEth.get(f.eth || 'Sans ETH') || []), f])
+    if (estPrevtec) liste.className = 'encarts-eth'
+    vider(liste, visibles.length ? (estPrevtec
+      ? [...parEth].sort(([a], [b]) => (a === 'Sans ETH') - (b === 'Sans ETH') || a.localeCompare(b, 'fr')).map(([eth, fiches]) => h('section', { class: 'encart-eth' }, h('h3', {}, eth, h('span', { class: 'discret' }, `${fiches.length} fiche${fiches.length > 1 ? 's' : ''}`)), h('div', { class: 'fiches-mn1' }, fiches.map(carteDe))))
+      : visibles.map(carteDe)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans cette ligne : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
   }
   // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
   allerAFiche = (id) => {
@@ -293,12 +300,20 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     // Le menu Maintenance de niveau 1 : les fiches de la ligne ; le calendrier est dans « Ma ligne ».
     const titre = entete.querySelector('h1')
     if (titre) titre.textContent = `Niveau 1 · ${d.parc.nom}`
+    entete.querySelector('.legende-tendance')?.remove() // pas de courbe ici
+    // Un onglet par partie du niveau 1 de la ligne : les fiches, puis le circuit des demandes, FI et rapports.
+    const lien = (o) => `#/niveau1/${encodeURIComponent(d.parc.id)}${o ? `/${o}` : ''}`
+    const onglets = h('div', { class: 'barre-onglets-ligne' }, h('div', { class: 'segments' }, [['', 'Fiches de la ligne', 'document'], ['demandes', 'Demandes N1', 'graphique'], ['fi', 'FI N1', 'usine'], ['ri', 'Rapports N1', 'coche']].map(([o, texte, icone]) => h('a', { class: `bouton${onglet === o ? ' choisi' : ''}`, href: lien(o) }, ic(icone, 15), texte))))
+    const corps = h('div', { class: 'parc-mn1' })
+    if (onglet) await circuit?.(corps, onglet)
+    else vider(corps, h('div', { class: 'haut-parc sans-calendrier' }, h('div', { class: 'colonne-parc' }, carteChargeParc)), carteFiches)
     return vider(zone, barreRetour('Maintenance de niveau 1', '#/niveau1'),
       h('div', { class: 'scene-parc' }, entete, h('div', { class: 'outils-n1' },
         d.lecture?.erreur ? h('span', { class: 'etiquette orange', title: d.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : d.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO ${ilYa(d.lecture.date)}`) : null,
         admin ? boutonImport() : null,
-        h('a', { class: 'bouton petit discret lien-circuit', href: '#/niveau1/circuit', title: 'Les demandes, FI et rapports de niveau 1 de toute l’usine, et leurs indicateurs' }, ic('graphique', 14), 'Circuit N1 de l’usine'))),
-      h('div', { class: 'haut-parc sans-calendrier' }, h('div', { class: 'colonne-parc' }, carteChargeParc)), h('div', { class: 'parc-mn1' }, carteFiches, carteCorrelation, carteDemandes))
+        admin ? h('button', { class: 'discret icone-seule', title: 'Réglages de la GMAO : paramètres des FI, périodicités, SQL du site', onclick: reglerGmao }, ic('base', 18)) : null,
+        boutonAnalyse)),
+      onglets, corps)
   }
   else vider(zone, h('div', { class: 'scene-parc' }, fond, entete, haut), h('div', { class: 'parc-mn1' }, carteCorrelation, carteFiches, carteDemandes))
 }

@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.20.0",
+      "date": "2026-11-08",
+      "points": [
+        "Maintenance de niveau 1 : le circuit des demandes, FI et rapports passe dans les onglets de chaque ligne ; un encart par ETH pour les fiches ; logo agrandi ; l'encart Pareto ↔ fiches est retiré",
+        "Le filtre par ligne des écrans d'AITEC fonctionne de nouveau"
+      ]
+    },
+    {
       "version": "0.19.0",
       "date": "2026-11-08",
       "points": [

@@ -865,6 +865,14 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .vue-machine .scene-ligne h1 { font-size: 32px; }
 .vue-machine .scene-ligne .fond-tendance-parc { height: 120px; overflow: hidden; }
 .haut-parc.sans-calendrier { grid-template-columns: 1fr; }
+.barre-onglets-ligne { display: flex; justify-content: center; margin: 4px 0 14px; }
+.barre-onglets-ligne .segments a { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; text-decoration: none; }
+.barre-onglets-ligne .segments a.choisi { background: var(--carte-3); box-shadow: inset 0 0 0 1px var(--accent); }
+.encarts-eth { display: grid; gap: 14px; }
+.encart-eth { padding: 12px; border: 1px solid var(--bord); border-radius: 14px; background: color-mix(in srgb, var(--accent) 4%, var(--carte-2)); }
+.encart-eth > h3 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 18px; }
+.encart-eth > h3 .discret { font-size: 12.5px; font-weight: 400; }
+.scene-parc .titre-parc img { width: 86px; height: 86px; filter: drop-shadow(0 4px 14px color-mix(in srgb, #e9e54a 45%, transparent)); }
 .calendrier-compact { background: color-mix(in srgb, #3ea6ff 12%, var(--carte)); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
 .semaine-compacte.equipes-1, .semaine-compacte.equipes-2, .semaine-compacte.equipes-3, .semaine-cal.equipes-1, .semaine-cal.equipes-2, .semaine-cal.equipes-3 { border: 2px solid transparent; background: var(--fond) padding-box, linear-gradient(var(--carte), var(--carte)) padding-box, var(--liseret) border-box; }
 .semaine-compacte.courante { outline: 2px solid #fff; outline-offset: 1px; }
@@ -945,7 +953,7 @@ td.col-clic:hover { filter: brightness(1.5); outline: 1px solid var(--accent); }
 .grille-etiquettes input[type='text'] { width: 100%; min-width: 130px; }
 .tete-niveau1 { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .tete-niveau1 h1 { margin: 0; flex: 1; }
-.tete-niveau1 img { width: 40px; height: 40px; }
+.tete-niveau1 img { width: 96px; height: 96px; flex: none; filter: drop-shadow(0 4px 14px color-mix(in srgb, #e9e54a 45%, transparent)); }
 
 /* Assistant : savoirs associés ; Ajouter un savoir : l'arborescence à cocher */
 .ligne-savoir { display: flex; align-items: center; gap: 8px; width: 100%; padding: 3px 0; border: 0; background: none; color: var(--texte-2); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
@@ -995,3 +1003,5 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .croisee.fiche-locale, .carre-legende.fiche-locale { background: color-mix(in srgb, #fbbf24 26%, transparent); color: #fbbf24; }
 .matrice-demo .croisee.fiche-locale svg { vertical-align: middle; }
 .ligne-ajout .titre-visite { padding: 8px; }
+.parc-mn1 { grid-template-columns: minmax(0, 1fr); }
+.parc-mn1 > * { min-width: 0; }
