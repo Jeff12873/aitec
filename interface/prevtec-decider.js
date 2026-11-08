@@ -67,7 +67,7 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
       h('div', { class: 'carte' },
         h('div', { class: 'carte-entete' }, h('h2', {}, v.code ? h('span', { class: 'etiquette code-visite' }, v.code.code) : null, v.titre), h('span', { class: 'discret' }, `${v.passages} passage${v.passages > 1 ? 's' : ''} sur 12 mois · dernier le ${dateFr(v.derniere)}`)),
         v.deplacee ? h('p', { class: 'discret petit-texte' }, 'Déplacée sur cet équipement dans la GMAO ; les rapports déjà faits restent sur la machine entière.') : null,
-        v.placee ? h('p', { class: 'discret petit-texte' }, 'Déplacée ici dans PREVTEC seulement : à valider au clic droit dans le Démonstrateur.') : null,
+        v.placee ? h('p', { class: 'discret petit-texte' }, 'Déplacée ici dans PREVTEC seulement : à valider dans le Démonstrateur.') : null,
         d.posee ? (v.dapresTitre ? h('p', { class: 'discret petit-texte' }, 'Posée sur la machine entière dans la GMAO ; rattachée à cet équipement d’après son titre.') : null) : h('p', { class: 'etiquette orange' }, 'Cette visite n’est pas posée sur cet équipement.'),
         h('h3', { class: 'titre-decider' }, v.fi ? `Contenu de la FI ${v.fi}` : 'Contenu de la FI'),
         v.contenu ? h('p', { class: 'fi-actuelle' }, v.contenu) : h('p', { class: 'discret' }, v.fi ? 'Cette FI n’a pas de texte dans les rapports de la GMAO.' : 'Pas de FI dans les rapports de la GMAO.'),

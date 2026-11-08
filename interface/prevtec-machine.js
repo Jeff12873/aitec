@@ -40,12 +40,20 @@ function menuContextuel(ev, actions) {
   document.addEventListener('keydown', echap, true)
 }
 
+// Clic gauche ou droit : les mêmes choix. S'il n'y en a qu'un, le clic gauche le fait directement.
+const clics = (actions) => ({
+  onclick: (e) => (actions.length === 1 ? actions[0][1]() : menuContextuel(e, actions)),
+  oncontextmenu: (e) => menuContextuel(e, actions),
+})
+
 const FREQUENCES_VISITE = ['Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
 // Rend { element, machine } : la matrice.
 export async function demonstrateurMachine(parcId, machineId, { surChange = () => {} } = {}) {
   const base = `/api/mn1/parcs/${encodeURIComponent(parcId)}/machines/${machineId}`
   let courant = null
+  let n1Ouvert = false
+  let listeOuverte = false
   // Le tableau seul est redessiné, la page ne bouge pas ; le défilement des colonnes est gardé.
   const remplacer = (d) => {
     const ancien = courant
@@ -68,13 +76,17 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
     const decider = (g, equipement) => (location.hash = `#/mn1/decider/${encodeURIComponent(d.parc.id)}/${m.id}/${equipement}?pose=${g.pose}&titre=${encodeURIComponent(g.titre)}`)
     const infos = (c, enPlus = '') => [c.designation || c.repere, enPlus, `${c.pannes} pannes sur 12 mois · ${c.diagnostic === 'rien' ? 'rien à signaler' : `${SIGNES[c.diagnostic]} ${c.libelle}`}`, c.pannes ? sensDe(c) : '', c.raison].filter(Boolean).join('\n')
 
+    // La colonne DI ne concerne que les fiches de niveau 1 : elle n'existe que quand elles sont affichées.
+    const avecDI = n1Ouvert && (d.fichesN1 || []).length > 0
+    const caseDI = () => (avecDI ? h('td', { class: 'col-passages' }) : null)
+    const calme = (c) => (['ok', 'rien'].includes(c.diagnostic) ? ' calme' : '')
     const tete = h('tr', {}, h('th', { class: 'coin-demo' }, 'Visites ↓ · équipements →'),
-      h('th', { class: 'col-t', title: 'Taux t : la part des passages sans rien trouver (RAS, OK, conforme…), parmi ceux où le mainteneur a écrit une observation.' }, 't'),
+      h('th', { class: 'col-t', title: 'Part des passages sans rien trouver, parmi ceux avec une observation écrite' }, '% RAS'),
       h('th', { class: 'col-passages', title: 'Passages sur 12 mois' }, 'pass.'),
-      h('th', { class: 'col-passages', title: 'Fiches de niveau 1 : les demandes de niveau 1 sur leur machine, 12 mois' }, 'DI'),
+      avecDI ? h('th', { class: 'col-passages', title: 'Demandes de niveau 1 sur la machine de la fiche, 12 mois' }, 'DI') : null,
       col.map((c) => h('th', { class: `biais ${COULEURS_DIAGNOSTIC[c.diagnostic]}`, title: infos(c) }, h('div', {}, h('span', { class: 'mono' }, c.repere)))),
       h('th', { class: 'biais', title: 'Les visites posées sur la machine entière, pas sur un organe' }, h('div', {}, h('span', { class: 'mono discret' }, 'machine entière'))))
-    const lignePannes = h('tr', { class: 'ligne-pannes-demo' }, h('th', {}, 'pannes (12 mois)'), h('td'), h('td'), h('td'),
+    const lignePannes = h('tr', { class: 'ligne-pannes-demo' }, h('th', {}, 'pannes (12 mois)'), h('td'), h('td'), caseDI(),
       col.map((c) => h('td', { class: `carre nb-pannes ${COULEURS_DIAGNOSTIC[c.diagnostic]}`, title: infos(c) }, h('b', {}, String(c.pannes)), c.pannes ? h('small', { class: { monte: 'rouge', nouvelle: 'rouge', baisse: 'vert' }[c.evolution] || '' }, FLECHES[c.evolution] || '') : null)), h('td', { class: 'carre' }))
     const posee = (g, c) => g.equipement === c.id && !g.machineEntiere
     // En mode administrateur : une visite se glisse sur un autre équipement, dans PREVTEC seulement. « Valider le déplacement »
@@ -119,24 +131,25 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       ondragleave: (e) => e.currentTarget.classList.remove('survolee'),
       ondrop: (e) => { e.preventDefault(); e.currentTarget.classList.remove('survolee'); if (enCours === g && !posee(g, c)) placer(g, c) },
     } : {})
-    const corps = d.lignes.map((g) => h('tr', {},
+    // Ce qui pose problème d'abord : mauvais point contrôlé, sur maintenance, machine entière, puis ce qui va bien.
+    const rangLigne = (g) => ({ mauvais: 0, sur: 1, ok: 3 }[col.find((c) => posee(g, c))?.diagnostic] ?? 2)
+    const corps = [...d.lignes].sort((a, b) => rangLigne(a) - rangLigne(b)).map((g) => h('tr', {},
       h('th', { class: 'titre-visite', title: `${g.titre}${g.dapresTitre ? '\nPosée sur la machine entière : rattachée à cet organe d’après son titre' : ''}` },
         g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
       h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
       h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
-      h('td', { class: 'col-passages' }),
+      caseDI(),
       col.map((c) => (posee(g, c)
         ? h('td', {
-          class: `carre croisee col-clic posee${g.placee ? ' provisoire' : g.dapresTitre ? ' titre' : ''}${deplacable(g) ? ' deplacable' : ''}`,
+          class: `carre croisee col-clic posee${g.placee ? ' attente' : g.dapresTitre ? ' titre' : calme(c)}${deplacable(g) ? ' deplacable' : ''}`,
           ...sourceGlisser(g),
-          title: `${infos(c, g.placee ? `Provisoire : « ${g.titre} » déplacée ici dans PREVTEC. Pas active, pas évaluée par l’IA ; à valider au clic droit` : g.dapresTitre ? `○ « ${g.titre} » : posée sur la machine entière, rattachée ici d’après son titre` : `● « ${g.titre} » : visite posée sur cet équipement`)}\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un équipement : la déplacer dans PREVTEC' : ''}`,
-          onclick: () => decider(g, c.id),
-          oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, c.id)], ...(aValider(g) ? [['Valider le déplacement (GMAO)', () => deplacer(g, c)]] : []), ...(g.placee && deplacable(g) ? [['Annuler le déplacement', () => placer(g, null)]] : [])]),
-        }, g.placee ? '' : '●')
+          title: g.placee ? 'Déplacée ici dans PREVTEC, pas encore dans la GMAO' : g.dapresTitre ? 'Sur la machine entière dans la GMAO, rattachée ici d’après son titre' : `Posée sur ${c.repere} dans la GMAO`,
+          ...clics([['Je décide', () => decider(g, c.id)], ...(aValider(g) ? [['Valider le déplacement (GMAO)', () => deplacer(g, c)]] : []), ...(g.placee && deplacable(g) ? [['Annuler le déplacement', () => placer(g, null)]] : [])]),
+        }, g.dapresTitre && !g.placee ? '○' : '●')
         // Une case vide ne propose rien : elle sert seulement à recevoir une visite glissée.
         : h('td', { class: 'carre croisee', ...cibleGlisser(g, c) }))),
       g.machineEntiere
-        ? h('td', { class: `carre croisee col-clic posee vague${deplacable(g) ? ' deplacable' : ''}`, ...sourceGlisser(g), title: `« ${g.titre} » face à la machine entière\nCliquer : je décide${deplacable(g) ? '\nGlisser sur un équipement : la déplacer dans PREVTEC' : ''}`, onclick: () => decider(g, m.id), oncontextmenu: (e) => menuContextuel(e, [['Je décide', () => decider(g, m.id)]]) }, '●')
+        ? h('td', { class: `carre croisee col-clic posee vague${deplacable(g) ? ' deplacable' : ''}`, ...sourceGlisser(g), title: 'Posée sur la machine entière', ...clics([['Je décide', () => decider(g, m.id)]]) }, '●')
         : h('td', { class: 'carre croisee' })))
 
     // ---- les visites préparées dans PREVTEC : une ligne vide, puis une fiche de l'IA dans la case de l'équipement
@@ -195,19 +208,19 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
     })
     const caseLocale = (l, c) => {
       const f = l.fiches[c.id]
-      const menu = f
-        ? [['Voir la fiche', () => voirFiche(l, c, f)], ['Imprimer', () => imprimer(l, c)], ...(admin && !f.validee ? [['Valider : créer la FI (GMAO)', () => validerFiche(l, c)], ['Retirer la fiche', () => retirerSaFiche(l, c)]] : [])]
-        : admin ? [['Créer la fiche par l’IA', () => creerFiche(l, c)]] : []
+      const choix = [
+        ...(f ? [['Voir la fiche', () => voirFiche(l, c, f)], ['Imprimer', () => imprimer(l, c)], ...(admin && !f.validee ? [['Valider : créer la FI (GMAO)', () => validerFiche(l, c)], ['Retirer la fiche', () => retirerSaFiche(l, c)]] : [])] : admin ? [['Créer la fiche par l’IA', () => creerFiche(l, c)]] : []),
+        ...(admin && !Object.values(l.fiches).some((x) => x.validee) ? [['Retirer cette visite', () => retirerVisite(l)]] : []),
+      ]
       return h('td', {
-        class: `carre croisee ${f ? `fiche-locale${f.validee ? ' validee' : ''}` : ''} ${f || admin ? 'col-clic' : ''}`,
-        title: f ? `${f.validee ? `Validée dans la GMAO : ${f.validee.numero}` : `Fiche préparée dans PREVTEC pour ${c.repere}, à valider au clic droit`}\nCliquer : la voir` : admin ? `Cliquer : créer une fiche pour ${c.repere}, rédigée par l’IA d’après ses pannes` : '',
-        onclick: () => (f ? voirFiche(l, c, f) : admin ? creerFiche(l, c) : null),
-        oncontextmenu: (e) => (menu.length || admin ? menuContextuel(e, [...menu, ...(admin && !Object.values(l.fiches).some((x) => x.validee) ? [['Retirer cette visite', () => retirerVisite(l)]] : [])]) : null),
-      }, f ? ic('document', 24) : '')
+        class: `carre croisee ${f ? `posee fiche-locale ${f.validee ? 'validee' : 'attente'}` : ''} ${choix.length ? 'col-clic' : ''}`,
+        title: f ? (f.validee ? `Validée dans la GMAO : ${f.validee.numero}` : 'Fiche préparée dans PREVTEC, pas encore dans la GMAO') : admin ? `Créer une fiche pour ${c.repere}` : '',
+        ...(choix.length ? clics(choix) : {}),
+      }, f ? '●' : '')
     }
     const lignesLocales = (d.locales || []).map((l) => h('tr', { class: 'ligne-locale' },
       h('th', { class: 'titre-visite', title: l.titre || 'Visite préparée dans PREVTEC' }, h('span', { class: 'etiquette code-visite locale' }, 'PREVTEC'), l.titre || 'Nouvelle visite : cliquez la case de l’équipement concerné'),
-      h('td', { class: 'col-t' }), h('td', { class: 'col-passages' }), h('td', { class: 'col-passages' }),
+      h('td', { class: 'col-t' }), h('td', { class: 'col-passages' }), caseDI(),
       col.map((c) => caseLocale(l, c)), caseLocale(l, entiere)))
     // ---- les fiches de niveau 1 de la machine, à part
     const nombre = (x) => (Math.round(x * 100) / 100).toLocaleString('fr-FR')
@@ -240,17 +253,16 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       const ici = f.equipement === c.id
       if (!ici) return h('td', { class: 'carre croisee', ...(admin ? { oncontextmenu: (e) => menuContextuel(e, [['Créer une fiche N1 ici (IA)', () => creerN1(c)], ['Placer cette fiche ici', () => placerN1(f, c)]]), ondragover: (e) => { if (glisseN1 === f) { e.preventDefault(); e.currentTarget.classList.add('survolee') } }, ondragleave: (e) => e.currentTarget.classList.remove('survolee'), ondrop: (e) => { e.preventDefault(); if (glisseN1 === f) placerN1(f, c) } } : {}) })
       return h('td', {
-        class: `carre croisee col-clic fiche-n1${f.active ? '' : ' brouillon'}${admin ? ' deplacable' : ''}`,
-        title: `${f.active ? 'Fiche de niveau 1 active' : 'Brouillon de fiche de niveau 1 : ne compte pas dans le diagnostic'}\nCliquer : la voir${admin ? '\nGlisser sur un équipement : la placer' : ''}`,
-        onclick: () => voirN1(f),
-        oncontextmenu: (e) => menuContextuel(e, [['Voir la fiche', () => voirN1(f)], ['Ouvrir dans Maintenance de niveau 1', () => (location.hash = `#/niveau1/${encodeURIComponent(d.parc.id)}`)]]),
+        class: `carre croisee col-clic fiche-n1${f.active ? '' : ' attente'}${admin ? ' deplacable' : ''}`,
+        title: f.active ? 'Fiche de niveau 1 active' : 'Brouillon de niveau 1 : ne compte pas dans le diagnostic',
+        ...clics([['Voir la fiche', () => voirN1(f)]]),
         ...(admin ? { draggable: true, ondragstart: (e) => { glisseN1 = f; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.closest('tr').classList.add('en-deplacement') }, ondragend: (e) => { glisseN1 = null; e.currentTarget.closest('tr').classList.remove('en-deplacement') } } : {}),
       }, h('img', { src: LOGO_MN1, alt: 'N1' }))
     }
     let glisseN1 = null
     const c0 = d.charge
-    const teteN1 = (d.fichesN1 || []).length || c0 ? h('tr', { class: 'tete-n1' }, h('th', { class: 'titre-visite' }, h('img', { src: LOGO_MN1, alt: '' }), h('b', {}, 'Maintenance de niveau 1'),
-      c0 ? h('span', { class: `charge-n1${c0.charge > c0.max ? ' depasse' : ''}`, title: `Charge des opérateurs de ${c0.eth} : maximum ${nombre(c0.max)} fiche par semaine` }, `${nombre(c0.charge)} / ${nombre(c0.max)} par semaine`) : null), h('td', { colspan: col.length + 4 })) : null
+    const teteN1 = (d.fichesN1 || []).length || c0 ? h('tr', { class: 'tete-n1' }, h('th', { class: 'titre-visite' }, h('button', { class: 'repli-n1', onclick: () => { n1Ouvert = !n1Ouvert; remplacer(d) } }, n1Ouvert ? '▾' : '▸', h('img', { src: LOGO_MN1, alt: '' }), h('b', {}, `Maintenance de niveau 1 (${(d.fichesN1 || []).length})`)),
+      c0 ? h('span', { class: `charge-n1${c0.charge > c0.max ? ' depasse' : ''}`, title: `Charge des opérateurs de ${c0.eth} : maximum ${nombre(c0.max)} fiche par semaine` }, `${nombre(c0.charge)} / ${nombre(c0.max)} par semaine`) : null), h('td', { colspan: col.length + (avecDI ? 4 : 3) })) : null
     const lignesN1 = (d.fichesN1 || []).map((f) => h('tr', { class: 'ligne-n1' },
       h('th', { class: 'titre-visite', title: `${f.etiquette || ''} ${f.nomStandard}` }, h('span', { class: `etiquette code-visite${f.active ? '' : ' brouillon'}` }, f.active ? 'N1' : 'brouillon'), f.nomStandard || f.etiquette),
       h('td', { class: 'col-t' }), h('td', { class: 'col-passages' }),
@@ -259,23 +271,32 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
     // « Nouvelle fiche » : une ligne vide, dont on clique la case de l'équipement concerné, comme pour une nouvelle visite.
     const ligneNouvelleN1 = () => h('tr', { class: 'ligne-n1 a-creer' },
       h('th', { class: 'titre-visite' }, h('span', { class: 'etiquette code-visite' }, 'N1'), 'Nouvelle fiche : cliquez la case de l’équipement concerné'),
-      h('td'), h('td'), h('td'),
+      h('td'), h('td'), caseDI(),
       [...col, entiere].map((c) => h('td', { class: 'carre croisee col-clic', title: `Créer une fiche N1 pour ${c.repere}, rédigée par l’IA d’après ses pannes`, onclick: () => creerN1(c), oncontextmenu: (e) => menuContextuel(e, [['Créer une fiche N1 ici (IA)', () => creerN1(c)]]) })))
     const ajoutN1 = admin && teteN1 ? h('tr', { class: 'ligne-ajout' }, h('th', { class: 'titre-visite' }, h('button', { class: 'petit', title: 'Une fiche de niveau 1 rédigée par l’IA, sur l’équipement que vous choisissez', onclick: (e) => e.currentTarget.closest('tr').replaceWith(ligneNouvelleN1()) }, ic('plus', 14), 'Nouvelle fiche'))) : null
     const ligneAjout = admin ? h('tr', { class: 'ligne-ajout' }, h('th', { class: 'titre-visite' }, h('button', { class: 'petit', title: 'Une visite préparée dans PREVTEC, sans rien écrire dans la GMAO', onclick: async () => { if (await essayer(() => api(`${base}/locales`, { methode: 'POST' }))) recharger() } }, ic('plus', 14), 'Nouvelle visite'))) : null
-    const ligneDiag = h('tr', { class: 'ligne-diagnostics' }, h('th', {}, 'diagnostic'), h('td'), h('td'), h('td'),
+    const ligneDiag = h('tr', { class: 'ligne-diagnostics' }, h('th', {}, 'diagnostic'), h('td'), h('td'), caseDI(),
       col.map((c) => h('td', { class: `carre diag-demo ${COULEURS_DIAGNOSTIC[c.diagnostic]}`, title: infos(c) }, SIGNES[c.diagnostic])), h('td', { class: 'carre' }))
+    // Ce qui attend une validation, ligne par ligne : chaque écriture dans la GMAO reste un geste à part.
+    const annulerFiche = async (l, c) => { if (await confirmer('Retirer cette fiche préparée ? Rien ne change dans la GMAO.', { texte: 'Retirer', danger: true })) retirerSaFiche(l, c) }
+    const enAttente = admin ? [
+      ...d.lignes.filter((g) => g.placee && deplacable(g)).flatMap((g) => col.filter((c) => c.id === g.equipement).map((c) => ({ texte: `« ${g.titre} » déplacée sur ${c.repere}`, valider: () => deplacer(g, c), annuler: () => placer(g, null) }))),
+      ...(d.locales || []).flatMap((l) => [...col, entiere].filter((c) => l.fiches[c.id] && !l.fiches[c.id].validee).map((c) => ({ texte: `« ${l.titre || 'Nouvelle visite'} » : fiche préparée sur ${c.repere}`, valider: () => validerFiche(l, c), annuler: () => annulerFiche(l, c) }))),
+    ] : []
+    const barreAttente = enAttente.length ? h('div', { class: 'barre-attente' },
+      h('button', { class: 'tete-attente', onclick: () => { listeOuverte = !listeOuverte; remplacer(d) } }, h('span', { class: 'carre-legende attente' }, '●'), h('b', {}, `${enAttente.length} changement${enAttente.length > 1 ? 's' : ''} pas encore dans la GMAO`), h('span', { class: 'discret' }, listeOuverte ? 'Masquer' : 'Voir')),
+      listeOuverte ? enAttente.map((x) => h('div', { class: 'ligne-attente' }, h('span', {}, x.texte), h('button', { class: 'petit', onclick: x.annuler }, 'Annuler'), h('button', { class: 'petit principal', onclick: x.valider }, 'Valider'))) : null) : null
     const element = h('div', { class: 'demonstrateur' },
-      h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} · 12 mois. Cliquez un ● ou un ○ pour décider de cette visite sur cet équipement.`),
-      col.length || d.lignes.length ? h('div', { class: 'tableau-conteneur demo-conteneur' }, h('table', { class: 'matrice-demo' }, h('thead', {}, tete, lignePannes), h('tbody', {}, corps, lignesLocales, ligneAjout, teteN1, lignesN1, ajoutN1), h('tfoot', {}, ligneDiag)))
+      h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} · 12 mois. Cliquez une case pour décider.`),
+      barreAttente,
+      col.length || d.lignes.length ? h('div', { class: 'tableau-conteneur demo-conteneur' }, h('table', { class: 'matrice-demo' }, h('thead', {}, tete, ligneDiag, lignePannes), h('tbody', {}, corps, lignesLocales, ligneAjout, teteN1, n1Ouvert ? lignesN1 : null, n1Ouvert ? ajoutN1 : null)))
         : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
       h('div', { class: 'legende-demo' },
         ['pas', 'mauvais', 'ok', 'sur'].map((k) => h('span', { class: 'cle-demo' }, h('span', { class: `carre-legende diag-demo ${COULEURS_DIAGNOSTIC[k]}` }, SIGNES[k]), LIBELLES[k])),
-        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende fiche-locale' }, ic('document', 13)), 'fiche préparée dans PREVTEC, pas encore dans la GMAO'),
-        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende fiche-n1' }, h('img', { src: LOGO_MN1, alt: '' })), 'fiche de niveau 1 (pâle : brouillon)'),
-        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende provisoire' }), 'déplacement provisoire : pas actif, pas évalué par l’IA'),
-        h('span', { class: 'discret' }, 'Clic droit sur une case : ses actions · ● visite posée sur l’équipement · ○ d’après son titre · t : part des passages sans rien trouver, parmi ceux avec une observation écrite')))
-    element.querySelectorAll('td.posee.titre').forEach((td) => (td.textContent = '○'))
+        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende' }, '●'), 'posée sur l’équipement'),
+        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende' }, '○'), 'd’après son titre'),
+        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende fiche-n1' }, h('img', { src: LOGO_MN1, alt: '' })), 'niveau 1'),
+        h('span', { class: 'cle-demo discret' }, h('span', { class: 'carre-legende attente' }, '●'), 'pas encore réel : à valider, ou brouillon')))
     return element
   }
 

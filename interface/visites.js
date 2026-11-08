@@ -2,7 +2,6 @@
 // relancées par le bouton de la barre du haut. Elles naviguent à la place de l'utilisateur et ne modifient rien. La ligne
 // et la machine montrées sont prises dans la base : la ligne au verdict le plus mauvais, sa machine la plus en panne.
 
-import { ic } from '/socle/ui.js'
 
 const $ = (s) => document.querySelector(s)
 const ou = (...selecteurs) => () => selecteurs.map($).find(Boolean) || $('.contenu')
@@ -33,7 +32,7 @@ function icone(selecteur, classes, contenu) {
     if (!ligneExemple) {
       ligneExemple = document.createElement('tr')
       ligneExemple.className = 'ligne-exemple'
-      ligneExemple.innerHTML = '<th class="titre-visite discret">Exemple</th><td></td><td></td><td></td>'
+      ligneExemple.innerHTML = `<th class="titre-visite discret">Exemple</th>${'<td></td>'.repeat(document.querySelectorAll('.matrice-demo th.col-t, .matrice-demo th.col-passages').length)}`
       $('.matrice-demo tbody')?.append(ligneExemple)
     }
     let c = ligneExemple.querySelector(`[data-exemple="${classes}"]`)
@@ -47,7 +46,6 @@ function icone(selecteur, classes, contenu) {
     return c
   }
 }
-const document_ = () => ic('document', 24).outerHTML
 const logo = () => `<img src="${LOGO_N1}" alt="">`
 const onglet = (o) => `.barre-onglets-ligne a.choisi[href$="/${o}"]`
 
@@ -85,23 +83,21 @@ export const visites = {
     etapes: [
       { avant: async () => { lePlusCharge('.puce-case:not(.puce-eth)')?.click(); await pause(700) }, attendre: '.matrice-demo', cible: ou('.resume-machine'), titre: 'Pourquoi regarder cette machine', texte: 'Son rang dans son ETH, le sens de ses pannes, où elles se concentrent, et ce que dit son préventif.' },
       { cible: '.demo-conteneur', titre: 'La matrice', texte: 'En colonnes les équipements, le plus en panne à gauche. En lignes les visites. À la croisée, l’endroit où chaque visite est posée.' },
-      { cible: ou('th.col-t'), titre: 'La colonne t', texte: 'La part des passages sans rien trouver, lue dans les observations écrites : un t très haut désigne une visite trop vague ou trop fréquente.' },
-      { cible: ou('.ligne-diagnostics'), titre: 'Le diagnostic', texte: 'Sous chaque équipement : pas de préventif (!), mauvais point contrôlé ou énoncé trop vague (?), préventif ok (✓), ou sur maintenance (+). Le survol dit pourquoi.' },
-      { cible: icone('td.posee:not(.titre):not(.provisoire)', 'posee', () => '●'), zoom: 2, titre: 'Le rond plein', texte: 'La visite est posée sur cet équipement dans la GMAO. Un clic ouvre « Je décide » pour cette visite et cet équipement.' },
-      { cible: icone('td.posee.titre', 'posee titre', () => '○'), zoom: 2, titre: 'Le rond vide', texte: 'Posée sur la machine entière dans la GMAO, mais son titre nomme cet organe : elle est rattachée ici. Le clic droit valide le déplacement dans la GMAO.' },
-      { cible: icone('td.posee.provisoire', 'posee provisoire', () => ''), zoom: 2, titre: 'Le rond pointillé', texte: 'Un déplacement provisoire, glissé dans PREVTEC : ni actif, ni évalué, il ne compte pas dans le diagnostic tant qu’il n’est pas validé au clic droit.' },
-      { cible: icone('td.fiche-locale:not(.validee)', 'fiche-locale', document_), zoom: 2, titre: 'Le document ambre', texte: 'Une fiche de visite préparée dans PREVTEC par l’IA, d’après les pannes de cet équipement. Rien dans la GMAO tant qu’elle n’est pas validée au clic droit. Un clic ouvre la fiche, à imprimer.' },
-      { cible: icone('td.fiche-locale.validee', 'fiche-locale validee', document_), zoom: 2, titre: 'Le document vert', texte: 'La même fiche, validée : sa FI existe dans la GMAO, elle est figée.' },
-      { cible: ou('.tete-n1', '.legende-demo'), titre: 'Le niveau 1, à part', texte: 'Les fiches des opérateurs sur cette machine, et la charge de leur ETH : un message prévient si une nouvelle fiche ferait dépasser le maximum.' },
-      { cible: icone('td.fiche-n1:not(.brouillon)', 'fiche-n1', logo), zoom: 2, titre: 'Le logo jaune', texte: 'Une fiche de niveau 1 active, avec une FI ou en service sur papier. Elle compte dans le diagnostic de l’équipement.' },
-      { cible: icone('td.fiche-n1.brouillon', 'fiche-n1 brouillon', logo), zoom: 2, titre: 'Le logo pâle', texte: 'Un brouillon : les opérateurs ne la font pas encore, il ne compte nulle part.' },
-      { cible: ou('.ligne-ajout', '.legende-demo'), titre: 'Préparer sans rien casser', texte: 'En mode administrateur, « Nouvelle visite » et « Nouvelle fiche » créent une ligne vide : on clique la case de l’équipement, l’IA rédige d’après ses pannes. Le clic droit sur une case donne ses actions.' },
+      { cible: ou('th.col-t'), titre: 'La colonne % RAS', texte: 'La part des passages sans rien trouver, lue dans les observations écrites : très haute, elle désigne une visite trop vague ou trop fréquente.' },
+      { cible: ou('.ligne-diagnostics'), titre: 'Le diagnostic', texte: 'Sous chaque équipement, tout en haut : pas de préventif (!), mauvais point contrôlé ou énoncé trop vague (?), préventif ok (✓), ou sur maintenance (+). Le survol dit pourquoi.' },
+      { cible: icone('td.posee:not(.titre):not(.attente)', 'posee', () => '●'), zoom: 2, titre: 'Le rond plein', texte: 'La visite est posée sur cet équipement dans la GMAO. Un clic ouvre « Je décide ». Ce qui va bien reste en retrait, pour que les problèmes ressortent.' },
+      { cible: icone('td.posee.titre', 'posee titre', () => '○'), zoom: 2, titre: 'Le rond vide', texte: 'Posée sur la machine entière dans la GMAO, mais son titre nomme cet organe : elle est rattachée ici. Un clic propose de valider le déplacement dans la GMAO.' },
+      { cible: icone('td.attente', 'posee attente', () => '●'), zoom: 2, titre: 'Le contour ambre', texte: 'Pas encore réel : une visite glissée sur un autre équipement, une fiche préparée par l’IA, un brouillon de niveau 1. Cela ne compte pas dans le diagnostic.' },
+      { cible: ou('.barre-attente', '.legende-demo'), titre: 'Ce qui reste à valider', texte: 'Dès qu’un changement attend, une barre le dit au-dessus du tableau. Elle ouvre la liste, avec Valider ou Annuler pour chacun. Rien n’est écrit dans la GMAO avant.' },
+      { avant: () => { if (!$('.ligne-n1')) $('.repli-n1')?.click() }, cible: ou('.tete-n1', '.legende-demo'), titre: 'Le niveau 1, à part', texte: 'Repliées par défaut : les fiches des opérateurs sur cette machine, et la charge de leur ETH : un message prévient si une nouvelle fiche ferait dépasser le maximum.' },
+      { cible: icone('td.fiche-n1:not(.attente)', 'fiche-n1', logo), zoom: 2, titre: 'Le logo N1', texte: 'Une fiche de niveau 1 active, avec une FI ou en service sur papier. Elle compte dans le diagnostic de l’équipement.' },
+      { cible: ou('.ligne-ajout', '.legende-demo'), titre: 'Préparer sans rien casser', texte: 'En mode administrateur, « Nouvelle visite » et « Nouvelle fiche » créent une ligne vide : on clique la case de l’équipement, l’IA rédige d’après ses pannes. Un clic sur une case donne ses actions.' },
     ],
   },
   'prevtec-je-decide': {
     titre: '5. Je décide',
     etapes: [
-      { avant: () => { $('.ligne-exemple')?.remove(); ($('td.posee.col-clic:not(.provisoire)') || $('td.posee.col-clic'))?.click() }, attendre: '.detail-decider', cible: '.detail-decider > .carte:nth-child(1)', titre: 'La visite telle qu’elle est écrite', texte: 'Un clic sur un rond ouvre cette page, pour cette visite et cet équipement : le contenu de sa FI dans la GMAO et les observations des derniers passages.' },
+      { avant: () => { $('.ligne-exemple')?.remove(); ($('td.posee.col-clic:not(.attente):not(.titre):not(.fiche-locale)') || $('td.posee.vague') || $('td.posee.col-clic'))?.click() }, attendre: '.detail-decider', cible: '.detail-decider > .carte:nth-child(1)', titre: 'La visite telle qu’elle est écrite', texte: 'Un clic sur un rond ouvre cette page, pour cette visite et cet équipement : le contenu de sa FI dans la GMAO et les observations des derniers passages.' },
       { cible: '.detail-decider > .carte:nth-child(2)', titre: 'Les préconisations', texte: 'Ce que l’IA en pense, en quelques lignes, à partir de la FI, des observations et des pannes de l’équipement.' },
       { cible: ou('.carte-decisions .actions button:nth-child(1)', '.carte-decisions'), zoom: 1.2, titre: 'Créer une fiche N1', texte: 'L’IA rédige un contrôle pour l’opérateur, vous le relisez. Un message prévient si la charge de l’ETH serait dépassée.' },
       { cible: ou('.carte-decisions .actions button:nth-child(2)', '.carte-decisions'), zoom: 1.2, titre: 'Modifier la FI actuelle', texte: 'L’IA propose une FI revue à côté de l’actuelle, en phrases de contrôle avec les symptômes classiques. On la reporte dans la GMAO.' },

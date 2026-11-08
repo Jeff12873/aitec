@@ -1000,8 +1000,6 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .code-visite.locale { color: #fbbf24; border-color: color-mix(in srgb, #fbbf24 50%, transparent); }
 .ligne-locale .titre-visite { color: var(--texte); font-style: italic; }
 .ligne-locale .croisee { background: color-mix(in srgb, #fbbf24 6%, transparent); }
-.croisee.fiche-locale, .carre-legende.fiche-locale { background: color-mix(in srgb, #fbbf24 26%, transparent); color: #fbbf24; }
-.matrice-demo .croisee.fiche-locale svg { vertical-align: middle; }
 .ligne-ajout .titre-visite { padding: 8px; }
 .parc-mn1 { grid-template-columns: minmax(0, 1fr); }
 .parc-mn1 > * { min-width: 0; }
@@ -1020,15 +1018,10 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .resume-machine b { color: var(--texte); }
 .resume-machine:empty { display: none; }
 .vue-machine .scene-ligne .fond-tendance-parc { height: 190px; }
-.croisee.fiche-locale.validee { background: color-mix(in srgb, #5fa77c 30%, transparent); color: #8fd0a8; }
 .menu-contextuel { gap: 6px; padding: 8px; min-width: 280px; }
 .menu-contextuel button { display: flex; justify-content: flex-start; width: 100%; padding: 11px 14px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte-2); font-size: 15px; font-weight: 500; }
 .menu-contextuel button:hover { border-color: var(--accent); }
 
-/* Déplacement provisoire : ni actif, ni évalué par l'IA */
-.croisee.posee.provisoire, .carre-legende.provisoire { background: color-mix(in srgb, #fbbf24 12%, transparent); }
-.croisee.provisoire::after, .carre-legende.provisoire::after { content: ''; display: inline-block; width: 22px; height: 22px; border: 2px dashed #fbbf24; border-radius: 50%; vertical-align: middle; }
-.carre-legende.provisoire::after { width: 11px; height: 11px; border-width: 1.5px; }
 
 /* Les contributeurs du mois : aller au niveau 1 de la ligne */
 .lien-niveau1 { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; font-weight: 600; }
@@ -1044,12 +1037,21 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .croisee.fiche-n1, .carre-legende.fiche-n1 { background: color-mix(in srgb, #e9e54a 20%, transparent); }
 .croisee.fiche-n1 img { width: 34px; height: 34px; vertical-align: middle; }
 .carre-legende.fiche-n1 img { width: 16px; height: 16px; }
-.croisee.fiche-n1.brouillon { background: color-mix(in srgb, #e9e54a 6%, transparent); }
-.croisee.fiche-n1.brouillon img { opacity: .4; filter: grayscale(.7); }
 .code-visite.brouillon { opacity: .6; }
 tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 
 /* PREVTEC : le plan de culture */
 .mode-concombre .croisee.posee, .mode-concombre .croisee.fiche-locale { color: transparent; background: url(concombre-petit.webp) center / 62% no-repeat, color-mix(in srgb, #5fa77c 26%, transparent); }
-.mode-concombre .croisee.posee::after, .mode-concombre .croisee.fiche-locale svg { visibility: hidden; }
 .mode-concombre .puce-case b, .mode-concombre .matrice-demo .diag-demo { color: #8fd0a8; }
+
+/* Démonstrateur : un seul état « pas encore réel », et ce qui va bien en retrait */
+.croisee.attente, .carre-legende.attente { background: color-mix(in srgb, #fbbf24 12%, transparent); color: #fbbf24; outline: 2px dashed #fbbf24; outline-offset: -4px; }
+.carre-legende.attente { outline-width: 1px; outline-offset: -2px; }
+.croisee.calme { opacity: .45; }
+.croisee.calme:hover { opacity: 1; }
+.barre-attente { display: grid; gap: 6px; margin: 8px 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, #fbbf24 45%, transparent); border-radius: 10px; background: color-mix(in srgb, #fbbf24 8%, transparent); }
+.tete-attente { display: flex; align-items: center; gap: 10px; width: 100%; padding: 2px; border: 0; background: none; color: var(--texte); text-align: left; }
+.tete-attente .discret { margin-left: auto; }
+.ligne-attente { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--bord); }
+.ligne-attente span { flex: 1; min-width: 0; }
+.repli-n1 { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 0; border: 0; background: none; color: var(--texte); }

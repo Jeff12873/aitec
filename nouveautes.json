@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.27.0",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur simplifié : quatre signes au lieu de sept, avec un seul contour ambre pour tout ce qui n'est pas encore réel",
+        "Un clic sur une case donne ses actions ; une barre liste ce qui attend d'être validé dans la GMAO",
+        "Le diagnostic passe en haut du tableau, les visites à problème d'abord, ce qui va bien en retrait",
+        "Colonne « % RAS » au lieu de « t », colonne DI seulement avec les fiches N1, groupe N1 repliable, bulles d'une ligne"
+      ]
+    },
+    {
       "version": "0.26.0",
       "date": "2026-11-08",
       "points": [
