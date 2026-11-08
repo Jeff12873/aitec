@@ -188,7 +188,7 @@ export async function ficheDeVisite(parcId, machineId, { equipement, titre, orga
   return {
     parc: v.parc.nom,
     machine: { repere: machine.repere, designation: machine.designation },
-    visite: { code: passages[0]?.code?.code || '', titre: preparee?.titre || titre, points: preparee?.fiches[id].points || null, frequence: preparee?.fiches[id].frequence || '', ...nomOrgane(cible), machineEntiere: cible === machine.id, passages: passages.length, derniere },
+    visite: { code: passages[0]?.code?.code || '', titre: preparee?.titre || titre, points: preparee?.fiches[id].points || null, frequence: preparee?.fiches[id].frequence || '', format: preparee?.fiches[id].format || 'html', ...nomOrgane(cible), machineEntiere: cible === machine.id, passages: passages.length, derniere },
     bilan: {
       pannes: recents.length, precedent, evolution: evolution(recents.length, precedent),
       heures: avecDuree.length ? Math.round(avecDuree.reduce((s, l) => s + Number(l.duree_h), 0)) : null,

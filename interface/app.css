@@ -1005,3 +1005,12 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .ligne-ajout .titre-visite { padding: 8px; }
 .parc-mn1 { grid-template-columns: minmax(0, 1fr); }
 .parc-mn1 > * { min-width: 0; }
+
+/* Le texte d'une fiche : mis en forme, ou brut */
+.tete-format { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.apercu-texte-fiche { margin-top: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--bord); background: var(--carte-2); font-size: 13.5px; line-height: 1.5; }
+.apercu-texte-fiche:empty { display: none; }
+.apercu-texte-fiche ol { margin: 0; padding-left: 22px; display: grid; gap: 7px; }
+.apercu-texte-fiche li::marker { color: var(--accent); font-weight: 700; }
+.apercu-texte-fiche b { color: var(--texte); }
+.texte-brut-fiche { white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; }

@@ -9,6 +9,7 @@ import { h, ic, dateFr, essayer, fenetre, notifier, confirmer } from '/socle/ui.
 import { api } from '/socle/api.js'
 import { modeAdmin } from '/socle/etat.js'
 import { ouvrirFicheVisite } from './fiche-visite.js'
+import { choixFormat, lignesDe, pointsAffiches } from './texte-fiche.js'
 
 const COULEURS_DIAGNOSTIC = { pas: 'rouge', mauvais: 'violet', ok: 'vert', sur: 'orange', rien: '' }
 const SIGNES = { pas: '!', mauvais: '?', ok: '✓', sur: '+', rien: '' }
@@ -110,6 +111,7 @@ export async function demonstrateurMachine(parcId, machineId) {
     }
     const titre = h('input', { type: 'text', value: b.titre })
     const points = h('textarea', { rows: 9 }, b.points.join('\n'))
+    const mise = choixFormat(points)
     const frequence = h('select', {}, FREQUENCES_VISITE.map((x) => h('option', { value: x, selected: x === b.frequence }, x)))
     const ok = await fenetre({
       titre: `Nouvelle fiche — ${c.repere}`,
@@ -118,9 +120,9 @@ export async function demonstrateurMachine(parcId, machineId) {
         h('p', { class: 'texte-2', style: { margin: 0 } }, 'Pour le mainteneur, dans PREVTEC seulement : rien n’est écrit dans la GMAO. Relisez et corrigez.'),
         b.pourquoi ? h('p', { class: 'discret', style: { margin: 0 } }, b.pourquoi) : null,
         h('label', { class: 'champ' }, h('span', {}, 'Titre de la visite'), titre),
-        h('label', { class: 'champ' }, h('span', {}, 'Points à contrôler (un par ligne)'), points),
+        h('div', { class: 'champ' }, h('span', { class: 'tete-format' }, 'Points à contrôler (un par ligne)', mise.boutons), points, mise.apercu),
         h('label', { class: 'champ' }, h('span', {}, 'Fréquence proposée'), frequence)),
-      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: false }, { texte: 'Enregistrer dans PREVTEC', classe: 'principal', action: async () => { await api(`/api/mn1/locales/${l.id}/fiche`, { methode: 'POST', corps: { equipement: c.id, titre: titre.value, points: points.value.split('\n'), frequence: frequence.value, pourquoi: b.pourquoi } }); return true } }],
+      boutons: [{ texte: 'Annuler', classe: 'discret', valeur: false }, { texte: 'Enregistrer dans PREVTEC', classe: 'principal', action: async () => { await api(`/api/mn1/locales/${l.id}/fiche`, { methode: 'POST', corps: { equipement: c.id, titre: titre.value, points: lignesDe(points.value), frequence: frequence.value, pourquoi: b.pourquoi, format: mise.format() } }); return true } }],
     })
     if (ok) { notifier('Fiche enregistrée dans PREVTEC'); recharger() }
   }
@@ -128,7 +130,7 @@ export async function demonstrateurMachine(parcId, machineId) {
   const voirFiche = (l, c, f) => fenetre({
     titre: `${l.titre || 'Visite préparée'} — ${c.repere}`,
     large: true,
-    contenu: h('div', {}, h('p', { class: 'discret', style: { marginTop: 0 } }, `Dans PREVTEC seulement${f.frequence ? ` · ${f.frequence}` : ''}`), f.pourquoi ? h('p', { class: 'texte-2' }, f.pourquoi) : null, h('ul', { class: 'conseils-decider' }, f.points.map((p) => h('li', {}, p)))),
+    contenu: h('div', {}, h('p', { class: 'discret', style: { marginTop: 0 } }, `Dans PREVTEC seulement${f.frequence ? ` · ${f.frequence}` : ''}`), f.pourquoi ? h('p', { class: 'texte-2' }, f.pourquoi) : null, pointsAffiches(f.points, f.format)),
     boutons: [
       admin ? { texte: 'Retirer la fiche', classe: 'discret', action: async () => { await retirerSaFiche(l, c); return true } } : null,
       { texte: 'Imprimer', classe: 'discret', action: () => { imprimer(l, c); return true } },

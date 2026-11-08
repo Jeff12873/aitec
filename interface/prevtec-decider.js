@@ -8,6 +8,7 @@ import { filEtapes, barreRetour } from './prevtec.js'
 import { relireFiche } from './mn1-parc.js'
 import { LOGO_MN1 } from './fiches-mn1.js'
 import { ouvrirFicheVisite } from './fiche-visite.js'
+import { choixFormat, lignesDe, pointsEnHtml } from './texte-fiche.js'
 
 export async function afficherDecider(zone, parcId, machineId, { equipement, pose, titre }) {
   if (!equipement || !pose || !titre) return location.replace(`#/mn1/parc/${encodeURIComponent(parcId)}?machine=${machineId}`)
@@ -31,6 +32,14 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
     const r = await essayer(() => api(`${base}/decider/fi`, { methode: 'POST', corps: croisee }))
     if (!r) return
     const texte = h('textarea', { rows: 14 }, r.proposee)
+    const mise = choixFormat(texte)
+    // La mise en forme part dans le presse-papiers en HTML, avec le texte brut pour les champs qui ne l'acceptent pas.
+    const copier = async () => {
+      if (mise.format() === 'html' && window.ClipboardItem) await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([pointsEnHtml(lignesDe(texte.value))], { type: 'text/html' }), 'text/plain': new Blob([texte.value], { type: 'text/plain' }) })])
+      else await navigator.clipboard.writeText(texte.value)
+      notifier('FI copiée')
+      return true
+    }
     await fenetre({
       titre: `Modifier la FI${v.fi ? ` ${v.fi}` : ''}`,
       large: true,
@@ -38,8 +47,8 @@ export async function afficherDecider(zone, parcId, machineId, { equipement, pos
         h('p', { class: 'texte-2', style: { marginTop: 0 } }, 'Proposé par l’IA : corrigez-le si besoin, puis reportez-le dans la GMAO. PREVTEC n’écrit pas encore dans la FI.'),
         h('div', { class: 'grille grille-2', style: { gap: '12px' } },
           h('div', {}, h('b', {}, 'FI actuelle'), h('div', { class: 'fi-actuelle' }, r.actuelle || 'Contenu de la FI non lu dans les rapports.')),
-          h('div', {}, h('b', {}, 'Proposition'), texte))),
-      boutons: [{ texte: 'Fermer', classe: 'discret', valeur: null }, { texte: 'Copier', classe: 'principal', action: async () => { await navigator.clipboard.writeText(texte.value); notifier('FI copiée'); return true } }],
+          h('div', {}, h('div', { class: 'tete-format' }, h('b', {}, 'Proposition'), mise.boutons), texte, mise.apercu))),
+      boutons: [{ texte: 'Fermer', classe: 'discret', valeur: null }, { texte: 'Copier', classe: 'principal', action: copier }],
     })
   }
 

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.21.0",
+      "date": "2026-11-08",
+      "points": [
+        "Fiches préparées et FI revue : au choix, un texte mis en forme ou sans mise en forme, avec un aperçu"
+      ]
+    },
+    {
       "version": "0.20.0",
       "date": "2026-11-08",
       "points": [

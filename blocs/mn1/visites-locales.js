@@ -1,7 +1,7 @@
 // Les visites préparées dans PREVTEC (rien dans la GMAO) : une ligne de plus dans le Démonstrateur d'une machine ; à sa
 // croisée avec un équipement, une fiche pour le mainteneur, proposée par l'IA à partir des pannes de cet équipement.
 // Tant que personne ne la fait, une telle visite ne compte dans aucun diagnostic. Réglage « prev_visites_locales » :
-//   [{ id, machine, titre, cree_le, fiches: { idEquipement: { points: [...], frequence, pourquoi, cree_le } } }]
+//   [{ id, machine, titre, cree_le, fiches: { idEquipement: { points: [...], frequence, pourquoi, format, cree_le } } }]
 
 import { reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
 import { ErreurHttp } from 'ktec/http.js'
@@ -41,12 +41,12 @@ export function retirerVisiteLocale(id) {
 }
 
 // { equipement, titre, points, frequence, pourquoi } ; le titre de la fiche devient celui de la visite s'il n'y en a pas.
-export function enregistrerFiche(id, { equipement, titre = '', points = [], frequence = '', pourquoi = '' }) {
+export function enregistrerFiche(id, { equipement, titre = '', points = [], frequence = '', pourquoi = '', format = 'html' }) {
   const propres = (Array.isArray(points) ? points : []).map((p) => String(p).trim()).filter(Boolean)
   if (!propres.length) throw new ErreurHttp(400, 'Écrivez au moins un point à contrôler.')
   return changer(id, (l) => {
     if (String(titre).trim()) l.titre = String(titre).trim()
-    l.fiches[Number(equipement)] = { points: propres, frequence: String(frequence).slice(0, 40), pourquoi: String(pourquoi), cree_le: new Date().toISOString() }
+    l.fiches[Number(equipement)] = { points: propres, frequence: String(frequence).slice(0, 40), pourquoi: String(pourquoi), format: format === 'texte' ? 'texte' : 'html', cree_le: new Date().toISOString() }
   })
 }
 export const retirerFiche = (id, equipement) => changer(id, (l) => { delete l.fiches[Number(equipement)] })

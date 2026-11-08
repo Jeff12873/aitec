@@ -4,6 +4,7 @@
 
 import { h, ic, essayer, dateFr } from '/socle/ui.js'
 import { api } from '/socle/api.js'
+import { pointEnHtml } from './texte-fiche.js'
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`
@@ -16,7 +17,7 @@ function pageDeLaFiche(f) {
   const b = f.bilan
   const lieu = v.machineEntiere ? `${v.repere} ${v.designation} (machine entière)` : `${v.repere} ${v.designation}, sur ${f.machine.repere}`
   const pointsPrepares = v.points ? `<h2>Les points à contrôler</h2>${v.frequence ? `<p class="aide">Fréquence proposée : ${esc(v.frequence)}.</p>` : ''}
-    <table><thead><tr><th>Contrôle</th><th class="c">RAS</th><th class="c">À suivre</th><th class="c">À reprendre</th></tr></thead><tbody>${v.points.map((p) => `<tr><td>${esc(p)}</td><td class="c"><i></i></td><td class="c"><i></i></td><td class="c"><i></i></td></tr>`).join('')}</tbody></table>` : ''
+    <table><thead><tr><th>Contrôle</th><th class="c">RAS</th><th class="c">À suivre</th><th class="c">À reprendre</th></tr></thead><tbody>${v.points.map((p) => `<tr><td>${v.format === 'texte' ? esc(p) : pointEnHtml(p)}</td><td class="c"><i></i></td><td class="c"><i></i></td><td class="c"><i></i></td></tr>`).join('')}</tbody></table>` : ''
   const synthese = [
     `<b>${pluriel(b.pannes, 'panne')}</b> sur les 12 derniers mois (${b.precedent} les 12 mois d'avant)`,
     b.heures !== null ? `<b>${b.heures} h</b> de dépannage sur ces 12 mois` : '',
