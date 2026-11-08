@@ -17,6 +17,7 @@ const REGLAGES = {
   sqlModification: '', // remplacement de la fiche d'une FI, ou réactivation (ACTIF à 1)
   sqlSuspension: '', // ACTIF à 0
   sqlSuppression: '', // la FI supprimée comme le fait la GMAO (la fiche reste dans AITEC, sans FI)
+  sqlVisite: '', // une visite préparée dans PREVTEC, créée dans la GMAO (:numero :titre :obser :parc :periot :val_periot :equipement :equipement_code…)
   sqlEquipement: '', // une FI déplacée d'un équipement à un autre (:numero, :ancien, :nouveau, :ancien_code, :nouveau_code)
   modele: '', // la FI dont la structure est copiée
   intervenant: '',
@@ -38,7 +39,7 @@ const REGLAGES = {
 }
 // Ce qu'un parc peut régler pour lui seul (vide : les réglages généraux).
 export const PROPRES_AU_PARC = ['modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'tpsPrevu', 'delai', 'numero', 'titre', 'parSemaine']
-const TEXTES = ['sql', 'sqlLecture', 'sqlModification', 'sqlSuspension', 'sqlSuppression', 'sqlEquipement', 'modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'numero', 'titre']
+const TEXTES = ['sql', 'sqlLecture', 'sqlModification', 'sqlSuspension', 'sqlSuppression', 'sqlEquipement', 'sqlVisite', 'modele', 'intervenant', 'emetteur', 'type', 'utilisateur', 'numero', 'titre']
 const NOMBRES = ['tpsPrevu', 'periot', 'valPeriot', 'delai', 'parSemaine']
 // Le temps prévu au dixième d'heure près (0,1 au moins) ; les autres nombres tels quels.
 const dixieme = (cle, n) => (cle === 'tpsPrevu' ? Math.max(0.1, Math.round(n * 10) / 10) : n)

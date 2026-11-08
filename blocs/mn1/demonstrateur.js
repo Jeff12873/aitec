@@ -88,16 +88,21 @@ export async function demonstrateur(parcId, machineId, deja = null) {
   const visites = v.pourEcran('demonstrateur').filter((x) => x.recente && equipements.has(x.machine_id)) // par défaut, l'observation seule
   const designation = new Map(db().prepare(`SELECT id, designation FROM machines WHERE id IN (${[...equipements].join(',')})`).all().map((m) => [m.id, m.designation]))
   const deplacements = reglageJson('prev_deplacements', {}) || {}
+  const placements = reglageJson('prev_placements', {}) || {}
   // Une visite posée sur la machine entière dont le titre nomme un organe compte sur cet organe.
   const organes = [...equipements].filter((e) => e !== machine.id).map((e) => ({ id: e, repere: repere.get(e) || '', designation: designation.get(e) || '' }))
   // Les lignes : les visites du plan, regroupées par code, titre et équipement où elles sont posées.
   const groupes = new Map()
   for (const x of visites) {
     const cle = `${x.code?.code || ''}|${titreDe(x)}|${x.machine_id}`
-    // Déplacée dans la GMAO depuis ce tableau : retenue ici, car les rapports déjà faits restent sur la machine entière.
-    const deplacee = deplacements[cleDeplacement(machine.id, x.machine_id, titreDe(x))]
-    const organe = x.machine_id === machine.id ? deplacee ?? organeDuTitre(titreDe(x), organes) : null
-    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), pose: x.machine_id, equipement: organe ?? x.machine_id, machineEntiere: x.machine_id === machine.id && !organe, dapresTitre: Boolean(organe) && !deplacee, deplacee: Boolean(deplacee), passages: 0, derniere: '', ecrits: 0, rien: 0 }
+    // Où la montrer : validée dans la GMAO (les rapports déjà faits restent à l'ancienne place), déplacée dans PREVTEC
+    // en attendant d'être validée, ou rattachée d'après son titre.
+    const cleVisite = cleDeplacement(machine.id, x.machine_id, titreDe(x))
+    const deplacee = deplacements[cleVisite]
+    const placee = placements[cleVisite]
+    const dapresLeTitre = x.machine_id === machine.id && !deplacee && !placee ? organeDuTitre(titreDe(x), organes) : null
+    const organe = deplacee ?? placee ?? dapresLeTitre
+    const g = groupes.get(cle) || { code: x.code ? { code: x.code.code, niveau: x.code.niveau, type: x.code.nomType } : null, titre: titreDe(x), pose: x.machine_id, equipement: organe ?? x.machine_id, machineEntiere: x.machine_id === machine.id && !organe, dapresTitre: Boolean(dapresLeTitre), deplacee: Boolean(deplacee), placee: Boolean(placee) && !deplacee, passages: 0, derniere: '', ecrits: 0, rien: 0 }
     g.passages++
     const resultat = resultatDuPassage(x.description)
     if (resultat) g.ecrits++
@@ -208,26 +213,40 @@ export async function ficheDeVisite(parcId, machineId, { equipement, titre, orga
 // ---------------------------------------------------------------- déplacer une visite dans la GMAO
 
 // L'ID du nœud de l'arborescence qui porte ce repère, sous les racines de maintenance de la ligne.
-function noeudDe(v, repere) {
+export function noeudDe(v, repere) {
   let trouve = null
   const chercher = (n) => { if (n.code === repere) trouve = trouve ?? n.id; else n.enfants.forEach(chercher) }
   v.p.racines.filter((r) => v.parc.maintenance.includes(r.id)).forEach((r) => chercher(r.noeud))
   return trouve
 }
 
-// Une visite posée sur la machine entière, déplacée sur un organe : { pose, titre, vers, valider }. Simulée d'abord
-// (transaction annulée) ; une fois validée, retenue dans le fichier pour que le Démonstrateur la montre sur l'organe.
+// Une visite glissée sur un autre équipement : dans PREVTEC seulement, en attendant d'être validée. vers vide : annulé.
+export async function placerVisite(parcId, machineId, { pose, titre, vers = null }) {
+  const { machine, equipements } = await machineEtPannes(parcId, machineId)
+  if (vers !== null && (!equipements.has(Number(vers)) || Number(vers) === Number(pose))) throw new ErreurHttp(400, 'Choisissez un autre équipement de cette machine.')
+  exigerEcriture()
+  const p = reglageJson('prev_placements', {}) || {}
+  const cle = cleDeplacement(machine.id, Number(pose), titre)
+  if (vers === null) delete p[cle]
+  else p[cle] = Number(vers)
+  modifierReglage('prev_placements', p)
+  noterModification()
+  return { ok: true }
+}
+
+// Valider le déplacement d'une visite dans la GMAO : { pose, titre, vers, valider }. Simulé d'abord (transaction
+// annulée) ; une fois validé, retenu dans le fichier pour que le Démonstrateur la montre sur son nouvel équipement.
 export async function deplacerVisite(parcId, machineId, { pose, titre, vers, valider = false }) {
   const { v, machine, equipements, repere } = await machineEtPannes(parcId, machineId)
   const cible = Number(vers)
-  if (Number(pose) !== machine.id) throw new ErreurHttp(400, 'Seule une visite posée sur la machine entière se déplace.')
-  if (cible === machine.id || !equipements.has(cible)) throw new ErreurHttp(400, 'Choisissez un organe de cette machine.')
-  const passages = v.toutes.filter((x) => x.machine_id === machine.id && titreDe(x) === titre).sort((a, b) => b.date.localeCompare(a.date))
+  const origine = Number(pose)
+  if (!equipements.has(origine) || !equipements.has(cible) || origine === cible) throw new ErreurHttp(400, 'Choisissez un autre équipement de cette machine.')
+  const passages = v.toutes.filter((x) => x.machine_id === origine && titreDe(x) === titre).sort((a, b) => b.date.localeCompare(a.date))
   const fi = passages.map((x) => morceauxPassage(x.description).fi).find(Boolean)?.split(/\s/)[0]
   if (!fi) throw new ErreurHttp(404, 'Le numéro de FI de cette visite est introuvable dans ses rapports.')
   const r = reglagesDuParc(parcId)
   if (!r.sqlEquipement) throw new ErreurHttp(409, 'Le SQL de déplacement d’une FI n’est pas réglé (Maintenance de niveau 1 › Circuit › réglages de la GMAO › SQL du site).')
-  const [ancienCode, nouveauCode] = [repere.get(machine.id), repere.get(cible)]
+  const [ancienCode, nouveauCode] = [repere.get(origine), repere.get(cible)]
   const [ancien, nouveau] = [noeudDe(v, ancienCode), noeudDe(v, nouveauCode)]
   if (ancien === null || nouveau === null) throw new ErreurHttp(404, 'Cet équipement est introuvable dans l’arborescence de la GMAO.')
   const lot = instructions(r.sqlEquipement, { ...valeursSql(r, { numero: fi }), numero: fi, ancien, nouveau, ancien_code: ancienCode, nouveau_code: nouveauCode })
@@ -236,8 +255,11 @@ export async function deplacerVisite(parcId, machineId, { pose, titre, vers, val
   if (valider && modifiees) {
     exigerEcriture()
     const d = reglageJson('prev_deplacements', {}) || {}
-    d[cleDeplacement(machine.id, machine.id, titre)] = cible
+    d[cleDeplacement(machine.id, origine, titre)] = cible
     modifierReglage('prev_deplacements', d)
+    const p = reglageJson('prev_placements', {}) || {}
+    delete p[cleDeplacement(machine.id, origine, titre)]
+    modifierReglage('prev_placements', p)
     noterModification()
   }
   return { valide: reponse.valide, modifiees, numero: fi, de: ancienCode, vers: nouveauCode }

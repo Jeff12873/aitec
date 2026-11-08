@@ -15,9 +15,9 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite } from './demonstrateur.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
-import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale } from './visites-locales.js'
+import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
 import { recalerEtiquettes } from './etiquettes.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
@@ -566,7 +566,13 @@ export function routes(r) {
   admin.post('/api/mn1/locales/:visite/fiche', async (ctx) => enregistrerFiche(ctx.params.visite, await ctx.json()))
   admin.post('/api/mn1/locales/:visite/fiche/retirer', async (ctx) => retirerFiche(ctx.params.visite, (await ctx.json()).equipement))
 
-  // Déplacer une visite de la machine entière sur un organe, dans la GMAO (simulée d'abord).
+  admin.post('/api/mn1/parcs/:id/machines/:machine/locales/:visite/valider', async (ctx) => {
+    ctx.exigerAdmin()
+    return validerDansGmao(ctx.params.id, ctx.params.machine, ctx.params.visite, await ctx.json())
+  })
+
+  // Glisser une visite : dans PREVTEC seulement. Valider le déplacement : dans la GMAO (simulé d'abord).
+  admin.post('/api/mn1/parcs/:id/machines/:machine/placer', async (ctx) => placerVisite(ctx.params.id, ctx.params.machine, await ctx.json()))
   admin.post('/api/mn1/parcs/:id/machines/:machine/deplacer', async (ctx) => {
     ctx.exigerAdmin()
     return deplacerVisite(ctx.params.id, ctx.params.machine, await ctx.json())

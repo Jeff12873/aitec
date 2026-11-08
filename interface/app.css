@@ -1020,3 +1020,7 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .resume-machine b { color: var(--texte); }
 .resume-machine:empty { display: none; }
 .vue-machine .scene-ligne .fond-tendance-parc { height: 190px; }
+.croisee.fiche-locale.validee { background: color-mix(in srgb, #5fa77c 30%, transparent); color: #8fd0a8; }
+.menu-contextuel { gap: 6px; padding: 8px; min-width: 280px; }
+.menu-contextuel button { display: flex; justify-content: flex-start; width: 100%; padding: 11px 14px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte-2); font-size: 15px; font-weight: 500; }
+.menu-contextuel button:hover { border-color: var(--accent); }

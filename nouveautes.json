@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "0.22.0",
+      "date": "2026-11-08",
+      "points": [
+        "Démonstrateur : glisser une visite la déplace dans PREVTEC seulement ; au clic droit, « Valider le déplacement » l'écrit dans la GMAO et la fige",
+        "Une fiche préparée se valide de la même façon et crée sa FI dans la GMAO",
+        "Le titre généré suit le standard du site : VISITE HYDRAULIQUE 670.2, en majuscules",
+        "Menu du clic droit : options alignées à gauche, encadrées et plus grandes"
+      ]
+    },
+    {
       "version": "0.21.5",
       "date": "2026-11-08",
       "points": [
