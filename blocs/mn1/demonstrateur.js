@@ -396,6 +396,20 @@ export async function reactiverDecision(id, { valider = false }) {
   return { valide: reponse.valide, modifiees, numero: d.fi }
 }
 
+// Le texte de la FI lu dans la GMAO (requête du site), une ligne par point : les rapports ne le recopient pas toujours.
+// Rien si la requête n'est pas réglée ou ne répond pas : on garde alors ce que disent les rapports.
+async function texteDeLaFi(r, numero) {
+  if (!r.sqlContenuFi || !numero) return ''
+  try {
+    const sql = r.sqlContenuFi.replace(/--[^\n]*/g, '').replace(/:numero\b/g, `'${numero.replace(/'/g, "''")}'`)
+    const { colonnes, lignes } = await mysql.executerRequete(sql, 5)
+    const texte = lignes[0]?.[Math.max(0, colonnes.findIndex((c) => c.nom.toLowerCase() === 'contenu'))]
+    return String(texte ?? '').replace(/<br\s*\/?>|<\/(li|p|div)>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').split('\n').map((x) => x.trim()).filter(Boolean).join('\n')
+  } catch {
+    return ''
+  }
+}
+
 // Le bouton mis en avant dans « Je décide », d'après les faits.
 function recommander(c, g, protegee) {
   if (g.espacee) return null
@@ -426,7 +440,8 @@ export async function decisionCroisee(parcId, machineId, { equipement, pose, tit
   const passages = v.toutes.filter((x) => x.machine_id === g.pose && titreDe(x) === g.titre).sort((a, b) => b.date.localeCompare(a.date))
   const morceaux = passages.map((x) => ({ date: x.date, ...morceauxPassage(x.description) }))
   const avecFi = morceaux.find((m) => m.contenu) || morceaux.find((m) => m.fi)
-  const visite = { ...g, fi: avecFi?.fi || '', contenu: propre(avecFi?.contenu), observations: morceaux.filter((m) => m.observation).slice(0, 5).map((m) => ({ date: m.date, texte: propre(m.observation) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
+  const contenuGmao = await texteDeLaFi(reglagesDuParc(parcId), avecFi?.fi?.split(/\s/)[0])
+  const visite = { ...g, fi: avecFi?.fi || '', contenu: contenuGmao || propre(avecFi?.contenu), observations: morceaux.filter((m) => m.observation).slice(0, 5).map((m) => ({ date: m.date, texte: propre(m.observation) })), jamaisEspacer: passages[0]?.code?.jamaisEspacer || false }
   const depuis = ilYa(365)
   const remarques = [...v.remontees, ...v.ponctuels].filter((l) => l.date >= depuis && (l.machine_id === id || l.machine_id === machine.id)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map((l) => ({ date: l.date, texte: propre(texteSeul(l.description)) }))
   const posee = g.equipement === id || (g.machineEntiere && id === machine.id)

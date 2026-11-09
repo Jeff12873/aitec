@@ -38,6 +38,7 @@ function sansListe(listes, cle, sql, lecture) {
 
 // Les écritures de PREVTEC dans la GMAO : une carte d'Administration › Réglages. La suspension sert aussi au niveau 1.
 const REQUETES_PREVTEC = [
+  ['sqlContenuFi', 'Lire le texte d’une FI', 'SELECT de la FI :numero, colonne contenu. Affiché dans Je décide et donné à l’IA.', 3],
   ['sqlDesignation', 'Renommer une FI déjà créée', 'UPDATE de la FI :numero avec sa nouvelle désignation :titre. Le code de la FI ne change pas.', 3],
   ['sqlSuspension', 'Retirer une visite (Suspension)', 'UPDATE de la FI :numero (ACTIF à 0). Même réglage que la suspension du niveau 1.', 3],
   ['sqlFrequence', 'Espacer une visite', 'UPDATE de la FI :numero avec sa nouvelle périodicité :periot et :val_periot (bouton « Espacer » de Je décide).', 3],
