@@ -21,7 +21,8 @@ import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } fr
 import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
 import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
-import { recalerEtiquettes } from './etiquettes.js'
+import { recalerEtiquettes, completerLigneEtEth } from './etiquettes.js'
+import { placeDe } from '../analyse/serveur.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
 const FREQUENCES = ['Quotidienne', 'Hebdomadaire', 'Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
@@ -272,11 +273,12 @@ export function routes(r) {
     }
     const machine = db().prepare('SELECT id FROM machines WHERE id = ?').get(f.machine_id)
     if (!machine) throw new ErreurHttp(404, 'Machine introuvable')
+    const place = f.ligne && f.eth ? null : await placeDe(machine.id)
     const deja = db().prepare('SELECT id FROM fiches_mn1 WHERE machine_id = ? AND lower(action) = lower(?)').get(machine.id, propre.action)
     if (deja) return lireFiches('WHERE f.id = ?', deja.id)[0]
     const id = db()
       .prepare("INSERT INTO fiches_mn1 (machine_id, pour, action, frequence, frequence_source, evite, ligne, eth, cree_le, modifie_le) VALUES (?, ?, ?, ?, 'analyse', ?, ?, ?, ?, ?)")
-      .run(machine.id, propre.pour, propre.action, propre.frequence, propre.evite, String(f.ligne || ''), String(f.eth || ''), maintenant, maintenant).lastInsertRowid
+      .run(machine.id, propre.pour, propre.action, propre.frequence, propre.evite, String(f.ligne || place?.ligne || ''), String(f.eth || place?.eth || ''), maintenant, maintenant).lastInsertRowid
     noterModification()
     return lireFiches('WHERE f.id = ?', Number(id))[0]
   })
@@ -464,6 +466,7 @@ export function routes(r) {
   })
 
   r.get('/api/mn1/parcs/:id', async (ctx) => {
+    await completerLigneEtEth()
     const d = await detailDuParc(ctx.params.id)
     if (!d) throw new ErreurHttp(404, 'Ligne introuvable')
     return d

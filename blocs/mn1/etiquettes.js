@@ -4,13 +4,32 @@
 
 import crypto from 'node:crypto'
 import { db, noterModification } from '../../lib/base.js'
+import { exigerEcriture } from 'ktec/partage.js'
+import { placeDe } from '../analyse/serveur.js'
 
 // « R.L2 (ROUE L2) » → « R.L2 » : le code avant la parenthèse, en capitales, sans espaces.
 const code = (v) => String(v || '').split(' (')[0].normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9.]+/g, '')
-const NUMERO = /-(\d{4})$/
+const NUMERO = /(?:^|-)(\d{4})$/ // une fiche sans ligne ni ETH n'a que son numéro
 
 export function etiquette(ligne, eth, numero) {
   return [code(ligne), code(eth), numero].filter(Boolean).join('-')
+}
+
+// Rattrape les fiches créées sans ligne ni ETH, d'après la place de leur machine dans l'arborescence : une seule fois,
+// car elles sont ensuite complètes. Machine introuvable, ou fichier pris par un autre poste : elles attendent.
+export async function completerLigneEtEth() {
+  try {
+    const manquantes = db().prepare("SELECT id, machine_id FROM fiches_mn1 WHERE machine_id IS NOT NULL AND ligne = '' AND eth = ''").all()
+    if (!manquantes.length) return
+    const places = (await Promise.all(manquantes.map(async (f) => [f.id, await placeDe(f.machine_id)]))).filter(([, place]) => place)
+    if (!places.length) return
+    exigerEcriture({ pourTous: true })
+    const changer = db().prepare('UPDATE fiches_mn1 SET ligne = ?, eth = ? WHERE id = ?')
+    for (const [id, place] of places) changer.run(place.ligne, place.eth, id)
+    noterModification()
+  } catch {
+    // on réessaiera à la prochaine lecture
+  }
 }
 
 // Remet chaque étiquette au format, sans toucher à celles qui y sont déjà. Appelée avant chaque lecture des

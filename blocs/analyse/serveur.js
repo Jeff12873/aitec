@@ -12,7 +12,7 @@ import { sqlFamille } from '../../lib/types.js'
 import { lireArborescence } from '../../lib/arborescence.js'
 
 // La place de la machine dans l'arborescence : sa ligne (1er niveau) et son ETH (2e niveau, sous la ligne).
-async function placeDe(machineId) {
+export async function placeDe(machineId) {
   const a = await lireArborescence().catch(() => null)
   for (const ligne of a?.lignes || []) {
     if (!ligne.machines.includes(machineId)) continue

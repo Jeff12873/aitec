@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.14",
+      "date": "2026-11-09",
+      "points": [
+        "Fiches de niveau 1 créées depuis le Démonstrateur : la ligne et l'ETH sont remplis, y compris sur les fiches déjà créées"
+      ]
+    },
+    {
       "version": "0.28.13",
       "date": "2026-11-09",
       "points": [
