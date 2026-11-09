@@ -181,6 +181,8 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     const resultat = resultatDuPassage(x.description)
     if (resultat) g.ecrits++
     if (resultat === 'rien') g.rien++
+    const fi = morceauxPassage(x.description).fi?.split(/\s/)[0]
+    if (fi && x.date >= (g.dateFi || '')) Object.assign(g, { fi, dateFi: x.date }) // le numéro du dernier rapport qui le donne
     if (x.date > g.derniere) g.derniere = x.date
     groupes.set(cle, g)
   }

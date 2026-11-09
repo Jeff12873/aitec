@@ -1086,3 +1086,7 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 
 .ascenseur-haut { overflow-x: auto; overflow-y: hidden; }
 .ascenseur-haut > div { height: 1px; }
+
+.numero-fi { margin: 0 8px 0 2px; padding: 2px 7px; border: 1px solid var(--bord); border-radius: 6px; background: var(--carte-2); color: var(--texte); font-size: 12px; }
+.numero-fi:hover { border-color: var(--accent); }
+.matrice-demo tbody .titre-visite { max-width: 480px; }

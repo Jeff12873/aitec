@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.29.2",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : le numéro de la FI est affiché sur chaque visite, un clic le copie"
+      ]
+    },
+    {
       "version": "0.29.1",
       "date": "2026-11-09",
       "points": [

@@ -46,6 +46,8 @@ const clics = (actions) => ({
   oncontextmenu: (e) => menuContextuel(e, actions),
 })
 
+const copierFi = (numero) => essayer(() => navigator.clipboard.writeText(numero), `${numero} copié`)
+
 // Le tableau et sa barre de défilement, au-dessus comme en dessous : les deux bougent ensemble.
 function defilementDouble(table) {
   const piste = h('div')
@@ -152,7 +154,8 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
     } : {})
     const corps = d.lignes.map((g) => h('tr', {},
       h('th', { class: 'titre-visite', title: `${g.titre}${g.dapresTitre ? '\nPosée sur la machine entière : rattachée à cet organe d’après son titre' : ''}` },
-        g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null, g.titre),
+        g.code ? h('span', { class: 'etiquette code-visite', title: `${g.code.niveau ? `Niveau ${g.code.niveau} · ` : ''}${g.code.type}` }, g.code.code) : null,
+        g.fi ? h('button', { class: 'numero-fi mono', title: 'Copier le numéro de la FI', onclick: () => copierFi(g.fi) }, g.fi) : null, g.titre),
       h('td', { class: 'col-t discret', title: g.t === null ? 'Aucune observation écrite sur ces passages' : `${g.rien} sans rien trouver sur ${g.ecrits} passage${g.ecrits > 1 ? 's' : ''} avec une observation (${g.passages} en tout)` }, g.t === null ? '—' : `${Math.round(g.t * 100)} %`),
       h('td', { class: 'col-passages nombre', title: `Dernier passage le ${dateFr(g.derniere)}` }, String(g.passages)),
       caseDI(),
