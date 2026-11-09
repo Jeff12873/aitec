@@ -1071,3 +1071,9 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .bilan-bon { color: #8fd0a8; }
 .bilan-a-revoir { color: #e7b562; }
 .decision-annulee td { opacity: .5; }
+
+/* Le mini logo du niveau 1 dans le coin d'une vignette */
+.puce-case { position: relative; }
+.mini-n1 { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--carte); }
+.mini-n1.en-suspens { outline: 1px dashed #fbbf24; opacity: .75; }
+.aller-fiche { justify-content: space-between; margin-top: 10px; }

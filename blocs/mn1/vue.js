@@ -72,7 +72,7 @@ export const niveau1 = {
   menu: true,
   aide: 'maintenance-niveau-1',
 
-  async afficher(zone, { id }) {
+  async afficher(zone, { id, query }) {
     const [parc, onglet = ''] = String(id || '').split('/')
     definirParametres(await api('/api/mn1/parametres').catch(() => null))
     if (!parc || ['circuit', 'demandes', 'ri'].includes(parc)) { // (anciennes adresses : le circuit de l'usine)
@@ -82,7 +82,7 @@ export const niveau1 = {
       return afficherVignettes(vignettes, null, { n1: true })
     }
     choisirParc(decodeURIComponent(parc))
-    return afficherParc(zone, decodeURIComponent(parc), { vue: 'n1', onglet, circuit: circuitDeLaLigne })
+    return afficherParc(zone, decodeURIComponent(parc), { vue: 'n1', onglet, circuit: circuitDeLaLigne, fiche: query?.fiche })
   },
 }
 // Hors du niveau 1 d'une ligne, plus de ligne choisie.

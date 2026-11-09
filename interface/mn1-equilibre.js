@@ -16,6 +16,7 @@ import { modeAdmin } from '/socle/etat.js'
 import { lienMachine } from './prevtec.js'
 import { demonstrateurMachine } from './prevtec-machine.js'
 import { inception } from './animer.js'
+import { LOGO_MN1 } from './fiches-mn1.js'
 
 const ECART = 2 // même règle que le serveur (equilibre.js, zone)
 
@@ -110,6 +111,9 @@ export function nuageEquilibre(d, { machine = null, placeParOu = null, surNiveau
         e.machines = machines.length
       }
     }
+    // Le mini logo : 2 une fiche de niveau 1 active, 1 toutes en suspens.
+    const marques = donnees.marquesN1 || {}
+    for (const e of liste) e.marqueN1 = e.type === 'eth' ? Math.max(0, ...donnees.equipements.filter((x) => (x.eth?.id || '') === e.id).map((x) => marques[x.machine.id] || 0)) : marques[e.id] || 0
     const compte = (z) => liste.filter((e) => e.zone === z).length
     surNiveau({ machine: null, eth, retour: ethChoisi === null ? null : { texte: 'Toutes les ETH', action: () => inception(zoneNuage, null, () => { ethChoisi = null; return dessiner() }, false) } })
     const aRegarder = liste.filter((e) => e.zone === 'rouge' || e.zone === 'violet').sort((a, b) => b.correctifs - a.correctifs)
@@ -310,11 +314,12 @@ function tableauCases(liste, { niveau, zoomer, ouvrir, affichage: a }) {
     cases.push(h('div', { class: 'etiquette-ligne-cases' }, tc.libelle))
     colonnesP.forEach((tp) => {
       const dedans = liste.filter((e) => indiceDe(lignesC, e.correctifs) === r && indiceDe(colonnesP, e.preventifs) === colonnesP.indexOf(tp))
+      const miniN1 = (e) => (e.marqueN1 ? h('img', { class: `mini-n1${e.marqueN1 === 1 ? ' en-suspens' : ''}`, src: LOGO_MN1, alt: '', title: e.marqueN1 === 2 ? 'Maintenance de niveau 1 en place' : 'Maintenance de niveau 1 en suspens' }) : null)
       const puceCase = (e) => niveau === 'eth'
         ? h('button', { class: `puce-case puce-eth ${e.rouges ? 'rouge alerte' : e.oranges ? 'orange' : e.zone}`, title: `${e.designation} : ${e.correctifs} pannes, ${e.preventifs} visites, ${e.machines} machines — cliquer pour voir ses machines`, onclick: (ev) => zoomer(e.id, ev.currentTarget) },
-          h('b', {}, nomCarre(e, a)), h('small', {}, lignesCarre(e, a)),
+          miniN1(e), h('b', {}, nomCarre(e, a)), h('small', {}, lignesCarre(e, a)),
           e.id && !a.carres.includes('aRegarder') ? null : e.rouges ? h('span', { class: 'a-regarder-eth' }, `${e.rouges} à regarder`) : e.oranges ? h('span', { class: 'a-alleger-eth' }, `${e.oranges} à alléger ?`) : h('span', { class: 'ok-eth' }, 'rien d’alarmant'))
-        : h('button', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — ouvrir son Démonstrateur`, onclick: (ev) => ouvrir(e.id, ev.currentTarget) }, nomCarre(e, a))
+        : h('button', { class: `puce-case ${e.zone}`, title: `${e.designation || e.repere} : ${e.correctifs} pannes, ${e.preventifs} visites — ouvrir son Démonstrateur`, onclick: (ev) => ouvrir(e.id, ev.currentTarget) }, miniN1(e), nomCarre(e, a))
       const montrees = dedans.sort((a, b) => b.correctifs - a.correctifs).slice(0, 4)
       const couleur = dedans.length && dedans.every((e) => e.zone === dedans[0].zone) ? dedans[0].zone : fond(tc, tp)
       cases.push(h('div', { class: `case-tableau ${couleur}${dedans.length ? ' occupee' : ''}${tc.de === s.c ? ' frontiere-c' : ''}${tp.de === s.p ? ' frontiere-p' : ''}`, title: dedans.length > 4 ? dedans.map((e) => `${e.repere} (${e.correctifs} / ${e.preventifs})`).join('\n') : '' },

@@ -11,6 +11,7 @@ import { modeAdmin } from '/socle/etat.js'
 import { ouvrirFicheVisite } from './fiche-visite.js'
 import { LOGO_MN1 } from './fiches-mn1.js'
 import { relireFiche } from './mn1-parc.js'
+import { dialogueFi } from './mn1-fi.js'
 import { choixFormat, lignesDe, pointsAffiches } from './texte-fiche.js'
 
 const COULEURS_DIAGNOSTIC = { pas: 'rouge', mauvais: 'violet', ok: 'vert', sur: 'orange', rien: '' }
@@ -239,6 +240,14 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       contenu: h('div', {}, h('p', { class: 'discret', style: { marginTop: 0 } }, `${f.active ? (f.papier ? 'Active, sur papier' : `Active, FI ${f.fi}`) : 'Brouillon : les opérateurs ne la font pas'}${f.frequence ? ` · ${f.frequence}` : ''}`), h('div', { class: 'texte-brut-fiche' }, f.action)),
       boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }, { texte: 'Ouvrir dans Maintenance de niveau 1', classe: 'principal', action: () => { location.hash = `#/niveau1/${encodeURIComponent(d.parc.id)}`; return true } }],
     })
+    // Un brouillon : générer sa FI (simulée d'abord), puis proposer d'aller à sa fiche.
+    const genererN1 = async (f) => {
+      const detail = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(d.parc.id)}`))
+      const fiche = detail?.fiches.find((x) => x.id === f.id)
+      if (!fiche) return detail && notifier('Cette fiche n’est pas dans les fiches de cette ligne.', 'erreur')
+      if (await dialogueFi(fiche, detail, { proposerFiche: true })) location.hash = `#/niveau1/${encodeURIComponent(d.parc.id)}?fiche=${f.id}`
+      else actualiser()
+    }
     // Une nouvelle fiche N1 sur cet équipement : rédigée par l'IA pour sa panne principale, comme dans « Je décide ».
     const creerN1 = async (c) => {
       if (!c.panne) return notifier(`Pas de panne à viser sur ${c.repere}.`, 'erreur')
@@ -255,8 +264,10 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       if (!ici) return h('td', { class: 'carre croisee', ...(admin ? { oncontextmenu: (e) => menuContextuel(e, [['Créer une fiche N1 ici (IA)', () => creerN1(c)], ['Placer cette fiche ici', () => placerN1(f, c)]]), ondragover: (e) => { if (glisseN1 === f) { e.preventDefault(); e.currentTarget.classList.add('survolee') } }, ondragleave: (e) => e.currentTarget.classList.remove('survolee'), ondrop: (e) => { e.preventDefault(); if (glisseN1 === f) placerN1(f, c) } } : {}) })
       return h('td', {
         class: `carre croisee col-clic fiche-n1${f.active ? '' : ' attente'}${admin ? ' deplacable' : ''}`,
-        title: f.active ? 'Fiche de niveau 1 active' : 'Brouillon de niveau 1 : ne compte pas dans le diagnostic',
-        ...clics([['Voir la fiche', () => voirN1(f)]]),
+        title: f.active ? 'Fiche de niveau 1 active' : `Brouillon de niveau 1 : ne compte pas dans le diagnostic${admin ? ' · cliquer pour générer sa FI' : ''}`,
+        ...(admin && !f.active
+          ? { onclick: () => genererN1(f), oncontextmenu: (e) => menuContextuel(e, [['Générer sa FI', () => genererN1(f)], ['Voir la fiche', () => voirN1(f)]]) }
+          : clics([['Voir la fiche', () => voirN1(f)]])),
         ...(admin ? { draggable: true, ondragstart: (e) => { glisseN1 = f; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.closest('tr').classList.add('en-deplacement') }, ondragend: (e) => { glisseN1 = null; e.currentTarget.closest('tr').classList.remove('en-deplacement') } } : {}),
       }, h('img', { src: LOGO_MN1, alt: 'N1' }))
     }

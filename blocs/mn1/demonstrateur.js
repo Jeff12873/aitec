@@ -107,6 +107,22 @@ async function fichesN1(v, machine, equipements) {
   }).filter(Boolean).sort((a, b) => Number(b.active) - Number(a.active) || String(a.etiquette).localeCompare(String(b.etiquette)))
 }
 
+// Le mini logo des vignettes, par machine : 2 si une fiche de niveau 1 est active, 1 si elles sont toutes en suspens
+// (brouillon, FI inactive ou suspendue). Les fiches archivées à la main ne comptent pas.
+export async function marquesN1(parcId) {
+  const v = await visitesDuParc(parcId)
+  const connues = await fiConnues().catch(() => null)
+  const marques = {}
+  for (const f of db().prepare("SELECT id, fi_gmao, papier_le, machine_id, machine_prod, archivee FROM fiches_mn1 WHERE archivee = 0 OR id IN (SELECT fiche_id FROM fiches_mn1_fi WHERE motif = 'suspension')").all()) {
+    const liee = f.machine_id ?? v.p.liens?.[f.machine_prod] ?? null
+    if (liee === null || !v.places.has(liee)) continue
+    const machine = v.places.get(liee).machine ?? liee
+    const active = !f.archivee && (Boolean(f.papier_le) || (Boolean(f.fi_gmao) && !['supprimee', 'inactive'].includes(etatDeLaFi(connues, f.fi_gmao))))
+    marques[machine] = Math.max(marques[machine] || 0, active ? 2 : 1)
+  }
+  return marques
+}
+
 // La charge des opérateurs de l'ETH de production qui correspond à l'ETH de maintenance de cette machine (même code,
 // avec un préfixe). null si elle ne se lit pas.
 async function chargeDeLaMachine(parcId, v, machine) {

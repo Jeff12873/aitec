@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "version": "0.28.5",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : un clic sur un brouillon de niveau 1 génère sa FI, puis propose d'ouvrir sa fiche",
+        "Tableau des ETH et des machines : un mini logo signale la maintenance de niveau 1 en place, ou en suspens"
+      ]
+    },
+    {
       "version": "0.28.4",
       "date": "2026-11-09",
       "points": [
