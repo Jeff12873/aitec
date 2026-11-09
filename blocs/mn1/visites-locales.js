@@ -86,7 +86,7 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
   const comptes = v.visites.filter((x) => equipements.has(x.machine_id) && x.code).reduce((m, x) => m.set(x.code.code, (m.get(x.code.code) || 0) + 1), new Map())
   const prefixe = [...comptes].sort((a, b) => b[1] - a[1])[0]?.[0]
   const titre = prefixe ? `${prefixe}-${l.titre}` : l.titre
-  const numero = `FI-PREV-${l.id}-${equipement}`.toUpperCase()
+  const numero = `FI-P-${l.id.slice(1)}-${Number(equipement).toString(36)}`.toUpperCase() // 20 caractères au plus dans la GMAO
   const [periot, valPeriot] = r.frequences?.[f.frequence] || [r.periot, r.valPeriot]
   const obser = f.format === 'texte' ? f.points.join('\n') : `<ol>${f.points.map((p) => `<li>${p.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</li>`).join('')}</ol>`
   const lot = instructions(r.sqlVisite, { ...valeursSql(r, { numero, titre, obser, parc: parcId, periot, valPeriot }), equipement: noeud, equipement_code: code })

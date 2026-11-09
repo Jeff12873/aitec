@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.1",
+      "date": "2026-11-09",
+      "points": [
+        "Validation d'une visite préparée : le numéro de FI respecte la longueur permise par la GMAO"
+      ]
+    },
+    {
       "version": "0.28.0",
       "date": "2026-11-08",
       "points": [
