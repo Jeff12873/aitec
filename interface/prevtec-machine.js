@@ -233,12 +233,6 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
       Object.assign(f, avant)
       remplacer(d)
     }
-    const voirN1 = (f) => fenetre({
-      titre: `${f.etiquette || 'Fiche de niveau 1'}${f.nom ? ` — ${f.nom}` : ''}`,
-      large: true,
-      contenu: h('div', {}, h('p', { class: 'discret', style: { marginTop: 0 } }, `${f.active ? (f.papier ? 'Active, sur papier' : `Active, FI ${f.fi}`) : 'Brouillon : les opérateurs ne la font pas'}${f.frequence ? ` · ${f.frequence}` : ''}`), h('div', { class: 'texte-brut-fiche' }, f.action)),
-      boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }, { texte: 'Ouvrir dans Maintenance de niveau 1', classe: 'principal', action: () => { location.hash = `#/niveau1/${encodeURIComponent(d.parc.id)}`; return true } }],
-    })
     // Aller à la fiche dans Maintenance de niveau 1 : la page s'y aligne et la met en surbrillance.
     const allerN1 = (f) => { location.hash = `#/niveau1/${encodeURIComponent(d.parc.id)}?fiche=${f.id}` }
     // Une nouvelle fiche N1 sur cet équipement : rédigée par l'IA pour sa panne principale, comme dans « Je décide ».
@@ -259,7 +253,7 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
         class: `carre croisee col-clic fiche-n1${f.active ? '' : ' attente'}${admin ? ' deplacable' : ''}`,
         title: f.active ? 'Fiche de niveau 1 active' : 'Brouillon de niveau 1 : ne compte pas dans le diagnostic',
         onclick: () => allerN1(f),
-        oncontextmenu: (e) => menuContextuel(e, [['Aller à la fiche', () => allerN1(f)], ['Voir la fiche', () => voirN1(f)]]),
+        oncontextmenu: (e) => { e.preventDefault(); allerN1(f) },
         ...(admin ? { draggable: true, ondragstart: (e) => { glisseN1 = f; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.closest('tr').classList.add('en-deplacement') }, ondragend: (e) => { glisseN1 = null; e.currentTarget.closest('tr').classList.remove('en-deplacement') } } : {}),
       }, h('img', { src: LOGO_MN1, alt: 'N1' }))
     }

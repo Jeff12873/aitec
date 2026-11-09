@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.13",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : une fiche de niveau 1 ne propose plus qu'une action, aller à la fiche"
+      ]
+    },
+    {
       "version": "0.28.12",
       "date": "2026-11-09",
       "points": [
