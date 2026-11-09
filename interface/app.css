@@ -1074,6 +1074,6 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 
 /* Le mini logo du niveau 1 dans le coin d'une vignette */
 .puce-case { position: relative; }
-.mini-n1 { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--carte); }
-.mini-n1.en-suspens { outline: 1px dashed #fbbf24; opacity: .75; }
+.mini-n1 { position: absolute; z-index: 2; top: -13px; right: -13px; width: 32px; height: 32px; padding: 2px; border-radius: 50%; background: var(--carte-3); border: 2px solid #e9e54a; box-shadow: 0 1px 5px rgb(0 0 0 / .6); }
+.mini-n1.en-suspens { border: 2px dashed #fbbf24; }
 .aller-fiche { justify-content: space-between; margin-top: 10px; }

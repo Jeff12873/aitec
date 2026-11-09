@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.6",
+      "date": "2026-11-09",
+      "points": [
+        "Vignettes : le mini logo du niveau 1 est plus grand et bien visible"
+      ]
+    },
+    {
       "version": "0.28.5",
       "date": "2026-11-09",
       "points": [
