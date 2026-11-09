@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.2",
+      "date": "2026-11-09",
+      "points": [
+        "Dépanneurs par panne : la tuile dit ce qu'une hausse signifie, un besoin de formation"
+      ]
+    },
+    {
       "version": "0.28.1",
       "date": "2026-11-09",
       "points": [

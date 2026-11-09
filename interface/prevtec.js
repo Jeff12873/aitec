@@ -102,7 +102,7 @@ export function tuilesLigne(i, parc, indicateurs = Object.keys(CALCULS)) {
       tuile('preventif', 'Part du préventif · sur 12 mois', pct(i.preventif.recent), sens(i.preventif.recent, i.preventif.precedent, 'hausse'), `des interventions sont des visites, contre ${pct(i.preventif.precedent)} sur les 12 mois d’avant`, i.preventif.observation !== null ? `dont ${pct(i.preventif.observation)} de contrôles, le reste en remplacements à date fixe` : null),
       i.tmcd?.recent !== null && i.tmcd?.recent !== undefined ? tuile('tmcd', 'Dépanneurs par panne · sur 12 mois', virgule(i.tmcd.recent), sens(Math.round(i.tmcd.recent * 10), i.tmcd.precedent === null ? null : Math.round(i.tmcd.precedent * 10)),
         `${i.tmcd.filtre ? 'du groupe de dépannage ' : ''}en moyenne sur une panne (TMCD), contre ${i.tmcd.precedent === null ? '—' : virgule(i.tmcd.precedent)} sur les 12 mois d’avant`,
-        i.tmcd.nouveaux ? `${i.tmcd.nouveaux} dépanneur${i.tmcd.nouveaux > 1 ? 's' : ''} sur ${i.tmcd.depanneurs} n’avai${i.tmcd.nouveaux > 1 ? 'ent' : 't'} pas dépanné ici l’année d’avant` : null) : null,
+        'Une hausse de cet indicateur indique un besoin de formation.') : null,
       montre.has('concentration') && c.machines.length ? h('div', { class: 'tuile-ligne concentration' },
         h('span', { class: 'titre-tuile' }, 'Où sont les pannes · sur 12 mois', aide('concentration')),
         h('div', { class: 'valeur-tuile' }, h('b', {}, pct(c.part))),
