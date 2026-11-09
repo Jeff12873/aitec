@@ -106,7 +106,6 @@ export function synchroniser() {
         noterModification()
       }
       journal(`AITEC : synchronisation avec la GMAO ${JSON.stringify(Object.fromEntries(['machines', 'interventions'].filter((c) => bilan[c]).map((c) => [c, { crees: bilan[c].crees, modifies: bilan[c].modifies, inchanges: bilan[c].inchanges }])))}`)
-      derniereAuto = Date.now()
       return bilan
     }
   })().finally(() => {
