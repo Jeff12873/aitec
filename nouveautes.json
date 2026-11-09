@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.10",
+      "date": "2026-11-09",
+      "points": [
+        "Fiches de niveau 1 : le lien Analyse est aligné avec les autres boutons"
+      ]
+    },
+    {
       "version": "0.28.9",
       "date": "2026-11-09",
       "points": [
