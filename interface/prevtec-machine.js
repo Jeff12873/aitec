@@ -46,6 +46,23 @@ const clics = (actions) => ({
   oncontextmenu: (e) => menuContextuel(e, actions),
 })
 
+// Le tableau et sa barre de défilement, au-dessus comme en dessous : les deux bougent ensemble.
+function defilementDouble(table) {
+  const piste = h('div')
+  const haut = h('div', { class: 'ascenseur-haut' }, piste)
+  const bas = h('div', { class: 'tableau-conteneur demo-conteneur' }, table)
+  haut.addEventListener('scroll', () => { bas.scrollLeft = haut.scrollLeft })
+  bas.addEventListener('scroll', () => { haut.scrollLeft = bas.scrollLeft })
+  const ajuster = () => {
+    piste.style.width = `${bas.scrollWidth}px` // les en-têtes en biais dépassent du tableau
+    haut.hidden = bas.scrollWidth <= bas.clientWidth
+  }
+  const observateur = new ResizeObserver(ajuster)
+  observateur.observe(bas)
+  observateur.observe(table)
+  return [haut, bas]
+}
+
 const FREQUENCES_VISITE = ['Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuelle']
 
 // Rend { element, machine } : la matrice.
@@ -287,7 +304,7 @@ export async function demonstrateurMachine(parcId, machineId, { surChange = () =
     const element = h('div', { class: 'demonstrateur' },
       h('p', { class: 'discret petit-texte', style: { margin: '6px 0' } }, `${col.length} équipement${col.length > 1 ? 's' : ''} · ${d.lignes.length} visite${d.lignes.length > 1 ? 's' : ''} · 12 mois. Cliquez une case pour décider.`),
       barreAttente,
-      col.length || d.lignes.length ? h('div', { class: 'tableau-conteneur demo-conteneur' }, h('table', { class: 'matrice-demo' }, h('thead', {}, tete, ligneDiag, lignePannes), h('tbody', {}, corps, lignesLocales, ligneAjout, teteN1, n1Ouvert ? lignesN1 : null, n1Ouvert ? ajoutN1 : null)))
+      col.length || d.lignes.length ? defilementDouble(h('table', { class: 'matrice-demo' }, h('thead', {}, tete, ligneDiag, lignePannes), h('tbody', {}, corps, lignesLocales, ligneAjout, teteN1, n1Ouvert ? lignesN1 : null, n1Ouvert ? ajoutN1 : null)))
         : h('p', { class: 'discret' }, 'Ni panne ni visite sur cette machine ces 12 mois.'),
       h('div', { class: 'legende-demo' },
         ['pas', 'mauvais', 'ok', 'sur'].map((k) => h('span', { class: 'cle-demo' }, h('span', { class: `carre-legende diag-demo ${COULEURS_DIAGNOSTIC[k]}` }, SIGNES[k]), LIBELLES[k])),

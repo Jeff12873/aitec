@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.29.1",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : la barre de défilement est aussi au-dessus du tableau"
+      ]
+    },
+    {
       "version": "0.29.0",
       "date": "2026-11-09",
       "points": [
