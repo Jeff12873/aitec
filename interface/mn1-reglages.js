@@ -36,6 +36,34 @@ function sansListe(listes, cle, sql, lecture) {
   return ''
 }
 
+// Les écritures de PREVTEC dans la GMAO : une carte d'Administration › Réglages. La suspension sert aussi au niveau 1.
+const REQUETES_PREVTEC = [
+  ['sqlSuspension', 'Retirer une visite (Suspension)', 'UPDATE de la FI :numero (ACTIF à 0). Même réglage que la suspension du niveau 1.', 3],
+  ['sqlFrequence', 'Espacer une visite', 'UPDATE de la FI :numero avec sa nouvelle périodicité :periot et :val_periot (bouton « Espacer » de Je décide).', 3],
+  ['sqlReactivation', 'Remettre une visite au plan', 'UPDATE de la FI :numero (ACTIF à 1). Sert à annuler un retrait depuis le registre des décisions ; le retrait lui-même utilise la Suspension.', 3],
+  ['sqlEquipement', 'Déplacement d’une FI sur un autre équipement', 'UPDATE de la FI :numero, seulement sur sa ligne d’équipement :ancien, remplacé par :nouveau (ID des nœuds de l’arborescence ; leurs codes : :ancien_code, :nouveau_code). Sert à glisser une visite dans le Démonstrateur.', 4],
+  ['sqlVisite', 'Création d’une visite préparée dans PREVTEC', 'INSERT de la FI : :numero, :titre, :obser (les points à contrôler), :parc, :periot, :val_periot et :equipement (ID du nœud ; son code : :equipement_code), plus les paramètres de la création d’une FI.', 8],
+]
+
+export function carteRequetesPrevtec() {
+  const champs = {}
+  const zone = h('div', {}, h('p', { class: 'discret curseur' }, 'Lecture des requêtes'))
+  essayer(() => api('/api/mn1/gmao/reglages')).then((r) => {
+    if (!r) return vider(zone)
+    vider(zone, REQUETES_PREVTEC.map(([cle, libelle, aide, lignes]) => {
+      champs[cle] = h('textarea', { class: 'sql', rows: lignes, spellcheck: false }, r[cle] || '')
+      return h('label', { class: 'champ' }, h('span', {}, libelle), h('small', { class: 'aide' }, aide), champs[cle])
+    }), h('div', { class: 'actions', style: { marginTop: '10px' } }, h('button', {
+      class: 'principal',
+      onclick: () => essayer(() => api('/api/mn1/gmao/reglages', { methode: 'POST', corps: Object.fromEntries(Object.entries(champs).map(([cle, e]) => [cle, e.value])) }), 'Requêtes enregistrées'),
+    }, 'Enregistrer')))
+  })
+  return h('div', { class: 'carte pleine' },
+    h('div', { class: 'carte-entete' }, h('h2', {}, ic('base', 18), 'Requêtes de PREVTEC')),
+    h('p', { class: 'texte-2' }, 'Ce que PREVTEC écrit dans la GMAO. Écritures : SELECT, SET, INSERT et UPDATE seulement, toujours simulées avant d’être validées.'),
+    zone)
+}
+
 export async function reglerGmao() {
   let lecture = ''
   const [r, listes] = await Promise.all([essayer(() => api('/api/mn1/gmao/reglages')), api('/api/mn1/gmao/listes').catch((e) => { lecture = e.message; return {} })])
@@ -87,11 +115,7 @@ export async function reglerGmao() {
     zone('sql', 'Création d’une FI', 'SELECT de contrôle, SET, INSERT, SELECT de récapitulatif.', 10),
     zone('sqlModification', 'Modification (remplacement de la fiche, réactivation)', 'UPDATE de la FI :numero (titre, description, équipement, périodicité, ACTIF à 1).', 6),
     zone('sqlSuspension', 'Suspension', 'UPDATE de la FI :numero (ACTIF à 0).', 3),
-    zone('sqlFrequence', 'Espacer une visite', 'UPDATE de la FI :numero avec sa nouvelle périodicité :periot et :val_periot (bouton « Espacer » de Je décide).', 3),
-    zone('sqlReactivation', 'Remettre une visite au plan', 'UPDATE de la FI :numero (ACTIF à 1). Sert à annuler un retrait depuis le registre des décisions ; le retrait lui-même utilise la Suspension.', 3),
     zone('sqlSuppression', 'Suppression', 'UPDATE de la FI :numero, comme une suppression faite dans la GMAO (bouton « Supprimer la FI » d’une fiche ; la fiche reste dans AITEC).', 3),
-    zone('sqlEquipement', 'Déplacement d’une FI sur un autre équipement', 'UPDATE de la FI :numero, seulement sur sa ligne d’équipement :ancien, remplacé par :nouveau (ID des nœuds de l’arborescence ; leurs codes : :ancien_code, :nouveau_code). Sert à glisser une visite dans le Démonstrateur.', 4),
-    zone('sqlVisite', 'Création d’une visite préparée dans PREVTEC', 'INSERT de la FI : :numero, :titre, :obser (les points à contrôler), :parc, :periot, :val_periot et :equipement (ID du nœud ; son code : :equipement_code), plus les paramètres de la création d’une FI.', 8),
     h('h3', {}, 'Listes de choix (colonnes valeur et libelle)'),
     PARAMETRES.map(([cle, libelle]) => h('label', { class: 'champ' }, h('span', {}, libelle), listesSql[cle])))
 

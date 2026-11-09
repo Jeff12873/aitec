@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.3",
+      "date": "2026-11-09",
+      "points": [
+        "Les requêtes qu'écrit PREVTEC dans la GMAO se règlent dans Administration › Réglages"
+      ]
+    },
+    {
       "version": "0.28.2",
       "date": "2026-11-09",
       "points": [

@@ -297,7 +297,7 @@ export async function deplacerVisite(parcId, machineId, { pose, titre, vers, val
   const fi = passages.map((x) => morceauxPassage(x.description).fi).find(Boolean)?.split(/\s/)[0]
   if (!fi) throw new ErreurHttp(404, 'Le numéro de FI de cette visite est introuvable dans ses rapports.')
   const r = reglagesDuParc(parcId)
-  if (!r.sqlEquipement) throw new ErreurHttp(409, 'Le SQL de déplacement d’une FI n’est pas réglé (Maintenance de niveau 1 › une ligne › réglages de la GMAO › SQL du site).')
+  if (!r.sqlEquipement) throw new ErreurHttp(409, 'Le SQL de déplacement d’une FI n’est pas réglé (Administration › Réglages › Requêtes de PREVTEC).')
   const [ancienCode, nouveauCode] = [repere.get(origine), repere.get(cible)]
   const [ancien, nouveau] = [noeudDe(v, ancienCode), noeudDe(v, nouveauCode)]
   if (ancien === null || nouveau === null) throw new ErreurHttp(404, 'Cet équipement est introuvable dans l’arborescence de la GMAO.')
@@ -340,7 +340,7 @@ export async function appliquerDecision(parcId, machineId, { pose, titre, equipe
   const r = reglagesDuParc(parcId)
   const espacer = action === 'espacer'
   const sql = espacer ? r.sqlFrequence : r.sqlSuspension
-  if (!sql) throw new ErreurHttp(409, `Le SQL ${espacer ? 'de changement de fréquence' : 'de suspension'} n’est pas réglé (Maintenance de niveau 1 › une ligne › réglages de la GMAO › SQL du site).`)
+  if (!sql) throw new ErreurHttp(409, `Le SQL ${espacer ? 'de changement de fréquence' : 'de suspension'} n’est pas réglé (Administration › Réglages › Requêtes de PREVTEC).`)
   const periode = espacer ? r.frequences[frequence] : null
   if (espacer && !periode) throw new ErreurHttp(400, 'Choisissez une fréquence.')
   const heures = heuresDe(passages)
@@ -357,7 +357,7 @@ export async function reactiverDecision(id, { valider = false }) {
   const d = lireDecisions().find((x) => x.id === Number(id) && x.action === 'supprimer' && !x.annulee)
   if (!d) throw new ErreurHttp(404, 'Décision introuvable')
   const r = reglagesDuParc(d.parc)
-  if (!r.sqlReactivation) throw new ErreurHttp(409, 'Le SQL de réactivation n’est pas réglé (Maintenance de niveau 1 › une ligne › réglages de la GMAO › SQL du site).')
+  if (!r.sqlReactivation) throw new ErreurHttp(409, 'Le SQL de réactivation n’est pas réglé (Administration › Réglages › Requêtes de PREVTEC).')
   const reponse = await mysql.ecrireDansLaBase(instructions(r.sqlReactivation, { ...valeursSql(r, { numero: d.fi }), numero: d.fi }), { valider: Boolean(valider) })
   const modifiees = reponse.resultats.filter((x) => 'modifiees' in x).reduce((s, x) => s + x.modifiees, 0)
   if (valider && modifiees) annulerDecision(d.id)

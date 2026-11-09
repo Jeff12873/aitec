@@ -5,12 +5,14 @@
 import { h, vider, ic, essayer, notifier, confirmer, tailleFr, nombreFr } from '/socle/ui.js'
 import { menuDeroulant } from '../../interface/menu-deroulant.js'
 import { api } from '/socle/api.js'
-import { peutModifier, actualiserEtat } from '/socle/etat.js'
+import { peutModifier, actualiserEtat, modeAdmin } from '/socle/etat.js'
 import { ouvrirModeAdmin } from '/socle/fichier.js'
 import documents from '../documents/vue.js'
 import importGmao from '../import-gmao/vue.js'
 import { afficherReglageParcs } from '../../interface/reglage-parcs.js'
 import pannes from '../pannes/vue.js'
+import { estPrevtec } from '../../interface/prevtec.js'
+import { carteRequetesPrevtec } from '../../interface/mn1-reglages.js'
 
 // Les onglets de l'administration. Documents, Données GMAO et Pannes connues réutilisent les écrans de leurs blocs.
 const ONGLETS = [
@@ -59,7 +61,7 @@ async function afficherReglages(zone) {
       carteContenu(infos),
       carteModele(),
       peutModifier()
-        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteTypes(), carteIndex(infos), carteReprise(infos)]
+        ? [carteGlossaire(), carteAtelier(infos), carteArborescence(), carteTypes(), carteIndex(infos), carteReprise(infos), estPrevtec && modeAdmin() ? carteRequetesPrevtec() : null]
         : h('div', { class: 'carte pleine' }, h('div', { class: 'actions' }, ic('cadenas'), h('span', { style: { flex: 1 } }, 'Le nom de l’atelier, le glossaire et l’index de recherche se règlent en mode administrateur.'), h('button', { onclick: ouvrirModeAdmin }, 'Passer en mode administrateur'))),
     ),
   )

@@ -77,7 +77,7 @@ export async function validerDansGmao(parcId, machineId, id, { equipement, valid
   if (!f) throw new ErreurHttp(404, 'Fiche introuvable')
   if (f.validee) throw new ErreurHttp(409, 'Cette fiche est déjà validée dans la GMAO.')
   const r = reglagesDuParc(parcId)
-  if (!r.sqlVisite) throw new ErreurHttp(409, 'Le SQL de création d’une visite n’est pas réglé (réglages de la GMAO › SQL du site).')
+  if (!r.sqlVisite) throw new ErreurHttp(409, 'Le SQL de création d’une visite n’est pas réglé (Administration › Réglages › Requêtes de PREVTEC).')
   const { v, repere, equipements, machine } = await machineEtPannes(parcId, machineId)
   const repereMachine = machine.repere
   const code = repere.get(Number(equipement))
