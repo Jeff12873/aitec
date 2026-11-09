@@ -16,11 +16,15 @@ import { ErreurHttp } from 'ktec/http.js'
 import * as mysql from 'ktec/mysql.js'
 import { lireParcs } from '../../lib/parcs.js'
 import { reglagesDuParc, description, remplir, valeursSql, instructions } from './gmao.js'
-import { visitesDuParc, codeN1 } from './visites.js'
+import { codeFi } from './etiquettes.js'
 
 // ---------------------------------------------------------------- lecture des FI de la GMAO
 
 let lecture = { date: null, erreur: null, fi: [], promesse: null }
+
+// Une FI créée depuis une fiche : code FI-MN1-ligne-2611A (20 caractères au plus dans la GMAO), désignation FI-MN1-ligne-ETH-2611A.
+const NUMERO_COURT = /^FI-MN1-[A-Z0-9.]+-\d{4}[A-Z]{1,2}$/i
+const nomFi = (etiquette) => `FI-MN1-${etiquette}`
 
 // Le modèle de numéro en motif LIKE (« FI-MN1-% ») et en expression (pour reconnaître parc, ETH et rang).
 const echapper = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -50,7 +54,7 @@ export function lireFiGmao({ force = false } = {}) {
     if (!mysql.etatConnexion().ouverte) throw new ErreurHttp(401, 'Connexion à la GMAO indisponible : lecture des FI impossible.')
     const vus = new Map()
     // Une seule lecture par modèle de numéro (le parc y devient un joker) : chaque requête lance le moteur Java.
-    for (const like of new Set(parcs.map((x) => motifs(reglagesDuParc(x.id).numero).like))) {
+    for (const like of new Set([...parcs.map((x) => motifs(reglagesDuParc(x.id).numero).like), 'FI-MN1-%'])) {
       const r = await mysql.executerRequete(sql.replace(/--[^\n]*/g, '').replace(/:motif\b/g, `'${like.replace(/'/g, "''")}'`), 20_000)
       const i = (nom) => r.colonnes.findIndex((c) => c.nom.toLowerCase() === nom)
       const col = Object.fromEntries(['numero', 'actif', 'periot', 'val_periot', 'equipement', 'titre', 'date_deb'].map((n) => [n, i(n)]))
@@ -74,7 +78,7 @@ export async function fiConnues({ force = false } = {}) {
   const liste = await lireFiGmao({ force }).catch(() => null)
   if (!liste) return null
   const p = await lireParcs()
-  const modeles = (p?.parcs || []).filter((x) => !x.nonClasse).map((x) => motifs(reglagesDuParc(x.id).numero).regex)
+  const modeles = [NUMERO_COURT, ...(p?.parcs || []).filter((x) => !x.nonClasse).map((x) => motifs(reglagesDuParc(x.id).numero).regex)]
   const parNumero = new Map(liste.map((x) => [x.numero, x]))
   return { parNumero, suitUnModele: (numero) => modeles.some((r) => r.test(numero)) }
 }
@@ -124,9 +128,10 @@ export async function chargeDuParc(parcId, { force = false } = {}) {
   const eths = new Map(equipements.filter((n) => n.niveau === 2).map((n) => [n.code, { eth: n.code, libelle: n.ethLibelle, max: r.parSemaine, fi: [] }]))
   const horsEth = []
   for (const fi of tout) {
+    // Les FI au format court ne disent pas leur ligne : c'est leur équipement qui la donne.
     const m = fi.numero.match(regex)
-    if (!m) continue
-    const rang = Number(m[champs.findIndex((c) => /^n+$/.test(c)) + 1]) || null
+    if (!m && !(NUMERO_COURT.test(fi.numero) && parNoeud.has(fi.equipement))) continue
+    const rang = m ? Number(m[champs.findIndex((c) => /^n+$/.test(c)) + 1]) || null : null
     const equipement = parNoeud.get(fi.equipement)
     const ligne = { ...fi, rang, poids: parSemaine(fi.periot, fi.valPeriot, r), fiche: fiches.get(fi.numero) || null, equipement: equipement ? { noeud: equipement.noeud, code: equipement.code, designation: equipement.designation } : null }
     const eth = equipement?.ethCode
@@ -152,6 +157,27 @@ function prochainNumero(r, parc, eth, toutes, valeurs) {
   const pris = toutes.map((fi) => fi.numero.match(regex)).filter(Boolean).map((m) => Number(m[iRang + 1]) || 0)
   const suivant = (pris.length ? Math.max(...pris) : 0) + 1
   return remplir(r.numero, { ...base, nn: String(suivant).padStart(2, '0'), nnn: String(suivant).padStart(3, '0'), n: String(suivant) })
+}
+
+// ---------------------------------------------------------------- désignation des FI déjà créées
+
+// Les FI dont la désignation ne suit pas encore l'étiquette de leur fiche.
+export async function designationsARenommer() {
+  const fi = new Map((await lireFiGmao({ force: true })).map((x) => [x.numero, x]))
+  return db().prepare("SELECT fi_gmao AS numero, etiquette FROM fiches_mn1 WHERE fi_gmao <> '' AND archivee = 0").all()
+    .filter((f) => fi.has(f.numero) && fi.get(f.numero).titre !== nomFi(f.etiquette))
+    .map((f) => ({ numero: f.numero, actuelle: fi.get(f.numero).titre, nouvelle: nomFi(f.etiquette) }))
+}
+
+// Simulée d'abord ; le code de la FI ne change pas.
+export async function renommerFi({ numero, valider = false }) {
+  const f = db().prepare("SELECT etiquette FROM fiches_mn1 WHERE fi_gmao = ? AND archivee = 0").get(String(numero))
+  if (!f) throw new ErreurHttp(404, 'Aucune fiche ne porte cette FI.')
+  const r = reglagesDuParc('')
+  if (!r.sqlDesignation) throw new ErreurHttp(409, 'Le SQL de désignation n’est pas réglé (Administration › Réglages › Requêtes de PREVTEC).')
+  const titre = nomFi(f.etiquette)
+  const reponse = await mysql.ecrireDansLaBase(instructions(r.sqlDesignation, { ...valeursSql(r, { numero, titre }), numero, titre }), { valider: Boolean(valider) })
+  return { valide: reponse.valide, modifiees: reponse.resultats.filter((x) => 'modifiees' in x).reduce((s, x) => s + x.modifiees, 0), numero, titre }
 }
 
 // ---------------------------------------------------------------- plan : créer, remplacer, réactiver, suspendre
@@ -189,7 +215,7 @@ export async function planifier({ parc: parcId, fiche: ficheId, noeud, dateDeb, 
   else if (cible === 'reactiver') {
     if (!suspendues.some((x) => x.numero === numero)) throw new ErreurHttp(400, 'Cette FI n’est pas suspendue dans cet ETH.')
     numeroCible = numero
-  } else numeroCible = prochainNumero(r, c.parc, eth.eth, eth.fi.concat(c.horsEth), { ligne: f.ligne, eth_fiche: f.eth, machine: f.machine_nom || f.repere || '', zone: f.zone, etiquette: f.etiquette })
+  } else numeroCible = codeFi(f) ?? prochainNumero(r, c.parc, eth.eth, eth.fi.concat(c.horsEth), { ligne: f.ligne, eth_fiche: f.eth, machine: f.machine_nom || f.repere || '', zone: f.zone, etiquette: f.etiquette })
   const aSuspendre = cible === 'remplacer' ? choisies.slice(1) : choisies
   const liberee = (cible === 'remplacer' ? choisies : aSuspendre).reduce((s, x) => s + (x.poids || 0), 0)
   const apres = Math.round((eth.charge - liberee + poids) * 100) / 100
@@ -213,12 +239,9 @@ export async function executer(demande, { valider = false } = {}) {
   if (manque.length) throw new ErreurHttp(409, `Réglages de la GMAO incomplets (${manque.join(', ')}).`)
   const f = plan.fiche
   const debut = /^\d{4}-\d{2}-\d{2}$/.test(demande.dateDeb || '') ? demande.dateDeb : aujourdhui()
-  // Le standard du site : le code de 3 caractères en tête du titre, puis MN1 et l'ETH.
-  const code = demande.parc ? await visitesDuParc(demande.parc).then(codeN1).catch(() => '') : ''
-  const codeFi = code ? `${code}-` : ''
   const valeurs = valeursSql(r, {
     numero: plan.numero,
-    titre: codeFi + remplir(r.titre, { parc: plan.parcNom, machine: f.machine_nom || f.repere || plan.equipement.designation || plan.equipement.code, repere: plan.equipement.code, zone: f.zone, etiquette: f.etiquette, eth: sansPrefixe(plan.eth.eth), eth_fiche: f.eth, ligne: f.ligne }),
+    titre: nomFi(f.etiquette),
     obser: description([f]),
     parc: plan.equipement.noeud,
     dateDeb: debut,

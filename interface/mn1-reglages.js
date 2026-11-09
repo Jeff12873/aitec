@@ -3,7 +3,7 @@
 //   - un parc : son maximum de fiches par semaine et par ETH, et ce qu'il règle autrement que les autres ;
 //   - le bandeau du haut : la description et le seuil d'alerte de pertinence.
 
-import { h, vider, ic, essayer, fenetre, notifier } from '/socle/ui.js'
+import { h, vider, ic, essayer, fenetre, notifier, confirmer } from '/socle/ui.js'
 import { api } from '/socle/api.js'
 
 const PARAMETRES = [
@@ -38,12 +38,37 @@ function sansListe(listes, cle, sql, lecture) {
 
 // Les écritures de PREVTEC dans la GMAO : une carte d'Administration › Réglages. La suspension sert aussi au niveau 1.
 const REQUETES_PREVTEC = [
+  ['sqlDesignation', 'Renommer une FI déjà créée', 'UPDATE de la FI :numero avec sa nouvelle désignation :titre. Le code de la FI ne change pas.', 3],
   ['sqlSuspension', 'Retirer une visite (Suspension)', 'UPDATE de la FI :numero (ACTIF à 0). Même réglage que la suspension du niveau 1.', 3],
   ['sqlFrequence', 'Espacer une visite', 'UPDATE de la FI :numero avec sa nouvelle périodicité :periot et :val_periot (bouton « Espacer » de Je décide).', 3],
   ['sqlReactivation', 'Remettre une visite au plan', 'UPDATE de la FI :numero (ACTIF à 1). Sert à annuler un retrait depuis le registre des décisions ; le retrait lui-même utilise la Suspension.', 3],
   ['sqlEquipement', 'Déplacement d’une FI sur un autre équipement', 'UPDATE de la FI :numero, seulement sur sa ligne d’équipement :ancien, remplacé par :nouveau (ID des nœuds de l’arborescence ; leurs codes : :ancien_code, :nouveau_code). Sert à glisser une visite dans le Démonstrateur.', 4],
   ['sqlVisite', 'Création d’une visite préparée dans PREVTEC', 'INSERT de la FI : :numero, :titre, :obser (les points à contrôler), :parc, :periot, :val_periot et :equipement (ID du nœud ; son code : :equipement_code), plus les paramètres de la création d’une FI.', 8],
 ]
+
+// Une ligne par FI à renommer : chacune simulée, puis écrite à part.
+async function renommerFiExistantes() {
+  const liste = await essayer(() => api('/api/mn1/fi/designations'))
+  if (!liste) return
+  if (!liste.length) return notifier('Toutes les FI portent déjà le bon nom')
+  const renommer = async (x, ligne) => {
+    const corps = { numero: x.numero }
+    const r = await essayer(() => api('/api/mn1/fi/designation', { methode: 'POST', corps }))
+    if (!r) return
+    if (r.modifiees !== 1) return notifier(`La simulation modifierait ${r.modifiees} ligne(s) pour ${x.numero} : vérifiez le SQL.`, 'erreur')
+    if (await confirmer(`Écrire « ${x.nouvelle} » dans la GMAO pour la FI ${x.numero} ?`, { texte: 'Écrire' }) && await essayer(() => api('/api/mn1/fi/designation', { methode: 'POST', corps: { ...corps, valider: true } }))) ligne.remove()
+  }
+  await fenetre({
+    titre: 'Renommer les FI existantes',
+    large: true,
+    contenu: h('div', { class: 'grille', style: { gap: '8px' } }, liste.map((x) => {
+      const ligne = h('div', { class: 'ligne-attente' }, h('span', {}, h('b', { class: 'mono' }, x.numero), ` : ${x.actuelle || '(sans nom)'} → `, h('b', {}, x.nouvelle)))
+      ligne.append(h('button', { class: 'petit principal', onclick: () => renommer(x, ligne) }, 'Renommer'))
+      return ligne
+    })),
+    boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }],
+  })
+}
 
 export function carteRequetesPrevtec() {
   const champs = {}
@@ -56,7 +81,7 @@ export function carteRequetesPrevtec() {
     }), h('div', { class: 'actions', style: { marginTop: '10px' } }, h('button', {
       class: 'principal',
       onclick: () => essayer(() => api('/api/mn1/gmao/reglages', { methode: 'POST', corps: Object.fromEntries(Object.entries(champs).map(([cle, e]) => [cle, e.value])) }), 'Requêtes enregistrées'),
-    }, 'Enregistrer')))
+    }, 'Enregistrer'), h('button', { onclick: renommerFiExistantes }, ic('crayon', 15), 'Renommer les FI existantes')))
   })
   return h('div', { class: 'carte pleine' },
     h('div', { class: 'carte-entete' }, h('h2', {}, ic('base', 18), 'Requêtes de PREVTEC')),

@@ -12,7 +12,7 @@ import { reglagesGmao, enregistrerReglagesGmao, creerFi, equipementsDeLaLigne, r
 import { lireDemandes, close } from './demandes.js'
 import { lireFiN1, lireRiN1, indicateurs, manqueArbo, calendrierDuParc, enregistrerCalendrier, REGIMES, lireActivites, activites, activitesDuParc, podiumExecutants, concentrationExecutants, podiumDemandeurs, profilsDesParcs, enregistrerProfil } from './circuit.js'
 import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINENCE } from './parcs.js'
-import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
+import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, designationsARenommer, renommerFi, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
 import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1, appliquerDecision, reactiverDecision, marquesN1, equipementPropose } from './demonstrateur.js'
@@ -21,7 +21,7 @@ import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } fr
 import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
 import { creerVisiteLocale, retirerVisiteLocale, enregistrerFiche, retirerFiche, proposerFiche as proposerFicheLocale, validerDansGmao } from './visites-locales.js'
 import { apercuConvention, enregistrerConvention, enregistrerLettre } from './visites.js'
-import { recalerEtiquettes, completerLigneEtEth } from './etiquettes.js'
+import { recalerEtiquettes, mettreAuStandard } from './etiquettes.js'
 import { placeDe } from '../analyse/serveur.js'
 import { lireParcs, machineAnalysable } from '../../lib/parcs.js'
 
@@ -466,7 +466,7 @@ export function routes(r) {
   })
 
   r.get('/api/mn1/parcs/:id', async (ctx) => {
-    await completerLigneEtEth()
+    await mettreAuStandard()
     const d = await detailDuParc(ctx.params.id)
     if (!d) throw new ErreurHttp(404, 'Ligne introuvable')
     return d
@@ -666,6 +666,9 @@ export function routes(r) {
   })
 
   // Maximum baissé : suspendre des FI. { parc, numeros, valider }
+  // Les FI déjà créées : leur désignation suit l'étiquette de leur fiche (leur code ne change jamais).
+  admin.get('/api/mn1/fi/designations', () => designationsARenommer())
+  admin.post('/api/mn1/fi/designation', async (ctx) => renommerFi(await ctx.json()))
   admin.post('/api/mn1/fi/suspendre', async (ctx) => {
     ctx.exigerAdmin()
     const demande = await ctx.json()

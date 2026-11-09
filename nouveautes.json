@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.29.0",
+      "date": "2026-11-09",
+      "points": [
+        "Étiquettes remises au standard : ligne, ETH, mois de création et lettre, A pour la première fiche de la ligne dans le mois",
+        "Nouvelles FI de niveau 1 : le code suit le numéro de la fiche, et la désignation reprend son étiquette",
+        "Administration, Réglages : renommer les FI existantes, une par une, simulation d'abord"
+      ]
+    },
+    {
       "version": "0.28.16",
       "date": "2026-11-09",
       "points": [
