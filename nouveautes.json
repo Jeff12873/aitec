@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.4",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : une visite posée sur la machine apparaît dans la colonne de cette machine, comme dans la GMAO, et compte dans son diagnostic"
+      ]
+    },
+    {
       "version": "0.28.3",
       "date": "2026-11-09",
       "points": [

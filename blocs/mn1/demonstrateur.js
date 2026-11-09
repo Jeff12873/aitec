@@ -171,7 +171,8 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     return p ? { cle: p.cle, symptome: p.symptome, nombre: p.nombre } : null
   }
   const colonnes = [...parEquipement].filter(([id]) => id !== machine.id || parEquipement.get(id).pannes).map(([id, c]) => {
-    const dessus = [...lignes.filter((g) => (g.placee ? g.pose === id && g.pose !== machine.id : g.equipement === id && !g.machineEntiere)), ...n1Actives.filter((f) => f.equipement === id && !f.machineEntiere)]
+    // La machine a sa colonne quand elle a des pannes : ce qui est posé sur elle la regarde exactement.
+    const dessus = [...lignes.filter((g) => (g.placee ? g.pose === id : g.equipement === id && (!g.machineEntiere || id === machine.id))), ...n1Actives.filter((f) => f.equipement === id && (!f.machineEntiere || id === machine.id))]
     const passages = dessus.reduce((s, g) => s + (g.passages || 0), 0)
     const ev = evolution(c.pannes, c.precedent)
     const monte = ev === 'monte' || (ev === 'nouvelle' && c.pannes >= 3)
@@ -186,7 +187,7 @@ export async function demonstrateur(parcId, machineId, deja = null) {
     else if (dessus.length) { diagnostic = 'ok'; raison = 'Peu de pannes, peu de visites.' }
     return { id, repere: repere.get(id) || '', designation: designation.get(id) || '', pannes: c.pannes, precedent: c.precedent, evolution: ev, diagnostic, libelle: DIAGNOSTICS[diagnostic], raison, panne: principale(id, c), pannesListe: c.liste.slice(0, 3).map((p) => ({ symptome: p.symptome, nombre: p.nombre })) }
   }).sort((a, b) => b.pannes - a.pannes || a.repere.localeCompare(b.repere))
-  const rangLigne = (g) => ({ sur: 0, mauvais: 1, ok: 3 }[colonnes.find((c) => c.id === g.equipement && !g.machineEntiere)?.diagnostic] ?? 2)
+  const rangLigne = (g) => ({ sur: 0, mauvais: 1, ok: 3 }[colonnes.find((c) => c.id === g.equipement)?.diagnostic] ?? 2)
   const ordreLignes = (g) => (g.machineEntiere ? colonnes.length : Math.max(0, colonnes.findIndex((c) => c.id === g.equipement)))
   return {
     parc: { id: v.parc.id, nom: v.parc.nom },
@@ -402,7 +403,7 @@ export async function decisionCroisee(parcId, machineId, { equipement, pose, tit
   const protege = protection(machine.id, g)
   const r = reglagesDuParc(parcId)
   const frequences = g.espacee ? [] : Object.entries(r.frequences).filter(([, p]) => parAn(r, p) < g.passages).map(([nom]) => nom)
-  const aTraiter = d.lignes.filter((x) => x === g || d.colonnes.find((k) => k.id === x.equipement && !x.machineEntiere)?.diagnostic !== 'ok')
+  const aTraiter = d.lignes.filter((x) => x === g || d.colonnes.find((k) => k.id === x.equipement)?.diagnostic !== 'ok')
   const prochaine = aTraiter[aTraiter.indexOf(g) + 1]
   const suivant = prochaine ? { equipement: prochaine.machineEntiere ? machine.id : prochaine.equipement, pose: prochaine.pose, titre: prochaine.titre } : null
   return { parc: d.parc, machine, charge: d.charge, equipement: c, visite, posee, pannes: liste, remarques, conseils: conseilsDe(c, [visite], liste, remarques), iaInstallee: d.iaInstallee, protection: protege, heures: arrondi(heuresDe(passages)), frequences, recommandation: recommander(c, g, protege.protegee), suivant }
