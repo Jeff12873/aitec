@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.7",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : le groupe Maintenance de niveau 1 est ouvert par défaut"
+      ]
+    },
+    {
       "version": "0.28.6",
       "date": "2026-11-09",
       "points": [

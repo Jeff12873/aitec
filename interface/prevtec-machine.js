@@ -53,7 +53,7 @@ const FREQUENCES_VISITE = ['Mensuelle', 'Trimestrielle', 'Semestrielle', 'Annuel
 export async function demonstrateurMachine(parcId, machineId, { surChange = () => {} } = {}) {
   const base = `/api/mn1/parcs/${encodeURIComponent(parcId)}/machines/${machineId}`
   let courant = null
-  let n1Ouvert = false
+  let n1Ouvert = true
   let listeOuverte = false
   // Le tableau seul est redessiné, la page ne bouge pas ; le défilement des colonnes est gardé.
   const remplacer = (d) => {
