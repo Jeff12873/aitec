@@ -37,9 +37,7 @@ function jaugeCharge(avant, apres, max) {
 
 // ---------------------------------------------------------------- mettre une fiche dans une FI
 
-// proposerFiche : une fois la FI écrite, propose d'aller à la fiche ; renvoie alors true si c'est choisi, sans recharger.
-export async function dialogueFi(fiche, detail, { proposerFiche = false } = {}) {
-  let aller = false
+export async function dialogueFi(fiche, detail) {
   const equipements = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(detail.parc.id)}/equipements?fiche=${fiche.id}`))
   if (!equipements) return
   const u = utilites(detail)
@@ -148,7 +146,6 @@ export async function dialogueFi(fiche, detail, { proposerFiche = false } = {}) 
     boutonCreer.disabled = true
     boutonSimuler.disabled = true
     if (r.ok) notifier(`${texte} : fait`)
-    if (r.ok && proposerFiche) resultat.append(h('div', { class: 'actions aller-fiche' }, h('b', {}, 'FI créée. Aller à sa fiche ?'), h('button', { class: 'principal', onclick: (e) => { aller = true; e.currentTarget.closest('.fenetre').querySelector('.fenetre-pied button').click() } }, 'Ouvrir sa fiche')))
   }
   equipement.onchange = () => { cible = ''; cochees.clear(); recalculer() }
   date.oninput = () => { simulee = null; boutonCreer.disabled = true }
@@ -165,7 +162,6 @@ export async function dialogueFi(fiche, detail, { proposerFiche = false } = {}) 
       resultat),
     boutons: [{ texte: 'Fermer', classe: 'discret', valeur: true }],
   })
-  if (proposerFiche) return aller
   if (fermee !== undefined) window.ktec.recharger()
 }
 

@@ -446,8 +446,8 @@ td.col-intervenants { max-width: 260px; overflow: hidden; text-overflow: ellipsi
 .pareto-mn1 .sens-tri { font-size: 10px; color: #a78bfa; }
 .pareto-mn1 .lien-fiche { cursor: pointer; font: inherit; font-size: 12px; }
 .pareto-mn1 .lien-fiche:hover { border-color: #a78bfa; color: var(--texte); }
-.fiche-montree { animation: fiche-montree 1.6s ease-out; }
-@keyframes fiche-montree { 0%, 40% { box-shadow: 0 0 0 3px #a78bfa, 0 0 18px #a78bfa; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.fiche-montree { position: relative; z-index: 1; animation: fiche-montree 1.1s ease-in-out 4; }
+@keyframes fiche-montree { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px #e9e54a, 0 0 30px #e9e54a; } }
 .scene-parc { position: relative; margin-bottom: 16px; }
 .scene-parc > .entete-parc, .scene-parc > .carte { position: relative; z-index: 1; }
 .scene-parc > .carte { background: color-mix(in srgb, var(--carte) 72%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
@@ -1076,4 +1076,3 @@ tr.en-deplacement td.croisee.survolee { background: color-mix(in srgb, var(--acc
 .puce-case { position: relative; }
 .mini-n1 { position: absolute; z-index: 2; top: -13px; right: -13px; width: 32px; height: 32px; padding: 2px; border-radius: 50%; background: var(--carte-3); border: 2px solid #e9e54a; box-shadow: 0 1px 5px rgb(0 0 0 / .6); }
 .mini-n1.en-suspens { border: 2px dashed #fbbf24; }
-.aller-fiche { justify-content: space-between; margin-top: 10px; }

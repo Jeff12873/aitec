@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.9",
+      "date": "2026-11-09",
+      "points": [
+        "Démonstrateur : un clic sur une fiche de niveau 1 amène à cette fiche dans Maintenance de niveau 1, alignée et en surbrillance"
+      ]
+    },
+    {
       "version": "0.28.8",
       "date": "2026-11-09",
       "points": [

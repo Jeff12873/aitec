@@ -214,7 +214,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
       : visibles.map(carteDe)) : h('p', { class: 'discret' }, d.fiches.length ? 'Aucune fiche ne correspond.' : 'Pas encore de fiche dans cette ligne : importez un classeur, gardez des gestes depuis l’analyse d’une machine, ou proposez une fiche pour une panne du Pareto.'))
   }
   // Depuis le Pareto : la fiche est montrée (le filtre est vidé si elle était cachée) et clignote un instant.
-  allerAFiche = (id, { ouvrir = false } = {}) => {
+  allerAFiche = (id) => {
     if (!liste.querySelector(`[data-fiche="${id}"]`) && (recherche.value || filtre)) {
       recherche.value = ''
       filtre = ''
@@ -227,7 +227,6 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     carte.classList.remove('fiche-montree')
     void carte.offsetWidth
     carte.classList.add('fiche-montree')
-    if (ouvrir) carte.click()
   }
   recherche.addEventListener('input', dessinerFiches)
   tri.addEventListener('change', dessinerFiches)
@@ -314,7 +313,7 @@ export async function afficherParc(zone, id, { integre = false, vue = 'ligne', m
     const corps = h('div', { class: 'parc-mn1' })
     if (onglet) await circuit?.(corps, onglet)
     else vider(corps, h('div', { class: 'haut-parc sans-calendrier' }, h('div', { class: 'colonne-parc' }, carteChargeParc)), carteFiches)
-    if (fiche) setTimeout(() => allerAFiche(Number(fiche), { ouvrir: true }), 300) // arrivée depuis le Démonstrateur
+    if (fiche) setTimeout(() => allerAFiche(Number(fiche)), 300) // arrivée depuis le Démonstrateur
     return vider(zone, barreRetour('Maintenance de niveau 1', '#/niveau1'),
       h('div', { class: 'scene-parc' }, entete, h('div', { class: 'outils-n1' },
         d.lecture?.erreur ? h('span', { class: 'etiquette orange', title: d.lecture.erreur }, ic('alerte', 13), 'FI de la GMAO non lues') : d.lecture?.date ? h('span', { class: 'discret petit-texte' }, `FI lues dans la GMAO ${ilYa(d.lecture.date)}`) : null,
