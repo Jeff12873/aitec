@@ -18,7 +18,7 @@ import * as mysql from 'ktec/mysql.js'
 import { reglagesDuParc, valeursSql, instructions } from './gmao.js'
 import { visitesLocales, visiteLocale } from './visites-locales.js'
 import { FORMAT_POINT, symptomesPour } from './symptomes.js'
-import { fiConnues, etatDeLaFi, chargeDuParc } from './fi.js'
+import { fiConnues, etatDeLaFi, chargeDuParc, equipementsDuParc } from './fi.js'
 import { ErreurHttp } from 'ktec/http.js'
 import { discuter, iaInstallee } from 'ktec/ia.js'
 import { pannesDeLaMachine, decouperRapport } from '../pannes/serveur.js'
@@ -105,6 +105,19 @@ async function fichesN1(v, machine, equipements) {
     const nomStandard = [[code, 'MN1', majuscules(f.eth)].filter(Boolean).join('-'), majuscules(f.zone || f.machine_nom)].filter(Boolean).join(' ')
     return { id: f.id, etiquette: f.etiquette, nom: f.zone || f.machine_nom || '', nomStandard, di: demandes ? demandes.filter((x) => siennes.has(x.machineId)).length : null, action: f.action, frequence: f.frequence, fi: f.fi_gmao, papier: Boolean(f.papier_le), active, equipement: place, machineEntiere: place === machine.id }
   }).filter(Boolean).sort((a, b) => Number(b.active) - Number(a.active) || String(a.etiquette).localeCompare(String(b.etiquette)))
+}
+
+// L'équipement de production à proposer pour une fiche posée sur un équipement de maintenance : celui qui est lié à
+// son organe, sinon à sa machine (lien réglé, ou proposé d'après les codes). → le numéro de nœud, ou null.
+export async function equipementPropose(parcId, ficheId) {
+  const f = db().prepare('SELECT machine_id FROM fiches_mn1 WHERE id = ?').get(Number(ficheId))
+  if (!f?.machine_id) return null
+  const v = await visitesDuParc(parcId)
+  const { equipements } = await equipementsDuParc(parcId)
+  const lieeA = (n) => v.p.liens?.[n.machine] ?? v.p.propositions?.get(n.machine) ?? null
+  const avecMachine = equipements.filter((n) => n.machine)
+  const machine = v.places.get(f.machine_id)?.machine
+  return (avecMachine.find((n) => lieeA(n) === f.machine_id) || avecMachine.find((n) => machine && lieeA(n) === machine))?.noeud ?? null
 }
 
 // Le mini logo des vignettes, par machine : 2 si une fiche de niveau 1 est active, 1 si elles sont toutes en suspens

@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.28.8",
+      "date": "2026-11-09",
+      "points": [
+        "Création d'une FI de niveau 1 : l'équipement de production lié à la machine est présélectionné"
+      ]
+    },
+    {
       "version": "0.28.7",
       "date": "2026-11-09",
       "points": [

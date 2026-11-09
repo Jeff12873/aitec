@@ -15,7 +15,7 @@ import { vignettes, detailDuParc, fichesDesParcs, seuilPertinence, SEUIL_PERTINE
 import { planifier, executer, suspendre, supprimerFi, resumePlan, equipementsDuParc, lireFiGmao, fiConnues, etatDeLaFi } from './fi.js'
 import { analyser, proposerFiche } from './correlation.js'
 import { equilibreDuParc, classerGammes, corrigerGamme } from './equilibre.js'
-import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1, appliquerDecision, reactiverDecision, marquesN1 } from './demonstrateur.js'
+import { demonstrateur, decisionCroisee, preconisations, proposerFi, ficheDeVisite, proposerFicheMachine, deplacerVisite, placerVisite, placerFicheN1, appliquerDecision, reactiverDecision, marquesN1, equipementPropose } from './demonstrateur.js'
 import { gainsDuSite, gainsDuParc, enregistrerProtection, lirePhrases, enregistrerPhrases } from './decisions.js'
 import { affichage, enregistrerAffichage, etiquettes, enregistrerEtiquettes } from './affichage.js'
 import { symptomesTexte, enregistrerSymptomes } from './symptomes.js'
@@ -608,7 +608,10 @@ export function routes(r) {
   })
 
   // Les équipements de production du parc (l'équipement d'une FI), par ETH.
-  admin.get('/api/mn1/parcs/:id/equipements', async (ctx) => (await equipementsDuParc(ctx.params.id)).equipements.filter((n) => n.niveau >= 2).map(({ noeud, code, designation, niveau, ethCode, ethLibelle, machine }) => ({ noeud, code, designation, niveau, eth: ethCode, ethLibelle, machine })))
+  admin.get('/api/mn1/parcs/:id/equipements', async (ctx) => {
+    const propose = ctx.query.fiche ? await equipementPropose(ctx.params.id, ctx.query.fiche) : null
+    return (await equipementsDuParc(ctx.params.id)).equipements.filter((n) => n.niveau >= 2).map(({ noeud, code, designation, niveau, ethCode, ethLibelle, machine }) => ({ noeud, code, designation, niveau, eth: ethCode, ethLibelle, machine, propose: noeud === propose }))
+  })
 
   // Ranger une fiche dans un parc, l'archiver ou la ramener : { parc } ou { archivee: true | false }.
   admin.post('/api/mn1/fiches/:id/ranger', async (ctx) => {

@@ -40,12 +40,12 @@ function jaugeCharge(avant, apres, max) {
 // proposerFiche : une fois la FI écrite, propose d'aller à la fiche ; renvoie alors true si c'est choisi, sans recharger.
 export async function dialogueFi(fiche, detail, { proposerFiche = false } = {}) {
   let aller = false
-  const equipements = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(detail.parc.id)}/equipements`))
+  const equipements = await essayer(() => api(`/api/mn1/parcs/${encodeURIComponent(detail.parc.id)}/equipements?fiche=${fiche.id}`))
   if (!equipements) return
   const u = utilites(detail)
-  // L'équipement : celui de la fiche, sinon celui dont le nom ressemble à sa machine.
+  // L'équipement : celui de la fiche, sinon celui lié à son équipement de maintenance, sinon celui dont le nom ressemble à sa machine.
   const nom = String(fiche.machine_nom || fiche.designation || '').toLowerCase()
-  const devine = fiche.noeud || equipements.find((e) => nom && (String(e.designation).toLowerCase().includes(nom) || nom.includes(String(e.designation).toLowerCase()) && e.designation))?.noeud || ''
+  const devine = fiche.noeud || equipements.find((e) => e.propose)?.noeud || equipements.find((e) => nom && (String(e.designation).toLowerCase().includes(nom) || nom.includes(String(e.designation).toLowerCase()) && e.designation))?.noeud || ''
   const parEth = new Map()
   for (const e of equipements) (parEth.get(e.ethLibelle) || parEth.set(e.ethLibelle, []).get(e.ethLibelle)).push(e)
   const equipement = h('select', {}, h('option', { value: '' }, '— équipement de production —'),
