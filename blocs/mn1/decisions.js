@@ -4,7 +4,7 @@
 //   réglage « prev_protections » : { 'machine|pose|titre': true ou false }, ce que l'administrateur a corrigé
 //   réglage « prev_phrases »     : les phrases du responsable, une par ligne
 
-import { reglage, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
+import { db, reglage, reglageJson, modifierReglage, noterModification } from '../../lib/base.js'
 import { exigerEcriture } from 'ktec/partage.js'
 import { reglagesPoste } from 'ktec/installation.js'
 import { familleDe } from '../../lib/types.js'
@@ -84,7 +84,8 @@ function potentiel(v) {
   for (const x of v.pourEcran('demonstrateur').filter((l) => l.recente && !avecPanne.has(l.machine_id))) {
     const titre = x.code?.titre || texteSeul(x.description).split(' - ')[0].slice(0, 100)
     const cle = `${x.machine_id}|${titre}`
-    const g = groupes.get(cle) || { pose: x.machine_id, titre, jamaisEspacer: Boolean(x.code?.jamaisEspacer), machine: x.place?.machine ?? x.machine_id, ecrits: 0, rien: 0, heures: 0 }
+    const g = groupes.get(cle) || { pose: x.machine_id, titre, jamaisEspacer: Boolean(x.code?.jamaisEspacer), machine: x.place?.machine ?? x.machine_id, passages: 0, ecrits: 0, rien: 0, heures: 0 }
+    g.passages++
     const resultat = resultatDuPassage(x.description)
     if (resultat) g.ecrits++
     if (resultat === 'rien') g.rien++
@@ -92,7 +93,9 @@ function potentiel(v) {
     groupes.set(cle, g)
   }
   const retenues = [...groupes.values()].filter((g) => g.ecrits >= ECRITS_MIN && g.rien / g.ecrits >= SEUIL_RAS && !visitesRetirees(g.machine).has(cleVisite(g.machine, g.pose, g.titre)) && !protection(g.machine, g).protegee)
-  return { visites: retenues.length, heures: Math.round(retenues.reduce((s, g) => s + g.heures, 0)) }
+  const nom = db().prepare('SELECT repere FROM machines WHERE id = ?')
+  const liste = retenues.sort((a, b) => b.heures - a.heures).map((g) => ({ machine: g.machine, pose: g.pose, titre: g.titre, repere: nom.get(g.pose)?.repere || '', passages: g.passages, ecrits: g.ecrits, ras: Math.round((g.rien / g.ecrits) * 100), heures: Math.round(g.heures * 10) / 10 }))
+  return { visites: retenues.length, heures: Math.round(retenues.reduce((s, g) => s + g.heures, 0)), liste }
 }
 
 const somme = (liste) => ({

@@ -42,6 +42,7 @@ export function bandeauGains(parc, plan) {
     vider(zone, h('div', { class: 'bandeau-gains' },
       faits.length ? h('div', {}, h('b', {}, 'Bonnes nouvelles'), faits.map((x) => h('span', {}, x))) : null,
       possible ? h('div', {}, h('b', {}, 'Gain possible'), h('span', {}, possible)) : null,
+      possible ? h('ul', { class: 'liste-gains' }, g.potentiel.liste.map((x) => h('li', {}, h('a', { href: `#/mn1/decider/${encodeURIComponent(parc.id)}/${x.machine}/${x.pose}?pose=${x.pose}&titre=${encodeURIComponent(x.titre)}`, title: 'Ouvrir Je décide pour cette visite' }, h('span', { class: 'mono' }, x.repere), ` ${x.titre}`), h('span', { class: 'discret' }, ` : ${x.ras} % de RAS sur ${pluriel(x.ecrits, 'observation')}, aucune panne en 12 mois${x.heures ? `, ${heuresFr(x.heures)} par an` : ''}`)))) : null,
       g.decisions.length ? h('button', { class: 'petit', onclick: () => ouvrirDecisions(parc, g, () => relire()) }, `Les décisions (${g.decisions.length})`) : null,
       g.phrase ? citation({ texte: g.phrase }) : null))
   }

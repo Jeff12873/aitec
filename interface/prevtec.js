@@ -17,10 +17,20 @@ export const VERDICTS = {
   reevaluer: { texte: 'à réévaluer', classe: 'rouge', icone: 'alerte' },
 }
 
-// Le retour à l'écran d'avant, en haut de chaque écran : cible, une adresse ou une fonction.
+// Les pages consultées, pour que le retour ramène à celle d'où l'on vient.
+const consultees = [location.hash]
+addEventListener('hashchange', () => {
+  if (location.hash === consultees.at(-2)) consultees.pop()
+  else if (location.hash !== consultees.at(-1)) consultees.push(location.hash)
+})
+const nomDePage = (adresse) => (/\/decider\//.test(adresse) ? 'Je décide' : /[?&]machine=/.test(adresse) ? 'Démonstrateur' : /^#\/mn1\/parc\//.test(adresse) ? 'Ma ligne' : /^#\/mn1/.test(adresse) ? 'Les lignes' : /^#\/niveau1\/./.test(adresse) ? 'Niveau 1 de la ligne' : /^#\/niveau1/.test(adresse) ? 'Maintenance de niveau 1' : 'Retour')
+
+// Le retour en haut de chaque écran : la page consultée juste avant ; à défaut, cible (une adresse).
+// Une fonction est un retour à l'intérieur de l'écran (zoom de la carte de la ligne).
 export function barreRetour(texte, cible) {
-  const contenu = [ic('retour', 16), h('span', {}, texte)]
-  return typeof cible === 'string' ? h('a', { class: 'bouton barre-retour', href: cible }, contenu) : h('button', { class: 'barre-retour', onclick: cible }, contenu)
+  const avant = typeof cible === 'string' ? consultees.at(-2) : null
+  const contenu = [ic('retour', 16), h('span', {}, avant ? nomDePage(avant) : texte)]
+  return typeof cible === 'string' ? h('a', { class: 'bouton barre-retour', href: avant ?? cible }, contenu) : h('button', { class: 'barre-retour', onclick: cible }, contenu)
 }
 
 // etape : 1 à 4 ; parc : { id, nom } quand on est dans une ligne ; machine : { id, repere } sur son démonstrateur.
