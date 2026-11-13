@@ -1,6 +1,13 @@
 {
   "versions": [
     {
+      "version": "0.29.5",
+      "date": "2026-11-13",
+      "points": [
+        "AITEC et PREVTEC portent la pastille « Bêta »"
+      ]
+    },
+    {
       "version": "0.29.4",
       "date": "2026-11-09",
       "points": [

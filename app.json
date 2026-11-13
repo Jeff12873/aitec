@@ -9,6 +9,7 @@
     "ia",
     "java"
   ],
+  "beta": true,
   "portes": [
     {
       "id": "prevtec",
@@ -18,7 +19,8 @@
       "description": "Réévaluer le plan de maintenance : le Pareto des pannes et son évolution, un préventif bien orienté, les fiches de niveau 1 et leur charge.",
       "icone": "interface/icone-prevtec.svg",
       "menu": "interface/menu-prevtec.js",
-      "wiki": "interface/wiki/sommaire-prevtec.json"
+      "wiki": "interface/wiki/sommaire-prevtec.json",
+      "beta": true
     }
   ]
 }
